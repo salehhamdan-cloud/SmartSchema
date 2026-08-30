@@ -4,6 +4,7 @@ import * as d3 from 'd3';
 import { ElectricalNode, ComponentType, Project, DiagramOrientation, AnnotationItem, PalmRejectionMode } from '../types';
 import { COMPONENT_CONFIG, ICON_PATHS, SNAP_GRID_SIZE } from '../constants';
 import { CanvasZoomControls } from './CanvasZoomControls';
+import { eraseAnnotationSegments } from '../utils/annotationUtils';
 
 interface DiagramProps {
   data: ElectricalNode[];
@@ -42,6 +43,7 @@ interface DiagramProps {
   onStylusDetected?: (detected: boolean) => void;
   onAnnotationAdd?: (path: string, color: string, width?: number, tool?: 'pen' | 'highlighter') => void;
   onDeleteAnnotation?: (id: string) => void;
+  onUpdateAnnotations?: (items: AnnotationItem[]) => void;
   onToggleLayoutLocked?: () => void;
   onToggleAnnotating?: () => void;
   isLayoutLocked?: boolean;
@@ -233,6 +235,7 @@ export const Diagram: React.FC<DiagramProps> = ({
   onStylusDetected,
   onAnnotationAdd,
   onDeleteAnnotation,
+  onUpdateAnnotations,
   onToggleLayoutLocked,
   onToggleAnnotating,
   isLayoutLocked = false,
@@ -839,26 +842,103 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('stroke-linecap', 'round')
           .attr('stroke-linejoin', 'round')
           .attr('opacity', opacity)
-          .style('cursor', isEraserMode ? 'pointer' : 'inherit')
+          .style('cursor', isEraserMode ? 'crosshair' : 'inherit')
           .style('pointer-events', isEraserMode ? 'all' : 'none');
 
         if (isEraserMode) {
           pathEl
-            .on('mouseenter', function() {
-              d3.select(this).attr('stroke', '#ef4444').attr('stroke-dasharray', '4,4').attr('opacity', 1);
-            })
-            .on('mouseleave', function() {
-              d3.select(this).attr('stroke', ant.color).attr('stroke-dasharray', null).attr('opacity', opacity);
-            })
             .on('pointerdown click', function(e: any) {
-              if (isPalmOrRejectedTouch(e)) {
-                return; // Ignore accidental palm contact in eraser mode
-              }
+              if (isPalmOrRejectedTouch(e)) return;
               e.stopPropagation();
               if (onDeleteAnnotation) onDeleteAnnotation(ant.id);
             });
         }
       });
+    }
+
+    // Interactive Smart Partial Eraser Surface
+    if (isAnnotating && annotationTool === 'eraser') {
+      svg.style('cursor', 'crosshair');
+      const eraserSurface = svg.append('rect')
+        .attr('class', 'eraser-surface')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('fill', 'transparent')
+        .style('pointer-events', 'all')
+        .style('touch-action', 'none');
+
+      // Visual circular cursor indicator for eraser
+      const eraserCircle = g.append('circle')
+        .attr('class', 'eraser-visual-cursor')
+        .attr('r', 18)
+        .attr('fill', 'rgba(239, 68, 68, 0.25)')
+        .attr('stroke', '#ef4444')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '3,3')
+        .style('pointer-events', 'none')
+        .style('display', 'none');
+
+      let isErasing = false;
+      let activeEraserPointerId: number | null = null;
+      let localAnnotations = [...(annotations || [])];
+
+      const handleEraseAtEvent = (event: any) => {
+        const coords = d3.pointer(event, g.node());
+        eraserCircle
+          .attr('cx', coords[0])
+          .attr('cy', coords[1])
+          .style('display', 'block');
+
+        if (isErasing) {
+          const { updatedAnnotations, didChange } = eraseAnnotationSegments(
+            localAnnotations,
+            { x: coords[0], y: coords[1] },
+            18
+          );
+          if (didChange) {
+            localAnnotations = updatedAnnotations;
+            if (onUpdateAnnotations) {
+              onUpdateAnnotations(updatedAnnotations);
+            }
+          }
+        }
+      };
+
+      eraserSurface
+        .on('pointermove', function(event: any) {
+          if (isPalmOrRejectedTouch(event)) return;
+          if (activeEraserPointerId !== null && event.pointerId !== undefined && event.pointerId !== activeEraserPointerId) {
+            return;
+          }
+          handleEraseAtEvent(event);
+        })
+        .on('pointerleave', function() {
+          eraserCircle.style('display', 'none');
+        })
+        .on('pointerdown', function(event: any) {
+          if (isPalmOrRejectedTouch(event)) return;
+          event.preventDefault();
+          isErasing = true;
+          activeEraserPointerId = event.pointerId !== undefined ? event.pointerId : null;
+
+          const surfaceEl = this as Element;
+          if (surfaceEl.setPointerCapture && event.pointerId !== undefined) {
+            try { surfaceEl.setPointerCapture(event.pointerId); } catch (_) {}
+          }
+          handleEraseAtEvent(event);
+        })
+        .on('pointerup pointercancel', function(event: any) {
+          if (activeEraserPointerId !== null && event.pointerId !== undefined && event.pointerId !== activeEraserPointerId) {
+            return;
+          }
+          isErasing = false;
+          activeEraserPointerId = null;
+
+          const surfaceEl = this as Element;
+          if (surfaceEl.releasePointerCapture && event.pointerId !== undefined) {
+            try { surfaceEl.releasePointerCapture(event.pointerId); } catch (_) {}
+          }
+        });
     }
 
     // Interactive Drawing Surface when pen/highlighter is active

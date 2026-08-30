@@ -621,12 +621,42 @@ export default function App() {
       });
   }, [activeProjectId, activePageId]);
 
-  // Sync annotations when activePage changes
+  // Refs for annotation autosave debounce
+  const annotationAutoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const annotationsRef = useRef<AnnotationItem[]>([]);
+  annotationsRef.current = annotations;
+
+  // Sync annotations when activePage or project switches
   useEffect(() => {
     if (activePage) {
       setAnnotations(activePage.annotations || []);
     }
-  }, [activePageId, activeProjectId, activePage?.annotations]);
+  }, [activePageId, activeProjectId]);
+
+  // Debounced auto-saver for drawing annotations (avoids re-render flickers during strokes)
+  const scheduleAnnotationAutoSave = useCallback((updatedItems: AnnotationItem[]) => {
+    if (annotationAutoSaveTimerRef.current) {
+      clearTimeout(annotationAutoSaveTimerRef.current);
+    }
+    annotationAutoSaveTimerRef.current = setTimeout(() => {
+      updatePage(page => ({
+        ...page,
+        annotations: updatedItems
+      }));
+    }, 2500); // 2.5s debounce ensures peaceful uninterrupted drawing experience
+  }, [updatePage]);
+
+  // Flush any pending auto-save immediately
+  const flushAnnotationAutoSave = useCallback(() => {
+    if (annotationAutoSaveTimerRef.current) {
+      clearTimeout(annotationAutoSaveTimerRef.current);
+      annotationAutoSaveTimerRef.current = null;
+    }
+    updatePage(page => ({
+      ...page,
+      annotations: annotationsRef.current
+    }));
+  }, [updatePage]);
 
   const handleAnnotationAdd = useCallback((path: string, color: string, width: number = 3, tool: 'pen' | 'highlighter' = 'pen') => {
     const newAnnotation: AnnotationItem = {
@@ -639,38 +669,38 @@ export default function App() {
     };
     setAnnotations(prev => {
       const next = [...prev, newAnnotation];
-      updatePage(page => ({
-        ...page,
-        annotations: next
-      }));
+      scheduleAnnotationAutoSave(next);
       return next;
     });
-  }, [updatePage]);
+  }, [scheduleAnnotationAutoSave]);
+
+  const handleUpdateAnnotations = useCallback((updatedAnnotations: AnnotationItem[]) => {
+    setAnnotations(updatedAnnotations);
+    scheduleAnnotationAutoSave(updatedAnnotations);
+  }, [scheduleAnnotationAutoSave]);
 
   const handleDeleteAnnotation = useCallback((id: string) => {
     setAnnotations(prev => {
       const next = prev.filter(a => a.id !== id);
-      updatePage(page => ({
-        ...page,
-        annotations: next
-      }));
+      scheduleAnnotationAutoSave(next);
       return next;
     });
-  }, [updatePage]);
+  }, [scheduleAnnotationAutoSave]);
 
   const handleUndoAnnotation = useCallback(() => {
     setAnnotations(prev => {
       if (prev.length === 0) return prev;
       const next = prev.slice(0, -1);
-      updatePage(page => ({
-        ...page,
-        annotations: next
-      }));
+      scheduleAnnotationAutoSave(next);
       return next;
     });
-  }, [updatePage]);
+  }, [scheduleAnnotationAutoSave]);
 
   const handleClearAnnotations = useCallback(() => {
+    if (annotationAutoSaveTimerRef.current) {
+      clearTimeout(annotationAutoSaveTimerRef.current);
+      annotationAutoSaveTimerRef.current = null;
+    }
     setAnnotations([]);
     updatePage(page => ({
       ...page,
@@ -679,14 +709,11 @@ export default function App() {
   }, [updatePage]);
 
   const handleSaveAnnotations = useCallback(() => {
-    updatePage(page => ({
-      ...page,
-      annotations: [...annotations]
-    }));
+    flushAnnotationAutoSave();
     setSaveStatus('saved');
     setShowSaveToast(true);
     setTimeout(() => setShowSaveToast(false), 2200);
-  }, [annotations, updatePage]);
+  }, [flushAnnotationAutoSave]);
   
   const toggleFilter = (filterKey: string) => {
       setActiveFilters(prev => {
@@ -3911,6 +3938,7 @@ export default function App() {
                     onStylusDetected={(detected) => setIsStylusActive(detected)}
                     onAnnotationAdd={handleAnnotationAdd}
                     onDeleteAnnotation={handleDeleteAnnotation}
+                    onUpdateAnnotations={handleUpdateAnnotations}
                     onToggleLayoutLocked={() => setIsLayoutLocked(!isLayoutLocked)}
                     onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
                     isLayoutLocked={isLayoutLocked}
@@ -4020,24 +4048,6 @@ export default function App() {
             </aside>
         )}
       </main>
-
-      <AnnotationToolbar
-        isAnnotating={isAnnotating}
-        onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
-        annotationColor={annotationColor}
-        onAnnotationColorChange={setAnnotationColor}
-        annotationWidth={annotationWidth}
-        onAnnotationWidthChange={setAnnotationWidth}
-        annotationTool={annotationTool}
-        onAnnotationToolChange={setAnnotationTool}
-        onUndo={handleUndoAnnotation}
-        canUndo={annotations.length > 0}
-        onClear={handleClearAnnotations}
-        annotationsCount={annotations.length}
-        onSave={handleSaveAnnotations}
-        t={t}
-        isRTL={isRTL}
-      />
 
       <AnalysisModal isOpen={showAnalysis} onClose={() => setShowAnalysis(false)} loading={isAnalyzing} result={analysisResult} t={t} />
       <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} t={t} />

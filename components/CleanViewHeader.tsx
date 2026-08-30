@@ -503,110 +503,20 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
         <button
           type="button"
           onClick={onToggleAnnotating}
-          className={`p-2 rounded-lg border transition-colors ${
+          className={`p-2 rounded-lg border transition-colors flex items-center gap-1.5 ${
             isAnnotating
-              ? 'bg-purple-600 text-white border-purple-500 shadow-md'
+              ? 'bg-purple-600 text-white border-purple-500 shadow-md ring-2 ring-purple-400/40'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
           }`}
           title={isAnnotating ? (t.annotations?.disable || "Disable Drawing") : (t.annotations?.enable || "Drawing Tool")}
         >
           <span className="material-icons-round text-base">edit</span>
+          {isAnnotating && annotationsCount > 0 && (
+            <span className="text-[10px] bg-purple-900/80 text-purple-200 px-1.5 py-0.2 rounded-full font-bold">
+              {annotationsCount}
+            </span>
+          )}
         </button>
-
-        {isAnnotating && (
-          <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 animate-fadeIn">
-            <input
-              type="color"
-              value={annotationColor}
-              onChange={(e) => onAnnotationColorChange(e.target.value)}
-              className="w-5 h-5 rounded cursor-pointer bg-transparent border-none p-0"
-              title={t.annotations?.color || "Pen Color"}
-            />
-            {onUndoAnnotation && (
-              <button
-                onClick={onUndoAnnotation}
-                disabled={!canUndoAnnotation}
-                className="p-1 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
-                title={t.annotations?.undo || "Undo Stroke"}
-              >
-                <span className="material-icons-round text-sm">undo</span>
-              </button>
-            )}
-            <button
-              onClick={onClearAnnotations}
-              disabled={annotationsCount === 0}
-              className="p-1 text-slate-400 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
-              title={t.annotations?.clear || "Clear All Drawings"}
-            >
-              <span className="material-icons-round text-sm">delete_sweep</span>
-            </button>
-            {onSaveAnnotations && (
-              <button
-                onClick={onSaveAnnotations}
-                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded flex items-center gap-1 transition-colors shadow-sm"
-                title={t.annotations?.save || "Save Annotations"}
-              >
-                <span className="material-icons-round text-xs">save</span>
-                <span>{t.annotations?.save || "Save"}</span>
-              </button>
-            )}
-
-            {/* Stylus Detection Badge */}
-            {isStylusActive && (
-              <span
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold tracking-tight"
-                title={t.palmRejection?.stylusActive || "Stylus Pen Active"}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="hidden sm:inline">{t.palmRejection?.stylusActive || "Stylus"}</span>
-              </span>
-            )}
-
-            {/* Palm Rejection Mode Quick Toggle */}
-            {onPalmRejectionModeChange && (
-              <div className="flex items-center bg-slate-900/80 p-0.5 rounded-md border border-slate-700/80 ml-1">
-                <button
-                  type="button"
-                  onClick={() => onPalmRejectionModeChange('pen-only')}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
-                    palmRejectionMode === 'pen-only'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title={t.palmRejection?.penOnlyTooltip || "Pen Only (Hand touch completely ignored)"}
-                >
-                  <span className="material-icons-round text-[11px]">edit</span>
-                  <span className="hidden md:inline">{t.palmRejection?.penOnly || "Pen Only"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onPalmRejectionModeChange('smart-palm')}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
-                    palmRejectionMode === 'smart-palm'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title={t.palmRejection?.smartPalmTooltip || "Smart Palm Rejection (Auto-detects resting hand)"}
-                >
-                  <span className="material-icons-round text-[11px]">auto_fix_high</span>
-                  <span className="hidden md:inline">{t.palmRejection?.smartPalm || "Smart"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onPalmRejectionModeChange('touch-and-pen')}
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
-                    palmRejectionMode === 'touch-and-pen'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title={t.palmRejection?.touchAndPenTooltip || "Touch & Stylus"}
-                >
-                  <span className="material-icons-round text-[11px]">touch_app</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Connection Topology Viewer (Read-only visual path explorer) */}
         {onOpenTopology && (
