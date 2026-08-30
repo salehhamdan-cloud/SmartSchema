@@ -621,42 +621,16 @@ export default function App() {
       });
   }, [activeProjectId, activePageId]);
 
-  // Refs for annotation autosave debounce
-  const annotationAutoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs for annotations
   const annotationsRef = useRef<AnnotationItem[]>([]);
   annotationsRef.current = annotations;
 
-  // Sync annotations when activePage or project switches
+  // Sync annotations only when activePage or project switches
   useEffect(() => {
     if (activePage) {
       setAnnotations(activePage.annotations || []);
     }
   }, [activePageId, activeProjectId]);
-
-  // Debounced auto-saver for drawing annotations (avoids re-render flickers during strokes)
-  const scheduleAnnotationAutoSave = useCallback((updatedItems: AnnotationItem[]) => {
-    if (annotationAutoSaveTimerRef.current) {
-      clearTimeout(annotationAutoSaveTimerRef.current);
-    }
-    annotationAutoSaveTimerRef.current = setTimeout(() => {
-      updatePage(page => ({
-        ...page,
-        annotations: updatedItems
-      }));
-    }, 2500); // 2.5s debounce ensures peaceful uninterrupted drawing experience
-  }, [updatePage]);
-
-  // Flush any pending auto-save immediately
-  const flushAnnotationAutoSave = useCallback(() => {
-    if (annotationAutoSaveTimerRef.current) {
-      clearTimeout(annotationAutoSaveTimerRef.current);
-      annotationAutoSaveTimerRef.current = null;
-    }
-    updatePage(page => ({
-      ...page,
-      annotations: annotationsRef.current
-    }));
-  }, [updatePage]);
 
   const handleAnnotationAdd = useCallback((path: string, color: string, width: number = 3, tool: 'pen' | 'highlighter' = 'pen') => {
     const newAnnotation: AnnotationItem = {
@@ -667,53 +641,34 @@ export default function App() {
       tool,
       createdAt: new Date().toISOString()
     };
-    setAnnotations(prev => {
-      const next = [...prev, newAnnotation];
-      scheduleAnnotationAutoSave(next);
-      return next;
-    });
-  }, [scheduleAnnotationAutoSave]);
+    setAnnotations(prev => [...prev, newAnnotation]);
+  }, []);
 
   const handleUpdateAnnotations = useCallback((updatedAnnotations: AnnotationItem[]) => {
     setAnnotations(updatedAnnotations);
-    scheduleAnnotationAutoSave(updatedAnnotations);
-  }, [scheduleAnnotationAutoSave]);
+  }, []);
 
   const handleDeleteAnnotation = useCallback((id: string) => {
-    setAnnotations(prev => {
-      const next = prev.filter(a => a.id !== id);
-      scheduleAnnotationAutoSave(next);
-      return next;
-    });
-  }, [scheduleAnnotationAutoSave]);
+    setAnnotations(prev => prev.filter(a => a.id !== id));
+  }, []);
 
   const handleUndoAnnotation = useCallback(() => {
-    setAnnotations(prev => {
-      if (prev.length === 0) return prev;
-      const next = prev.slice(0, -1);
-      scheduleAnnotationAutoSave(next);
-      return next;
-    });
-  }, [scheduleAnnotationAutoSave]);
+    setAnnotations(prev => (prev.length === 0 ? prev : prev.slice(0, -1)));
+  }, []);
 
   const handleClearAnnotations = useCallback(() => {
-    if (annotationAutoSaveTimerRef.current) {
-      clearTimeout(annotationAutoSaveTimerRef.current);
-      annotationAutoSaveTimerRef.current = null;
-    }
     setAnnotations([]);
-    updatePage(page => ({
-      ...page,
-      annotations: []
-    }));
-  }, [updatePage]);
+  }, []);
 
   const handleSaveAnnotations = useCallback(() => {
-    flushAnnotationAutoSave();
+    updatePage(page => ({
+      ...page,
+      annotations: annotationsRef.current
+    }));
     setSaveStatus('saved');
     setShowSaveToast(true);
     setTimeout(() => setShowSaveToast(false), 2200);
-  }, [flushAnnotationAutoSave]);
+  }, [updatePage]);
   
   const toggleFilter = (filterKey: string) => {
       setActiveFilters(prev => {
@@ -1243,7 +1198,6 @@ export default function App() {
       return;
     }
     setSaveStatus('saving');
-    let toastTimer: any = null;
     const timer = setTimeout(async () => {
       try {
         const serialized = JSON.stringify(projects);
@@ -1251,10 +1205,6 @@ export default function App() {
         setSaveStatus('saved');
         const nowFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSavedTime(nowFormatted);
-        setShowSaveToast(true);
-        toastTimer = setTimeout(() => {
-          setShowSaveToast(false);
-        }, 2500);
 
         // Auto-Save directly to connected local folder if enabled
         if (folderSettings.enabled && directoryHandle) {
@@ -1300,7 +1250,6 @@ export default function App() {
     }, 1000); 
     return () => {
       clearTimeout(timer);
-      if (toastTimer) clearTimeout(toastTimer);
     };
   }, [projects, isReadOnly, createSnapshotObject, folderSettings.enabled, directoryHandle, handleUpdateFolderSettings]);
 

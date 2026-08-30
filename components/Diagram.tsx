@@ -1020,8 +1020,11 @@ export const Diagram: React.FC<DiagramProps> = ({
               tempPathEl.remove();
               tempPathEl = null;
             }
-            if (currentPath && currentPath.includes('L') && onAnnotationAdd) {
-              onAnnotationAdd(currentPath, annotationColor || '#ef4444', effectiveW, isHighlighter ? 'highlighter' : 'pen');
+            if (currentPath && onAnnotationAdd) {
+              const finalPath = currentPath.includes('L')
+                ? currentPath
+                : `${currentPath} L ${(coords[0] + 0.1).toFixed(1)} ${(coords[1] + 0.1).toFixed(1)}`;
+              onAnnotationAdd(finalPath, annotationColor || '#ef4444', effectiveW, isHighlighter ? 'highlighter' : 'pen');
             }
             currentPath = '';
           });
