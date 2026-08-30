@@ -337,10 +337,36 @@ export const translations = {
         noLocations: "No location data found in this diagram"
     },
     annotations: {
+        title: "Annotations & Markup",
         enable: "Enable Drawing",
         disable: "Disable Drawing",
         clear: "Clear All",
-        color: "Ink Color"
+        color: "Ink Color",
+        pen: "Pen",
+        highlighter: "Highlighter",
+        eraser: "Eraser",
+        strokeWidth: "Stroke Size",
+        thin: "Fine (2px)",
+        medium: "Medium (4px)",
+        thick: "Thick (8px)",
+        highlighterSize: "Marker (14px)",
+        saveAnnotations: "Save Annotations",
+        annotationsSaved: "Annotations Saved!",
+        saving: "Saving...",
+        undo: "Undo Stroke",
+        clearConfirm: "Are you sure you want to clear all annotations on this page?",
+        touchDrawingHint: "Draw with finger, stylus, or mouse",
+        eraserHint: "Click/touch a stroke to erase it"
+    },
+    canvasControls: {
+        zoomIn: "Zoom In",
+        zoomOut: "Zoom Out",
+        fitDiagram: "Fit Diagram",
+        resetZoom: "Reset (100%)",
+        lockPan: "Lock Layout",
+        unlockPan: "Unlock Layout",
+        drawMode: "Drawing Mode",
+        touchHint: "Pinch to zoom, 2-finger drag to pan"
     },
     share: {
         title: "Share View-Only Link",
@@ -923,10 +949,36 @@ export const translations = {
         noLocations: "לא הוגדרו נתוני מיקום בעמוד זה"
     },
     annotations: {
+        title: "הערות ושרטוטים",
         enable: "אפשר ציור",
         disable: "כבה ציור",
         clear: "נקה הכל",
-        color: "צבע עט"
+        color: "צבע עט",
+        pen: "עט רגיל",
+        highlighter: "מרקר מדגיש",
+        eraser: "מחק קווים",
+        strokeWidth: "עובי קו",
+        thin: "דק (2px)",
+        medium: "בינוני (4px)",
+        thick: "עבה (8px)",
+        highlighterSize: "מודגש (14px)",
+        saveAnnotations: "שמור הערות",
+        annotationsSaved: "ההערות נשמרו בהצלחה!",
+        saving: "שומר...",
+        undo: "בטל שרטוט אחרון",
+        clearConfirm: "האם למחוק את כל השרטוטים וההערות בעמוד זה?",
+        touchDrawingHint: "צייר באמצעות מגע, עט דיגיטלי או עכבר",
+        eraserHint: "לחץ או גע בקו כדי למחוק אותו"
+    },
+    canvasControls: {
+        zoomIn: "הגדל תצוגה",
+        zoomOut: "הקטן תצוגה",
+        fitDiagram: "התאם דיאגרמה למסך",
+        resetZoom: "אפס תצוגה (100%)",
+        lockPan: "נעל מיקום",
+        unlockPan: "בטל נעילה",
+        drawMode: "מצב שרטוט",
+        touchHint: "השתמש בשתי אצבעות להגדלה והזזה"
     },
     share: {
         title: "שיתוף קישור לצפייה בלבד",
@@ -1509,10 +1561,36 @@ export const translations = {
         noLocations: "لم يتم تحديد بيانات موقع في هذه الصفحة"
     },
     annotations: {
+        title: "الملاحظات والرسومات",
         enable: "تمكين الرسم",
         disable: "تعطيل الرسم",
         clear: "مسح الكل",
-        color: "لون الحبر"
+        color: "لون الحبر",
+        pen: "قلم عادي",
+        highlighter: "قلم تمييز (ماركر)",
+        eraser: "ممحاة الخطوط",
+        strokeWidth: "سمك الخط",
+        thin: "رفيع (2px)",
+        medium: "متوسط (4px)",
+        thick: "عريض (8px)",
+        highlighterSize: "ماركر عريض (14px)",
+        saveAnnotations: "حفظ الملاحظات",
+        annotationsSaved: "تم حفظ الرسومات والملاحظات بنجاح!",
+        saving: "جاري الحفظ...",
+        undo: "تراجع عن الرسم",
+        clearConfirm: "هل أنت متأكد من مسح جميع الرسومات والملاحظات في هذه الصفحة؟",
+        touchDrawingHint: "ارسم باستخدام اللمس أو القلم أو الفأرة",
+        eraserHint: "المس أو انقر على الخط لمسحه"
+    },
+    canvasControls: {
+        zoomIn: "تكبير العرض",
+        zoomOut: "تصغير العرض",
+        fitDiagram: "ملاءمة المخطط للشاشة",
+        resetZoom: "إعادة ضبط العرض (100%)",
+        lockPan: "قفل المخطط",
+        unlockPan: "إلغاء القفل",
+        drawMode: "وضع الرسم",
+        touchHint: "استخدم إصبعين للتكبير والتحريك"
     },
     share: {
         title: "مشاركة رابط للعرض فقط",

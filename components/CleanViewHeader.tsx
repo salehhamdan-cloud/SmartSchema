@@ -34,6 +34,10 @@ interface CleanViewHeaderProps {
   annotationColor: string;
   onAnnotationColorChange: (color: string) => void;
   onClearAnnotations: () => void;
+  onSaveAnnotations?: () => void;
+  onUndoAnnotation?: () => void;
+  canUndoAnnotation?: boolean;
+  annotationsCount?: number;
   onOpenExport: () => void;
   onOpenTopology?: () => void;
   onOpenShare?: () => void;
@@ -69,6 +73,10 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
   annotationColor,
   onAnnotationColorChange,
   onClearAnnotations,
+  onSaveAnnotations,
+  onUndoAnnotation,
+  canUndoAnnotation,
+  annotationsCount = 0,
   onOpenExport,
   onOpenTopology,
   onOpenShare,
@@ -500,21 +508,42 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
         </button>
 
         {isAnnotating && (
-          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg border border-slate-700 animate-fadeIn">
+          <div className="flex items-center gap-1.5 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 animate-fadeIn">
             <input
               type="color"
               value={annotationColor}
               onChange={(e) => onAnnotationColorChange(e.target.value)}
-              className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0"
+              className="w-5 h-5 rounded cursor-pointer bg-transparent border-none p-0"
               title={t.annotations?.color || "Pen Color"}
             />
+            {onUndoAnnotation && (
+              <button
+                onClick={onUndoAnnotation}
+                disabled={!canUndoAnnotation}
+                className="p-1 text-slate-400 hover:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
+                title={t.annotations?.undo || "Undo Stroke"}
+              >
+                <span className="material-icons-round text-sm">undo</span>
+              </button>
+            )}
             <button
               onClick={onClearAnnotations}
-              className="p-1 text-slate-400 hover:text-red-400 rounded transition-colors"
+              disabled={annotationsCount === 0}
+              className="p-1 text-slate-400 hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
               title={t.annotations?.clear || "Clear All Drawings"}
             >
               <span className="material-icons-round text-sm">delete_sweep</span>
             </button>
+            {onSaveAnnotations && (
+              <button
+                onClick={onSaveAnnotations}
+                className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded flex items-center gap-1 transition-colors shadow-sm"
+                title={t.annotations?.save || "Save Annotations"}
+              >
+                <span className="material-icons-round text-xs">save</span>
+                <span>{t.annotations?.save || "Save"}</span>
+              </button>
+            )}
           </div>
         )}
 

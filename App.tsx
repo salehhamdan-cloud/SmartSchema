@@ -17,6 +17,7 @@ import { LegendIcon } from './components/LegendIcon';
 import { AppLockScreen } from './components/AppLockScreen';
 import { SecurityModal } from './components/SecurityModal';
 import { FolderSyncModal } from './components/FolderSyncModal';
+import { AnnotationToolbar } from './components/AnnotationToolbar';
 import {
   FolderSyncSettings,
   getStoredFolderSettings,
@@ -30,7 +31,7 @@ import {
   isFileSystemAccessSupported,
   isInsideIframe
 } from './utils/folderStorageService';
-import { ElectricalNode, NewNodeData, AnalysisResult, Project, Page, ComponentType, ConnectionStyle, PrintMetadata, DiagramOrientation, VersionSnapshot } from './types';
+import { ElectricalNode, NewNodeData, AnalysisResult, Project, Page, ComponentType, ConnectionStyle, PrintMetadata, DiagramOrientation, VersionSnapshot, AnnotationItem } from './types';
 import { DEFAULT_PROJECT, DEFAULT_CONNECTION_STYLE, DEFAULT_PRINT_METADATA, COMPONENT_CONFIG } from './constants';
 import { analyzeCircuit } from './services/geminiService';
 import { translations } from './translations';
@@ -327,9 +328,11 @@ export default function App() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   
-  const [annotations, setAnnotations] = useState<{id: string, path: string, color: string}[]>([]);
+  const [annotations, setAnnotations] = useState<AnnotationItem[]>([]);
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [annotationColor, setAnnotationColor] = useState('#ef4444');
+  const [annotationWidth, setAnnotationWidth] = useState(3);
+  const [annotationTool, setAnnotationTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
   
   const [language, setLanguage] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('light');
@@ -599,11 +602,89 @@ export default function App() {
     });
   };
 
-  const handleAnnotationAdd = (path: string, color: string) => {
-    setAnnotations(prev => [...prev, { id: generateId('ant'), path, color }]);
-  };
+  const updatePage = useCallback((updater: (page: Page) => Page) => {
+      const nowIso = new Date().toISOString();
+      setProjects(prevProjects => {
+          return prevProjects.map(p => {
+              if (p.id !== activeProjectId) return p;
+              return {
+                  ...p,
+                  lastUpdated: nowIso,
+                  pages: p.pages.map(page => {
+                      if (page.id !== activePageId) return page;
+                      return updater(page);
+                  })
+              };
+          });
+      });
+  }, [activeProjectId, activePageId]);
 
-  const handleClearAnnotations = () => setAnnotations([]);
+  // Sync annotations when activePage changes
+  useEffect(() => {
+    if (activePage) {
+      setAnnotations(activePage.annotations || []);
+    }
+  }, [activePageId, activeProjectId, activePage?.annotations]);
+
+  const handleAnnotationAdd = useCallback((path: string, color: string, width: number = 3, tool: 'pen' | 'highlighter' = 'pen') => {
+    const newAnnotation: AnnotationItem = {
+      id: generateId('ant'),
+      path,
+      color,
+      width,
+      tool,
+      createdAt: new Date().toISOString()
+    };
+    setAnnotations(prev => {
+      const next = [...prev, newAnnotation];
+      updatePage(page => ({
+        ...page,
+        annotations: next
+      }));
+      return next;
+    });
+  }, [updatePage]);
+
+  const handleDeleteAnnotation = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const next = prev.filter(a => a.id !== id);
+      updatePage(page => ({
+        ...page,
+        annotations: next
+      }));
+      return next;
+    });
+  }, [updatePage]);
+
+  const handleUndoAnnotation = useCallback(() => {
+    setAnnotations(prev => {
+      if (prev.length === 0) return prev;
+      const next = prev.slice(0, -1);
+      updatePage(page => ({
+        ...page,
+        annotations: next
+      }));
+      return next;
+    });
+  }, [updatePage]);
+
+  const handleClearAnnotations = useCallback(() => {
+    setAnnotations([]);
+    updatePage(page => ({
+      ...page,
+      annotations: []
+    }));
+  }, [updatePage]);
+
+  const handleSaveAnnotations = useCallback(() => {
+    updatePage(page => ({
+      ...page,
+      annotations: [...annotations]
+    }));
+    setSaveStatus('saved');
+    setShowSaveToast(true);
+    setTimeout(() => setShowSaveToast(false), 2200);
+  }, [annotations, updatePage]);
   
   const toggleFilter = (filterKey: string) => {
       setActiveFilters(prev => {
@@ -639,23 +720,6 @@ export default function App() {
     setProjects(nextState);
     setFuture(newFuture);
   }, [future, projects]);
-
-  const updatePage = useCallback((updater: (page: Page) => Page) => {
-      const nowIso = new Date().toISOString();
-      setProjects(prevProjects => {
-          return prevProjects.map(p => {
-              if (p.id !== activeProjectId) return p;
-              return {
-                  ...p,
-                  lastUpdated: nowIso,
-                  pages: p.pages.map(page => {
-                      if (page.id !== activePageId) return page;
-                      return updater(page);
-                  })
-              };
-          });
-      });
-  }, [activeProjectId, activePageId]);
 
   const handleUpdatePrintMetadata = useCallback((metadata: PrintMetadata) => {
       const nowIso = new Date().toISOString();
@@ -2716,6 +2780,10 @@ export default function App() {
           annotationColor={annotationColor}
           onAnnotationColorChange={setAnnotationColor}
           onClearAnnotations={handleClearAnnotations}
+          onSaveAnnotations={handleSaveAnnotations}
+          onUndoAnnotation={handleUndoAnnotation}
+          canUndoAnnotation={annotations.length > 0}
+          annotationsCount={annotations.length}
           onOpenExport={() => setShowExportModal(true)}
           onOpenTopology={() => setShowTopologyModal(true)}
           onOpenSecurity={() => setShowSecurityModal(true)}
@@ -3811,7 +3879,12 @@ export default function App() {
                     annotations={annotations}
                     isAnnotating={isAnnotating}
                     annotationColor={annotationColor}
+                    annotationWidth={annotationWidth}
+                    annotationTool={annotationTool}
                     onAnnotationAdd={handleAnnotationAdd}
+                    onDeleteAnnotation={handleDeleteAnnotation}
+                    onToggleLayoutLocked={() => setIsLayoutLocked(!isLayoutLocked)}
+                    onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
                     isLayoutLocked={isLayoutLocked}
                 />
             </div>
@@ -3919,6 +3992,24 @@ export default function App() {
             </aside>
         )}
       </main>
+
+      <AnnotationToolbar
+        isAnnotating={isAnnotating}
+        onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
+        annotationColor={annotationColor}
+        onAnnotationColorChange={setAnnotationColor}
+        annotationWidth={annotationWidth}
+        onAnnotationWidthChange={setAnnotationWidth}
+        annotationTool={annotationTool}
+        onAnnotationToolChange={setAnnotationTool}
+        onUndo={handleUndoAnnotation}
+        canUndo={annotations.length > 0}
+        onClear={handleClearAnnotations}
+        annotationsCount={annotations.length}
+        onSave={handleSaveAnnotations}
+        t={t}
+        isRTL={isRTL}
+      />
 
       <AnalysisModal isOpen={showAnalysis} onClose={() => setShowAnalysis(false)} loading={isAnalyzing} result={analysisResult} t={t} />
       <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} t={t} />

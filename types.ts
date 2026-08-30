@@ -122,10 +122,20 @@ export interface NewNodeData {
   isPublicBoard?: boolean;
 }
 
+export interface AnnotationItem {
+  id: string;
+  path: string;
+  color: string;
+  width?: number;
+  tool?: 'pen' | 'highlighter';
+  createdAt?: string;
+}
+
 export interface Page {
   id: string;
   name: string;
   items: ElectricalNode[]; // Changed from rootNode to items array to support multiple disconnected trees
+  annotations?: AnnotationItem[]; // Saved annotations for this page
 }
 
 export interface PrintMetadata {

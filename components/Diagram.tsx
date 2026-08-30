@@ -1,8 +1,9 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { ElectricalNode, ComponentType, Project, DiagramOrientation } from '../types';
+import { ElectricalNode, ComponentType, Project, DiagramOrientation, AnnotationItem } from '../types';
 import { COMPONENT_CONFIG, ICON_PATHS, SNAP_GRID_SIZE } from '../constants';
+import { CanvasZoomControls } from './CanvasZoomControls';
 
 interface DiagramProps {
   data: ElectricalNode[];
@@ -32,11 +33,17 @@ interface DiagramProps {
   theme: 'light' | 'dark';
   isCleanView?: boolean;
   activeFilters?: Set<string>;
-  annotations?: {id: string, path: string, color: string}[];
+  annotations?: AnnotationItem[];
   isAnnotating?: boolean;
   annotationColor?: string;
-  onAnnotationAdd?: (path: string, color: string) => void;
+  annotationWidth?: number;
+  annotationTool?: 'pen' | 'highlighter' | 'eraser';
+  onAnnotationAdd?: (path: string, color: string, width?: number, tool?: 'pen' | 'highlighter') => void;
+  onDeleteAnnotation?: (id: string) => void;
+  onToggleLayoutLocked?: () => void;
+  onToggleAnnotating?: () => void;
   isLayoutLocked?: boolean;
+  showCanvasZoomControls?: boolean;
 }
 
 type ExtendedHierarchyNode = Omit<
@@ -214,16 +221,24 @@ export const Diagram: React.FC<DiagramProps> = ({
   theme,
   isCleanView = false,
   activeFilters = new Set(),
+  annotationsPos = undefined,
   annotations = [],
   isAnnotating = false,
   annotationColor = '#ef4444',
+  annotationWidth = 3,
+  annotationTool = 'pen',
   onAnnotationAdd,
-  isLayoutLocked = false
-}) => {
+  onDeleteAnnotation,
+  onToggleLayoutLocked,
+  onToggleAnnotating,
+  isLayoutLocked = false,
+  showCanvasZoomControls = true
+}: DiagramProps & { annotationsPos?: any }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   const isRTL = language === 'he' || language === 'ar';
   const isDark = theme === 'dark';
@@ -337,39 +352,6 @@ export const Diagram: React.FC<DiagramProps> = ({
 
     const { width, height } = dimensions;
 
-    if (isAnnotating) {
-        svg.style('cursor', 'crosshair');
-        svg.append('rect')
-           .attr('width', '100%')
-           .attr('height', '100%')
-           .attr('fill', 'transparent')
-           .on('mousedown', function(event) {
-               const coords = d3.pointer(event, g.node());
-               let currentPath = `M ${coords[0]} ${coords[1]}`;
-               
-               const pathEl = g.append('path')
-                   .attr('class', 'temp-drawing')
-                   .attr('d', currentPath)
-                   .attr('stroke', annotationColor)
-                   .attr('stroke-width', 3)
-                   .attr('fill', 'none')
-                   .attr('stroke-linecap', 'round')
-                   .attr('stroke-linejoin', 'round');
-
-               d3.select(this)
-                   .on('mousemove', (e) => {
-                       const m = d3.pointer(e, g.node());
-                       currentPath += ` L ${m[0]} ${m[1]}`;
-                       pathEl.attr('d', currentPath);
-                   })
-                   .on('mouseup', () => {
-                       d3.select(this).on('mousemove', null).on('mouseup', null);
-                       if (onAnnotationAdd) onAnnotationAdd(currentPath, annotationColor);
-                       pathEl.remove();
-                   });
-           });
-    }
-
     if (!data || data.length === 0) {
       const g = svg
         .append('g')
@@ -471,6 +453,7 @@ export const Diagram: React.FC<DiagramProps> = ({
         g.attr('transform', event.transform);
       });
 
+    zoomBehaviorRef.current = zoom;
     svg.call(zoom);
     svg.call(zoom.transform, transformRef.current);
 
@@ -767,17 +750,102 @@ export const Diagram: React.FC<DiagramProps> = ({
       }
     });
 
-    if (annotations.length > 0) {
-        annotations.forEach(ant => {
-            g.append('path')
-             .attr('d', ant.path)
-             .attr('stroke', ant.color)
-             .attr('stroke-width', 3)
-             .attr('fill', 'none')
-             .attr('stroke-linecap', 'round')
-             .attr('stroke-linejoin', 'round')
-             .attr('opacity', 0.8);
-        });
+    // Dedicated Annotations Layer (rendered above canvas background)
+    const annotationsGroup = g.append('g').attr('class', 'annotations-layer');
+    if (annotations && annotations.length > 0) {
+      annotations.forEach(ant => {
+        const isEraserMode = isAnnotating && annotationTool === 'eraser';
+        const isHighlighter = ant.tool === 'highlighter';
+        const strokeW = ant.width || (isHighlighter ? 14 : 3);
+        const opacity = isHighlighter ? 0.35 : 0.9;
+
+        const pathEl = annotationsGroup.append('path')
+          .attr('d', ant.path)
+          .attr('stroke', ant.color)
+          .attr('stroke-width', strokeW)
+          .attr('fill', 'none')
+          .attr('stroke-linecap', 'round')
+          .attr('stroke-linejoin', 'round')
+          .attr('opacity', opacity)
+          .style('cursor', isEraserMode ? 'pointer' : 'inherit')
+          .style('pointer-events', isEraserMode ? 'all' : 'none');
+
+        if (isEraserMode) {
+          pathEl
+            .on('mouseenter', function() {
+              d3.select(this).attr('stroke', '#ef4444').attr('stroke-dasharray', '4,4').attr('opacity', 1);
+            })
+            .on('mouseleave', function() {
+              d3.select(this).attr('stroke', ant.color).attr('stroke-dasharray', null).attr('opacity', opacity);
+            })
+            .on('pointerdown click', function(e) {
+              e.stopPropagation();
+              if (onDeleteAnnotation) onDeleteAnnotation(ant.id);
+            });
+        }
+      });
+    }
+
+    // Interactive Drawing Surface when pen/highlighter is active
+    if (isAnnotating && annotationTool !== 'eraser') {
+      svg.style('cursor', 'crosshair');
+      const drawSurface = svg.append('rect')
+        .attr('class', 'draw-surface')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('fill', 'transparent')
+        .style('pointer-events', 'all')
+        .style('touch-action', 'none');
+
+      let currentPath = '';
+      let tempPathEl: any = null;
+      const isHighlighter = annotationTool === 'highlighter';
+      const effectiveW = annotationWidth || (isHighlighter ? 14 : 3);
+      const effectiveOp = isHighlighter ? 0.35 : 0.9;
+
+      drawSurface.on('pointerdown', function(event: any) {
+        event.preventDefault();
+        const surfaceEl = this as Element;
+        if (surfaceEl.setPointerCapture && event.pointerId !== undefined) {
+          try { surfaceEl.setPointerCapture(event.pointerId); } catch (_) {}
+        }
+
+        const coords = d3.pointer(event, g.node());
+        currentPath = `M ${coords[0].toFixed(1)} ${coords[1].toFixed(1)}`;
+
+        tempPathEl = annotationsGroup.append('path')
+          .attr('class', 'temp-drawing')
+          .attr('d', currentPath)
+          .attr('stroke', annotationColor || '#ef4444')
+          .attr('stroke-width', effectiveW)
+          .attr('fill', 'none')
+          .attr('stroke-linecap', 'round')
+          .attr('stroke-linejoin', 'round')
+          .attr('opacity', effectiveOp);
+
+        drawSurface
+          .on('pointermove', (moveEv: any) => {
+            moveEv.preventDefault();
+            const m = d3.pointer(moveEv, g.node());
+            currentPath += ` L ${m[0].toFixed(1)} ${m[1].toFixed(1)}`;
+            if (tempPathEl) tempPathEl.attr('d', currentPath);
+          })
+          .on('pointerup pointercancel', function(upEv: any) {
+            const upSurface = this as Element;
+            if (upSurface.releasePointerCapture && upEv.pointerId !== undefined) {
+              try { upSurface.releasePointerCapture(upEv.pointerId); } catch (_) {}
+            }
+            drawSurface.on('pointermove', null).on('pointerup pointercancel', null);
+            if (tempPathEl) {
+              tempPathEl.remove();
+              tempPathEl = null;
+            }
+            if (currentPath && currentPath.includes('L') && onAnnotationAdd) {
+              onAnnotationAdd(currentPath, annotationColor || '#ef4444', effectiveW, isHighlighter ? 'highlighter' : 'pen');
+            }
+            currentPath = '';
+          });
+      });
     }
 
     const linksGroup = g.append('g').attr('class', 'links');
@@ -1873,12 +1941,78 @@ export const Diagram: React.FC<DiagramProps> = ({
     isConnectMode, connectionSourceId, t, language, theme, onBackgroundClick, multiSelection, isPrintMode,
     activeProject, onEditPrintSettings, onAddRoot, onAddGenerator, onDuplicateChild, onDeleteNode,
     onToggleCollapse, onGroupNode, onNodeMove, onDisconnectLink, isCleanView, activeFilters, annotations,
-    isAnnotating, annotationColor, isLayoutLocked
+    isAnnotating, annotationColor, annotationWidth, annotationTool, isLayoutLocked, onDeleteAnnotation, onAnnotationAdd
   ]);
+
+  const handleZoomIn = useCallback(() => {
+    if (svgRef.current && zoomBehaviorRef.current) {
+      d3.select(svgRef.current)
+        .transition()
+        .duration(250)
+        .call(zoomBehaviorRef.current.scaleBy, 1.3);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (svgRef.current && zoomBehaviorRef.current) {
+      d3.select(svgRef.current)
+        .transition()
+        .duration(250)
+        .call(zoomBehaviorRef.current.scaleBy, 0.77);
+    }
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    if (svgRef.current && zoomBehaviorRef.current) {
+      d3.select(svgRef.current)
+        .transition()
+        .duration(300)
+        .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(150, 100).scale(1));
+    }
+  }, []);
+
+  const handleFitDiagram = useCallback(() => {
+    if (!svgRef.current || !zoomBehaviorRef.current || !data || data.length === 0) return;
+    const svgEl = svgRef.current;
+    const liveG = svgEl.querySelector('g');
+    if (!liveG) return;
+
+    try {
+      const bbox = liveG.getBBox();
+      if (!bbox || bbox.width <= 0 || bbox.height <= 0) return;
+
+      const clientW = svgEl.clientWidth || dimensions.width || 800;
+      const clientH = svgEl.clientHeight || dimensions.height || 600;
+      const pad = 60;
+
+      const scale = Math.max(0.15, Math.min(1.4, Math.min((clientW - pad * 2) / bbox.width, (clientH - pad * 2) / bbox.height)));
+      const tx = (clientW - bbox.width * scale) / 2 - bbox.x * scale;
+      const ty = (clientH - bbox.height * scale) / 2 - bbox.y * scale;
+
+      d3.select(svgEl)
+        .transition()
+        .duration(350)
+        .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    } catch (_) {}
+  }, [data, dimensions]);
 
   return (
     <div ref={wrapperRef} className={`w-full h-full relative overflow-hidden ${isDark ? 'bg-slate-900' : 'bg-white'}`} style={{ touchAction: 'none' }}>
-      <svg id="diagram-svg" ref={svgRef} width="100%" height="100%" className="block" />
+      <svg id="diagram-svg" ref={svgRef} width="100%" height="100%" className="block select-none" style={{ touchAction: 'none' }} />
+      {showCanvasZoomControls !== false && (
+        <CanvasZoomControls
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onFitDiagram={handleFitDiagram}
+          onResetZoom={handleResetZoom}
+          isLayoutLocked={isLayoutLocked}
+          onToggleLayoutLocked={onToggleLayoutLocked}
+          isAnnotating={isAnnotating}
+          onToggleAnnotating={onToggleAnnotating}
+          t={t}
+          isRTL={isRTL}
+        />
+      )}
     </div>
   );
 };
