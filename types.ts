@@ -131,6 +131,8 @@ export interface AnnotationItem {
   createdAt?: string;
 }
 
+export type PalmRejectionMode = 'pen-only' | 'smart-palm' | 'touch-and-pen';
+
 export interface Page {
   id: string;
   name: string;

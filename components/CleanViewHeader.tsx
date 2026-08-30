@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Project, Page, DiagramOrientation, ComponentType } from '../types';
+import { Project, Page, DiagramOrientation, ComponentType, PalmRejectionMode } from '../types';
 import { COMPONENT_CONFIG } from '../constants';
 import { LegendIcon } from './LegendIcon';
 
@@ -38,6 +38,9 @@ interface CleanViewHeaderProps {
   onUndoAnnotation?: () => void;
   canUndoAnnotation?: boolean;
   annotationsCount?: number;
+  palmRejectionMode?: PalmRejectionMode;
+  onPalmRejectionModeChange?: (mode: PalmRejectionMode) => void;
+  isStylusActive?: boolean;
   onOpenExport: () => void;
   onOpenTopology?: () => void;
   onOpenShare?: () => void;
@@ -77,6 +80,9 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
   onUndoAnnotation,
   canUndoAnnotation,
   annotationsCount = 0,
+  palmRejectionMode = 'smart-palm',
+  onPalmRejectionModeChange,
+  isStylusActive = false,
   onOpenExport,
   onOpenTopology,
   onOpenShare,
@@ -543,6 +549,61 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
                 <span className="material-icons-round text-xs">save</span>
                 <span>{t.annotations?.save || "Save"}</span>
               </button>
+            )}
+
+            {/* Stylus Detection Badge */}
+            {isStylusActive && (
+              <span
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold tracking-tight"
+                title={t.palmRejection?.stylusActive || "Stylus Pen Active"}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="hidden sm:inline">{t.palmRejection?.stylusActive || "Stylus"}</span>
+              </span>
+            )}
+
+            {/* Palm Rejection Mode Quick Toggle */}
+            {onPalmRejectionModeChange && (
+              <div className="flex items-center bg-slate-900/80 p-0.5 rounded-md border border-slate-700/80 ml-1">
+                <button
+                  type="button"
+                  onClick={() => onPalmRejectionModeChange('pen-only')}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
+                    palmRejectionMode === 'pen-only'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={t.palmRejection?.penOnlyTooltip || "Pen Only (Hand touch completely ignored)"}
+                >
+                  <span className="material-icons-round text-[11px]">edit</span>
+                  <span className="hidden md:inline">{t.palmRejection?.penOnly || "Pen Only"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPalmRejectionModeChange('smart-palm')}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
+                    palmRejectionMode === 'smart-palm'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={t.palmRejection?.smartPalmTooltip || "Smart Palm Rejection (Auto-detects resting hand)"}
+                >
+                  <span className="material-icons-round text-[11px]">auto_fix_high</span>
+                  <span className="hidden md:inline">{t.palmRejection?.smartPalm || "Smart"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPalmRejectionModeChange('touch-and-pen')}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-1 transition-colors ${
+                    palmRejectionMode === 'touch-and-pen'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={t.palmRejection?.touchAndPenTooltip || "Touch & Stylus"}
+                >
+                  <span className="material-icons-round text-[11px]">touch_app</span>
+                </button>
+              </div>
             )}
           </div>
         )}

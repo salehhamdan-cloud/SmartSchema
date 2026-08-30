@@ -31,7 +31,7 @@ import {
   isFileSystemAccessSupported,
   isInsideIframe
 } from './utils/folderStorageService';
-import { ElectricalNode, NewNodeData, AnalysisResult, Project, Page, ComponentType, ConnectionStyle, PrintMetadata, DiagramOrientation, VersionSnapshot, AnnotationItem } from './types';
+import { ElectricalNode, NewNodeData, AnalysisResult, Project, Page, ComponentType, ConnectionStyle, PrintMetadata, DiagramOrientation, VersionSnapshot, AnnotationItem, PalmRejectionMode } from './types';
 import { DEFAULT_PROJECT, DEFAULT_CONNECTION_STYLE, DEFAULT_PRINT_METADATA, COMPONENT_CONFIG } from './constants';
 import { analyzeCircuit } from './services/geminiService';
 import { translations } from './translations';
@@ -333,6 +333,8 @@ export default function App() {
   const [annotationColor, setAnnotationColor] = useState('#ef4444');
   const [annotationWidth, setAnnotationWidth] = useState(3);
   const [annotationTool, setAnnotationTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
+  const [palmRejectionMode, setPalmRejectionMode] = useState<PalmRejectionMode>('smart-palm');
+  const [isStylusActive, setIsStylusActive] = useState(false);
   
   const [language, setLanguage] = useState<Language>('en');
   const [theme, setTheme] = useState<Theme>('light');
@@ -2784,6 +2786,9 @@ export default function App() {
           onUndoAnnotation={handleUndoAnnotation}
           canUndoAnnotation={annotations.length > 0}
           annotationsCount={annotations.length}
+          palmRejectionMode={palmRejectionMode}
+          onPalmRejectionModeChange={setPalmRejectionMode}
+          isStylusActive={isStylusActive}
           onOpenExport={() => setShowExportModal(true)}
           onOpenTopology={() => setShowTopologyModal(true)}
           onOpenSecurity={() => setShowSecurityModal(true)}
@@ -3848,6 +3853,27 @@ export default function App() {
                 </div>
             )}
             <div className={`flex-1 rounded-xl border shadow-xl relative overflow-hidden ${isConnectMode ? 'border-amber-600/50 shadow-amber-900/20' : 'border-slate-800'} ${theme === 'light' ? 'bg-white' : 'bg-slate-900'}`}>
+                {/* Floating Full Annotation Toolbar (Colors, Tools, Thickness, Stylus indicator & Palm Rejection selector) */}
+                <AnnotationToolbar
+                    isAnnotating={isAnnotating}
+                    onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
+                    annotationColor={annotationColor}
+                    onAnnotationColorChange={setAnnotationColor}
+                    annotationWidth={annotationWidth}
+                    onAnnotationWidthChange={setAnnotationWidth}
+                    annotationTool={annotationTool}
+                    onAnnotationToolChange={setAnnotationTool}
+                    onUndo={handleUndoAnnotation}
+                    canUndo={annotations.length > 0}
+                    onClear={handleClearAnnotations}
+                    annotationsCount={annotations.length}
+                    onSave={handleSaveAnnotations}
+                    palmRejectionMode={palmRejectionMode}
+                    onPalmRejectionModeChange={setPalmRejectionMode}
+                    isStylusActive={isStylusActive}
+                    t={t}
+                    isRTL={isRTL}
+                />
                 <Diagram 
                     data={activePage.items} 
                     onNodeClick={handleNodeClick} 
@@ -3881,6 +3907,8 @@ export default function App() {
                     annotationColor={annotationColor}
                     annotationWidth={annotationWidth}
                     annotationTool={annotationTool}
+                    palmRejectionMode={palmRejectionMode}
+                    onStylusDetected={(detected) => setIsStylusActive(detected)}
                     onAnnotationAdd={handleAnnotationAdd}
                     onDeleteAnnotation={handleDeleteAnnotation}
                     onToggleLayoutLocked={() => setIsLayoutLocked(!isLayoutLocked)}

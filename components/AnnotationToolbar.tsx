@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnnotationItem } from '../types';
+import { AnnotationItem, PalmRejectionMode } from '../types';
 
 interface AnnotationToolbarProps {
   isAnnotating: boolean;
@@ -15,6 +15,9 @@ interface AnnotationToolbarProps {
   onClear: () => void;
   annotationsCount: number;
   onSave?: () => void;
+  palmRejectionMode?: PalmRejectionMode;
+  onPalmRejectionModeChange?: (mode: PalmRejectionMode) => void;
+  isStylusActive?: boolean;
   t: any;
   isRTL: boolean;
 }
@@ -43,6 +46,9 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
   onClear,
   annotationsCount,
   onSave,
+  palmRejectionMode = 'smart-palm',
+  onPalmRejectionModeChange,
+  isStylusActive = false,
   t,
   isRTL
 }) => {
@@ -83,6 +89,14 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
             </span>
           )}
         </div>
+
+        {/* Live Stylus Active Badge */}
+        {isStylusActive && (
+          <div className="flex items-center gap-1 bg-emerald-950/80 border border-emerald-700/60 text-emerald-300 text-[10px] font-semibold px-2 py-0.5 rounded-full animate-fadeIn">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <span>{aT.stylusActive || 'Stylus Active'}</span>
+          </div>
+        )}
 
         <button
           onClick={onToggleAnnotating}
@@ -137,6 +151,68 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
           <span>{aT.eraser || 'Eraser'}</span>
         </button>
       </div>
+
+      {/* Palm Rejection & Input Recognition Mode Selector */}
+      {onPalmRejectionModeChange && (
+        <div className="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/60 flex flex-col gap-1">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <span className="material-icons-round text-xs text-blue-400">front_hand</span>
+              <span>{aT.palmRejection || 'Palm Rejection'}</span>
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {palmRejectionMode === 'pen-only'
+                ? aT.penOnlyShort || 'Stylus Only'
+                : palmRejectionMode === 'smart-palm'
+                ? aT.smartPalmShort || 'Smart Auto'
+                : aT.touchAndPenShort || 'Touch + Pen'}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              type="button"
+              onClick={() => onPalmRejectionModeChange('pen-only')}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                palmRejectionMode === 'pen-only'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+              title={aT.penOnlyDesc || 'Palm Rejection ON. Rest hand on screen; only active stylus draws, accidental palm touches are ignored.'}
+            >
+              <span className="material-icons-round text-xs">edit_attributes</span>
+              <span className="truncate">{aT.penOnlyShort || 'Stylus Only'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onPalmRejectionModeChange('smart-palm')}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                palmRejectionMode === 'smart-palm'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+              title={aT.smartPalmDesc || 'Auto-detects stylus and blocks wide palm contact points while writing.'}
+            >
+              <span className="material-icons-round text-xs">auto_awesome</span>
+              <span className="truncate">{aT.smartPalmShort || 'Smart Auto'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onPalmRejectionModeChange('touch-and-pen')}
+              className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition-all ${
+                palmRejectionMode === 'touch-and-pen'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
+              }`}
+              title={aT.touchAndPenDesc || 'Allows drawing with any touch or stylus input.'}
+            >
+              <span className="material-icons-round text-xs">touch_app</span>
+              <span className="truncate">{aT.touchAndPenShort || 'Touch + Pen'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Color Palette & Stroke Size (Hidden when eraser is active) */}
       {annotationTool !== 'eraser' && (

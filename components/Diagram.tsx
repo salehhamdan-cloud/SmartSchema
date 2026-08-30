@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { ElectricalNode, ComponentType, Project, DiagramOrientation, AnnotationItem } from '../types';
+import { ElectricalNode, ComponentType, Project, DiagramOrientation, AnnotationItem, PalmRejectionMode } from '../types';
 import { COMPONENT_CONFIG, ICON_PATHS, SNAP_GRID_SIZE } from '../constants';
 import { CanvasZoomControls } from './CanvasZoomControls';
 
@@ -38,6 +38,8 @@ interface DiagramProps {
   annotationColor?: string;
   annotationWidth?: number;
   annotationTool?: 'pen' | 'highlighter' | 'eraser';
+  palmRejectionMode?: PalmRejectionMode;
+  onStylusDetected?: (detected: boolean) => void;
   onAnnotationAdd?: (path: string, color: string, width?: number, tool?: 'pen' | 'highlighter') => void;
   onDeleteAnnotation?: (id: string) => void;
   onToggleLayoutLocked?: () => void;
@@ -227,6 +229,8 @@ export const Diagram: React.FC<DiagramProps> = ({
   annotationColor = '#ef4444',
   annotationWidth = 3,
   annotationTool = 'pen',
+  palmRejectionMode = 'smart-palm',
+  onStylusDetected,
   onAnnotationAdd,
   onDeleteAnnotation,
   onToggleLayoutLocked,
@@ -239,6 +243,11 @@ export const Diagram: React.FC<DiagramProps> = ({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+
+  // Palm Rejection & Stylus Tracking State Refs
+  const lastPenTimestampRef = useRef<number>(0);
+  const hasStylusEverTouchedRef = useRef<boolean>(false);
+  const activeDrawingPointerIdRef = useRef<number | null>(null);
 
   const isRTL = language === 'he' || language === 'ar';
   const isDark = theme === 'dark';
@@ -445,7 +454,13 @@ export const Diagram: React.FC<DiagramProps> = ({
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .filter((event) => {
-          if (isAnnotating) return false;
+          if (isAnnotating) {
+            // Allow 2-finger pinch and drag navigation on tablets even while drawing mode is active
+            if (event.touches && event.touches.length >= 2) {
+              return true;
+            }
+            return false;
+          }
           return !event.button && !event.ctrlKey;
       })
       .on('zoom', (event) => {
@@ -752,6 +767,63 @@ export const Diagram: React.FC<DiagramProps> = ({
 
     // Dedicated Annotations Layer (rendered above canvas background)
     const annotationsGroup = g.append('g').attr('class', 'annotations-layer');
+
+    // Palm Rejection & Stylus/Touch Input Filter
+    const isPalmOrRejectedTouch = (event: any): boolean => {
+      const pType = event.pointerType; // 'pen', 'touch', 'mouse'
+      
+      // 1. Digital Pen / Stylus Input (Apple Pencil, S Pen, Surface Pen, Wacom, etc.)
+      if (pType === 'pen') {
+        lastPenTimestampRef.current = Date.now();
+        hasStylusEverTouchedRef.current = true;
+        if (onStylusDetected) onStylusDetected(true);
+        return false; // Pen is always allowed!
+      }
+
+      // 2. Mouse / Trackpad Pointer
+      if (pType === 'mouse') {
+        return false; // Mouse is always allowed
+      }
+
+      // 3. Touch Input (Fingers / Palm Contact)
+      if (pType === 'touch') {
+        // Mode A: Stylus / Pen Only -> Complete Palm Rejection (all touches ignored for drawing)
+        if (palmRejectionMode === 'pen-only') {
+          return true; // Reject touch! Allows resting hand freely on screen
+        }
+
+        // Mode B: Smart Auto Palm Rejection
+        if (palmRejectionMode === 'smart-palm') {
+          // If stylus was active in the last 4 seconds, this touch is the resting palm!
+          if (Date.now() - lastPenTimestampRef.current < 4000) {
+            return true;
+          }
+          // If stylus has been used on this device, reject touch if used within 15 seconds
+          if (hasStylusEverTouchedRef.current && Date.now() - lastPenTimestampRef.current < 15000) {
+            return true;
+          }
+          // Contact geometry inspection (tablets emit width/height or radius for touch contact area)
+          // Palm touches create broad contact rectangles (typically > 22px), fingertips are ~10-16px
+          const w = event.width || 0;
+          const h = event.height || 0;
+          if (w > 22 || h > 22) {
+            return true; // Reject broad palm contact!
+          }
+          return false; // Allowed single small fingertip
+        }
+
+        // Mode C: Touch & Stylus
+        if (palmRejectionMode === 'touch-and-pen') {
+          const w = event.width || 0;
+          const h = event.height || 0;
+          if (w > 38 || h > 38) return true; // Reject extreme full-palm contact
+          return false;
+        }
+      }
+
+      return false;
+    };
+
     if (annotations && annotations.length > 0) {
       annotations.forEach(ant => {
         const isEraserMode = isAnnotating && annotationTool === 'eraser';
@@ -778,7 +850,10 @@ export const Diagram: React.FC<DiagramProps> = ({
             .on('mouseleave', function() {
               d3.select(this).attr('stroke', ant.color).attr('stroke-dasharray', null).attr('opacity', opacity);
             })
-            .on('pointerdown click', function(e) {
+            .on('pointerdown click', function(e: any) {
+              if (isPalmOrRejectedTouch(e)) {
+                return; // Ignore accidental palm contact in eraser mode
+              }
               e.stopPropagation();
               if (onDeleteAnnotation) onDeleteAnnotation(ant.id);
             });
@@ -804,8 +879,15 @@ export const Diagram: React.FC<DiagramProps> = ({
       const effectiveOp = isHighlighter ? 0.35 : 0.9;
 
       drawSurface.on('pointerdown', function(event: any) {
+        // Palm Rejection Check
+        if (isPalmOrRejectedTouch(event)) {
+          return; // Accidental palm contact ignored!
+        }
+
         event.preventDefault();
         const surfaceEl = this as Element;
+        activeDrawingPointerIdRef.current = event.pointerId !== undefined ? event.pointerId : null;
+
         if (surfaceEl.setPointerCapture && event.pointerId !== undefined) {
           try { surfaceEl.setPointerCapture(event.pointerId); } catch (_) {}
         }
@@ -825,16 +907,34 @@ export const Diagram: React.FC<DiagramProps> = ({
 
         drawSurface
           .on('pointermove', (moveEv: any) => {
+            // Ignore movements from other pointers (such as resting palm while drawing)
+            if (
+              activeDrawingPointerIdRef.current !== null &&
+              moveEv.pointerId !== undefined &&
+              moveEv.pointerId !== activeDrawingPointerIdRef.current
+            ) {
+              return;
+            }
+
             moveEv.preventDefault();
             const m = d3.pointer(moveEv, g.node());
             currentPath += ` L ${m[0].toFixed(1)} ${m[1].toFixed(1)}`;
             if (tempPathEl) tempPathEl.attr('d', currentPath);
           })
           .on('pointerup pointercancel', function(upEv: any) {
+            if (
+              activeDrawingPointerIdRef.current !== null &&
+              upEv.pointerId !== undefined &&
+              upEv.pointerId !== activeDrawingPointerIdRef.current
+            ) {
+              return;
+            }
+
             const upSurface = this as Element;
             if (upSurface.releasePointerCapture && upEv.pointerId !== undefined) {
               try { upSurface.releasePointerCapture(upEv.pointerId); } catch (_) {}
             }
+            activeDrawingPointerIdRef.current = null;
             drawSurface.on('pointermove', null).on('pointerup pointercancel', null);
             if (tempPathEl) {
               tempPathEl.remove();
