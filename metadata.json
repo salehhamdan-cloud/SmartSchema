@@ -1,0 +1,6 @@
+{
+  "name": "SmartSchema",
+  "description": "SmartSchema - Intelligent Single-Line Diagram (SLD) CAD and Electrical System Modeler with AI safety and compliance analysis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

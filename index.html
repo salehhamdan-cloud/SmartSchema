@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="https://vitejs.dev/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="SmartSchema - Intelligent Electrical Single-Line Diagram Generator with Safety Analysis">
+    <title>SmartSchema - Electrical Diagram & Analysis</title>
+
+    <!-- Tailwind CDN (تحذير فقط، لا مشكلة تشغيلية) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+      body {
+        background-color: #0f172a;
+        color: #e2e8f0;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- هذا المدخل صحيح لـ Vite، لكن يجب ألا يُخدَم خام من GitHub -->
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
