@@ -1193,8 +1193,8 @@ export default function App() {
 
   // Main Auto-Save Effect (Local Storage + Local Folder)
   useEffect(() => {
-    if (isReadOnly) {
-      setSaveStatus('saved');
+    if (isReadOnly || isAnnotating) {
+      if (isReadOnly) setSaveStatus('saved');
       return;
     }
     setSaveStatus('saving');
@@ -1251,7 +1251,7 @@ export default function App() {
     return () => {
       clearTimeout(timer);
     };
-  }, [projects, isReadOnly, createSnapshotObject, folderSettings.enabled, directoryHandle, handleUpdateFolderSettings]);
+  }, [projects, isReadOnly, isAnnotating, createSnapshotObject, folderSettings.enabled, directoryHandle, handleUpdateFolderSettings]);
 
   useEffect(() => {
       document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
@@ -1692,11 +1692,22 @@ export default function App() {
       let maxX = -Infinity;
       let maxY = -Infinity;
 
-      // (A) Check all nodes in the diagram
+      // Check native getBBox first if available
+      try {
+          const liveBbox = liveGroup.getBBox();
+          if (liveBbox && isFinite(liveBbox.x) && isFinite(liveBbox.y) && liveBbox.width > 10 && liveBbox.height > 10) {
+              minX = liveBbox.x;
+              minY = liveBbox.y;
+              maxX = liveBbox.x + liveBbox.width;
+              maxY = liveBbox.y + liveBbox.height;
+          }
+      } catch (_) {}
+
+      // (A) Check all nodes in the diagram to expand bounding box
       liveGroup.querySelectorAll('g.node').forEach((nodeEl) => {
           try {
               const transform = (nodeEl as SVGGElement).getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
               if (!match) return;
               const tx = parseFloat(match[1]) || 0;
               const ty = parseFloat(match[2]) || 0;
@@ -1735,7 +1746,7 @@ export default function App() {
       if (legendGroup) {
           try {
               const transform = legendGroup.getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
               if (match) {
                   const lx = parseFloat(match[1]) || 0;
                   const ly = parseFloat(match[2]) || 0;
@@ -1755,7 +1766,7 @@ export default function App() {
       if (printBlock) {
           try {
               const transform = printBlock.getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
               if (match) {
                   const px = parseFloat(match[1]) || 0;
                   const py = parseFloat(match[2]) || 0;
@@ -1771,7 +1782,7 @@ export default function App() {
       liveGroup.querySelectorAll('.labels g').forEach((lblG) => {
           try {
               const transform = lblG.getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
               if (match) {
                   const lx = parseFloat(match[1]) || 0;
                   const ly = parseFloat(match[2]) || 0;
@@ -1784,11 +1795,11 @@ export default function App() {
       });
 
       // (E) Check links and annotation paths
-      liveGroup.querySelectorAll('path.temp-drawing, g.links path').forEach((pathEl) => {
+      liveGroup.querySelectorAll('g.annotations-layer path, path.temp-drawing, g.links path').forEach((pathEl) => {
           try {
               const dAttr = pathEl.getAttribute('d');
               if (dAttr) {
-                  const coordMatches = dAttr.matchAll(/([-\d.]+)\s*,\s*([-\d.]+)/g);
+                  const coordMatches = dAttr.matchAll(/([-\d.]+)[,\s]+([-\d.]+)/g);
                   for (const cm of coordMatches) {
                       const px = parseFloat(cm[1]);
                       const py = parseFloat(cm[2]);
@@ -1828,12 +1839,17 @@ export default function App() {
       // 4. Remove temporary/UI elements that shouldn't be in the export
       clone.querySelectorAll('.action-buttons, .temp-drawing, .print-layout-edit-btn, .link-hit').forEach(el => el.remove());
 
+      // Strip style attribute from SVG clone to remove any patterns or touch-action that break canvas rasterization
+      clone.removeAttribute('style');
+      clone.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
+
       // 5. Finalize SVG attributes
       clone.setAttribute('width', width.toString());
       clone.setAttribute('height', height.toString());
       clone.setAttribute('viewBox', `${finalMinX} ${finalMinY} ${width} ${height}`);
-      clone.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
       clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
       // 6. Embed solid background rectangle behind all content
       const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1878,35 +1894,34 @@ export default function App() {
 
   const svgToCanvas = (svgElement: SVGSVGElement, finalMinX: number, finalMinY: number, width: number, height: number): Promise<HTMLCanvasElement> => {
       return new Promise((resolve, reject) => {
-          // 4x ultra high-definition resolution rendering (300 to 600 DPI equivalent) with safe 8K canvas bounds
           const maxDim = Math.max(width, height);
-          let scale = 4.0;
+          let scale = 2.0;
           
-          if (maxDim * scale > 8192) {
-              scale = 8192 / maxDim;
+          if (maxDim * scale > 4096) {
+              scale = 4096 / maxDim;
           }
-          if (width * scale * (height * scale) > 64000000) {
-              scale = Math.sqrt(64000000 / (width * height));
-          }
-          scale = Math.max(1.5, Math.min(4.0, scale));
+          scale = Math.max(1.0, Math.min(3.0, scale));
 
           const canvasWidth = Math.max(100, Math.round(width * scale));
           const canvasHeight = Math.max(100, Math.round(height * scale));
 
-          // Clone and configure explicit ultra-high-DPI pixel dimensions on the SVG for razor-sharp vector rasterization
           const exportSvg = svgElement.cloneNode(true) as SVGSVGElement;
+          exportSvg.removeAttribute('style');
+          exportSvg.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
           exportSvg.setAttribute('width', canvasWidth.toString());
           exportSvg.setAttribute('height', canvasHeight.toString());
           exportSvg.setAttribute('viewBox', `${finalMinX} ${finalMinY} ${width} ${height}`);
+          exportSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          exportSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
           const serializer = new XMLSerializer();
           let svgString = serializer.serializeToString(exportSvg);
 
-          if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
-              svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+          if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+              svgString = svgString.replace(/<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
           }
-          if (!svgString.match(/^<svg[^>]+xmlns\:xlink="http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
-              svgString = svgString.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+          if (!svgString.includes('xmlns:xlink="http://www.w3.org/1999/xlink"')) {
+              svgString = svgString.replace(/<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
           }
 
           const canvas = document.createElement('canvas');
@@ -1918,32 +1933,65 @@ export default function App() {
               return;
           }
 
-          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-          const blobUrl = URL.createObjectURL(blob);
+          const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
           const img = new Image();
 
-          img.onload = () => {
+          let resolved = false;
+          const renderToCanvas = () => {
+              if (resolved) return;
+              resolved = true;
               try {
                   ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = 'high';
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  URL.revokeObjectURL(blobUrl);
                   resolve(canvas);
               } catch (drawErr) {
-                  URL.revokeObjectURL(blobUrl);
                   reject(drawErr);
               }
           };
 
-          img.onerror = (e) => {
-              URL.revokeObjectURL(blobUrl);
-              console.error("SVG to Image error:", e);
-              reject(new Error('Failed to render SVG diagram to canvas image'));
+          img.onload = async () => {
+              if ('decode' in img) {
+                  try {
+                      await img.decode();
+                  } catch (_) {}
+              }
+              renderToCanvas();
           };
 
-          img.src = blobUrl;
+          img.onerror = () => {
+              try {
+                  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  const fallbackImg = new Image();
+                  fallbackImg.onload = async () => {
+                      try {
+                          if ('decode' in fallbackImg) {
+                              try { await fallbackImg.decode(); } catch (_) {}
+                          }
+                          ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+                          ctx.fillRect(0, 0, canvas.width, canvas.height);
+                          ctx.drawImage(fallbackImg, 0, 0, canvas.width, canvas.height);
+                          URL.revokeObjectURL(blobUrl);
+                          resolve(canvas);
+                      } catch (err) {
+                          URL.revokeObjectURL(blobUrl);
+                          reject(err);
+                      }
+                  };
+                  fallbackImg.onerror = () => {
+                      URL.revokeObjectURL(blobUrl);
+                      reject(new Error('Failed to render SVG diagram to canvas image'));
+                  };
+                  fallbackImg.src = blobUrl;
+              } catch (blobErr) {
+                  reject(new Error('Failed to render SVG diagram to canvas image'));
+              }
+          };
+
+          img.src = dataUri;
       });
   };
 
@@ -3851,7 +3899,8 @@ export default function App() {
                     isRTL={isRTL}
                 />
                 <Diagram 
-                    data={activePage.items} 
+                    key={activePage.id}
+                    data={activePage.items || []} 
                     onNodeClick={handleNodeClick} 
                     onLinkClick={handleLinkClick}
                     onDuplicateChild={handleAddDuplicatedChild}

@@ -251,6 +251,7 @@ export const Diagram: React.FC<DiagramProps> = ({
   const lastPenTimestampRef = useRef<number>(0);
   const hasStylusEverTouchedRef = useRef<boolean>(false);
   const activeDrawingPointerIdRef = useRef<number | null>(null);
+  const annotationsGroupRef = useRef<SVGGElement | null>(null);
 
   const isRTL = language === 'he' || language === 'ar';
   const isDark = theme === 'dark';
@@ -315,6 +316,43 @@ export const Diagram: React.FC<DiagramProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const renderAnnotationsLayer = useCallback(() => {
+    if (!annotationsGroupRef.current) return;
+    const layer = d3.select(annotationsGroupRef.current);
+    layer.selectAll('*').remove();
+
+    if (annotations && annotations.length > 0) {
+      annotations.forEach(ant => {
+        const isEraserMode = isAnnotating && annotationTool === 'eraser';
+        const isHighlighter = ant.tool === 'highlighter';
+        const strokeW = ant.width || (isHighlighter ? 14 : 3);
+        const opacity = isHighlighter ? 0.35 : 0.9;
+
+        const pathEl = layer.append('path')
+          .attr('d', ant.path)
+          .attr('stroke', ant.color)
+          .attr('stroke-width', strokeW)
+          .attr('fill', 'none')
+          .attr('stroke-linecap', 'round')
+          .attr('stroke-linejoin', 'round')
+          .attr('opacity', opacity)
+          .style('cursor', isEraserMode ? 'crosshair' : 'inherit')
+          .style('pointer-events', isEraserMode ? 'all' : 'none');
+
+        if (isEraserMode) {
+          pathEl.on('pointerdown click', function(e: any) {
+            e.stopPropagation();
+            if (onDeleteAnnotation) onDeleteAnnotation(ant.id);
+          });
+        }
+      });
+    }
+  }, [annotations, isAnnotating, annotationTool, onDeleteAnnotation]);
+
+  useEffect(() => {
+    renderAnnotationsLayer();
+  }, [renderAnnotationsLayer]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -770,6 +808,7 @@ export const Diagram: React.FC<DiagramProps> = ({
 
     // Dedicated Annotations Layer (rendered above canvas background)
     const annotationsGroup = g.append('g').attr('class', 'annotations-layer');
+    annotationsGroupRef.current = annotationsGroup.node();
 
     // Palm Rejection & Stylus/Touch Input Filter
     const isPalmOrRejectedTouch = (event: any): boolean => {
@@ -827,34 +866,7 @@ export const Diagram: React.FC<DiagramProps> = ({
       return false;
     };
 
-    if (annotations && annotations.length > 0) {
-      annotations.forEach(ant => {
-        const isEraserMode = isAnnotating && annotationTool === 'eraser';
-        const isHighlighter = ant.tool === 'highlighter';
-        const strokeW = ant.width || (isHighlighter ? 14 : 3);
-        const opacity = isHighlighter ? 0.35 : 0.9;
-
-        const pathEl = annotationsGroup.append('path')
-          .attr('d', ant.path)
-          .attr('stroke', ant.color)
-          .attr('stroke-width', strokeW)
-          .attr('fill', 'none')
-          .attr('stroke-linecap', 'round')
-          .attr('stroke-linejoin', 'round')
-          .attr('opacity', opacity)
-          .style('cursor', isEraserMode ? 'crosshair' : 'inherit')
-          .style('pointer-events', isEraserMode ? 'all' : 'none');
-
-        if (isEraserMode) {
-          pathEl
-            .on('pointerdown click', function(e: any) {
-              if (isPalmOrRejectedTouch(e)) return;
-              e.stopPropagation();
-              if (onDeleteAnnotation) onDeleteAnnotation(ant.id);
-            });
-        }
-      });
-    }
+    renderAnnotationsLayer();
 
     // Interactive Smart Partial Eraser Surface
     if (isAnnotating && annotationTool === 'eraser') {
@@ -1016,15 +1028,15 @@ export const Diagram: React.FC<DiagramProps> = ({
             }
             activeDrawingPointerIdRef.current = null;
             drawSurface.on('pointermove', null).on('pointerup pointercancel', null);
-            if (tempPathEl) {
-              tempPathEl.remove();
-              tempPathEl = null;
-            }
             if (currentPath && onAnnotationAdd) {
               const finalPath = currentPath.includes('L')
                 ? currentPath
                 : `${currentPath} L ${(coords[0] + 0.1).toFixed(1)} ${(coords[1] + 0.1).toFixed(1)}`;
               onAnnotationAdd(finalPath, annotationColor || '#ef4444', effectiveW, isHighlighter ? 'highlighter' : 'pen');
+            }
+            if (tempPathEl) {
+              tempPathEl.remove();
+              tempPathEl = null;
             }
             currentPath = '';
           });
@@ -2119,11 +2131,33 @@ export const Diagram: React.FC<DiagramProps> = ({
         legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'middle' : 'start').text(item.label);
     });
 
+    // Auto-fit diagram content to screen on mount, page change, or orientation change
+    requestAnimationFrame(() => {
+      if (!svgRef.current || !zoomBehaviorRef.current) return;
+      const svgEl = svgRef.current;
+      const liveG = svgEl.querySelector('g');
+      if (!liveG) return;
+      try {
+        const bbox = liveG.getBBox();
+        if (bbox && bbox.width > 10 && bbox.height > 10) {
+          const clientW = svgEl.clientWidth || dimensions.width || 800;
+          const clientH = svgEl.clientHeight || dimensions.height || 600;
+          const pad = 60;
+          const scale = Math.max(0.15, Math.min(1.2, Math.min((clientW - pad * 2) / bbox.width, (clientH - pad * 2) / bbox.height)));
+          const tx = (clientW - bbox.width * scale) / 2 - bbox.x * scale;
+          const ty = (clientH - bbox.height * scale) / 2 - bbox.y * scale;
+          const fitTransform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+          transformRef.current = fitTransform;
+          d3.select(svgEl).call(zoomBehaviorRef.current.transform, fitTransform);
+        }
+      } catch (_) {}
+    });
+
   }, [
     data, dimensions, onNodeClick, onLinkClick, selectedNodeId, selectedLinkId, orientation, searchMatches,
     isConnectMode, connectionSourceId, t, language, theme, onBackgroundClick, multiSelection, isPrintMode,
     activeProject, onEditPrintSettings, onAddRoot, onAddGenerator, onDuplicateChild, onDeleteNode,
-    onToggleCollapse, onGroupNode, onNodeMove, onDisconnectLink, isCleanView, activeFilters, annotations,
+    onToggleCollapse, onGroupNode, onNodeMove, onDisconnectLink, isCleanView, activeFilters,
     isAnnotating, annotationColor, annotationWidth, annotationTool, isLayoutLocked, onDeleteAnnotation, onAnnotationAdd
   ]);
 
