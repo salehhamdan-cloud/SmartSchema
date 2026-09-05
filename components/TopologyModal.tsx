@@ -291,6 +291,9 @@ export const TopologyModal: React.FC<TopologyModalProps> = ({
           'Essential Power': row.node.isEssential ? 'Yes' : 'No',
           'Generator Backup': row.node.hasGeneratorConnection ? (row.node.generatorName || 'Yes') : 'No',
           'Attached Meter': row.node.hasMeter ? (row.node.meterNumber || 'Yes') : 'No',
+          'Switching Controller (ATS)': row.node.hasTransferSwitch 
+            ? ([row.node.secondBreakerName, row.node.secondBreakerNumber ? `#${row.node.secondBreakerNumber}` : '', row.node.secondBreakerAmps !== undefined ? `${row.node.secondBreakerAmps}A` : ''].filter(Boolean).join(' • ') || 'Yes')
+            : 'No',
           [topT.location || 'Physical Location']: locationStr || '',
           'Description': row.node.description || ''
         };
@@ -788,6 +791,11 @@ export const TopologyModal: React.FC<TopologyModalProps> = ({
                               {row.node.isAirConditioning && (
                                 <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold">
                                   A/C
+                                </span>
+                              )}
+                              {row.node.hasTransferSwitch && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                                  ATS {row.node.secondBreakerName ? `(${row.node.secondBreakerName})` : ''}
                                 </span>
                               )}
                             </div>

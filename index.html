@@ -15,10 +15,30 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('smartschema_theme');
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('theme-dark', 'dark');
+        } else {
+          document.documentElement.classList.add('theme-light');
+        }
+      } catch (e) {}
+    </script>
+
     <style>
+      :root {
+        color-scheme: light dark;
+      }
       body {
         background-color: #0f172a;
         color: #e2e8f0;
+        transition: background-color 0.15s ease, color 0.15s ease;
+      }
+      html.theme-light body,
+      body.theme-light {
+        background-color: #f8fafc;
+        color: #0f172a;
       }
       ::-webkit-scrollbar {
         width: 8px;
@@ -27,12 +47,213 @@
       ::-webkit-scrollbar-track {
         background: #1e293b;
       }
+      html.theme-light ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
       ::-webkit-scrollbar-thumb {
         background: #475569;
         border-radius: 4px;
       }
+      html.theme-light ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+      }
       ::-webkit-scrollbar-thumb:hover {
         background: #64748b;
+      }
+      html.theme-light ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      /* ==========================================================
+         LIGHT THEME OVERRIDES (Comprehensive, Clean & Non-Intrusive)
+         Applies when Light theme is selected
+         ========================================================== */
+
+      /* Light Theme: Base Backgrounds */
+      html.theme-light .bg-slate-950:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]) {
+        background-color: #f8fafc !important;
+      }
+      html.theme-light nav.bg-slate-900,
+      html.theme-light aside.bg-slate-900,
+      html.theme-light header.bg-slate-900,
+      html.theme-light .bg-slate-900:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        background-color: #ffffff !important;
+      }
+
+      /* Semi-transparent Dark Backgrounds in Headers, Bars, Menus */
+      html.theme-light .bg-slate-900\/95,
+      html.theme-light .bg-slate-900\/90,
+      html.theme-light .bg-slate-900\/80,
+      html.theme-light .bg-slate-900\/70,
+      html.theme-light .bg-slate-900\/60,
+      html.theme-light .bg-slate-900\/50,
+      html.theme-light .bg-slate-900\/40,
+      html.theme-light .bg-slate-900\/30,
+      html.theme-light .bg-slate-900\/20 {
+        background-color: rgba(248, 250, 252, 0.95) !important;
+      }
+
+      /* Secondary Panel, Card, Button Backgrounds */
+      html.theme-light .bg-slate-800:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        background-color: #f1f5f9 !important;
+      }
+
+      /* Menus, Dropdowns, and Modal Containers (Cards that pop out) */
+      html.theme-light div[class*="shadow-2xl"].bg-slate-800,
+      html.theme-light div[class*="shadow-2xl"].bg-slate-900,
+      html.theme-light div[class*="shadow-xl"].bg-slate-800,
+      html.theme-light div[class*="shadow-xl"].bg-slate-900,
+      html.theme-light [role="dialog"],
+      html.theme-light .fixed.inset-0 > div[class*="rounded-"] {
+        background-color: #ffffff !important;
+      }
+
+      html.theme-light .bg-slate-800\/95,
+      html.theme-light .bg-slate-800\/90,
+      html.theme-light .bg-slate-800\/80 {
+        background-color: rgba(255, 255, 255, 0.96) !important;
+      }
+
+      html.theme-light .bg-slate-800\/70,
+      html.theme-light .bg-slate-800\/60,
+      html.theme-light .bg-slate-800\/50,
+      html.theme-light .bg-slate-800\/40,
+      html.theme-light .bg-slate-800\/30,
+      html.theme-light .bg-slate-800\/20 {
+        background-color: rgba(241, 245, 249, 0.8) !important;
+      }
+
+      /* Tertiary / Hover / Active backgrounds */
+      html.theme-light .bg-slate-700:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        background-color: #e2e8f0 !important;
+      }
+      html.theme-light .bg-slate-700\/80,
+      html.theme-light .bg-slate-700\/70,
+      html.theme-light .bg-slate-700\/60,
+      html.theme-light .bg-slate-700\/50 {
+        background-color: rgba(226, 232, 240, 0.75) !important;
+      }
+
+      /* Hover States */
+      html.theme-light .hover\:bg-slate-800:hover,
+      html.theme-light .hover\:bg-slate-800\/90:hover,
+      html.theme-light .hover\:bg-slate-800\/80:hover,
+      html.theme-light .hover\:bg-slate-800\/50:hover {
+        background-color: #f1f5f9 !important;
+      }
+      html.theme-light .hover\:bg-slate-700:hover,
+      html.theme-light .hover\:bg-slate-700\/90:hover,
+      html.theme-light .hover\:bg-slate-700\/80:hover,
+      html.theme-light .hover\:bg-slate-700\/70:hover,
+      html.theme-light .hover\:bg-slate-700\/60:hover {
+        background-color: #e2e8f0 !important;
+      }
+
+      /* Light Theme: Borders */
+      html.theme-light .border-slate-900,
+      html.theme-light .border-slate-800,
+      html.theme-light .border-slate-800\/90,
+      html.theme-light .border-slate-800\/80,
+      html.theme-light .border-slate-800\/50,
+      html.theme-light .border-slate-800\/30 {
+        border-color: #e2e8f0 !important;
+      }
+      html.theme-light .border-slate-700,
+      html.theme-light .border-slate-700\/90,
+      html.theme-light .border-slate-700\/80,
+      html.theme-light .border-slate-700\/60,
+      html.theme-light .border-slate-700\/50,
+      html.theme-light .border-slate-600 {
+        border-color: #cbd5e1 !important;
+      }
+      html.theme-light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+      html.theme-light .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
+        border-color: #e2e8f0 !important;
+      }
+
+      /* Light Theme: Text Colors */
+      html.theme-light nav .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light aside .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light header .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light [class*="shadow-2xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light [class*="shadow-xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light [role="dialog"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light .fixed.inset-0 .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        color: #0f172a !important;
+      }
+
+      html.theme-light :not(svg, svg *).text-slate-100:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
+      html.theme-light :not(svg, svg *).text-slate-200:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        color: #1e293b !important;
+      }
+
+      html.theme-light :not(svg, svg *).text-slate-300:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        color: #334155 !important;
+      }
+
+      html.theme-light :not(svg, svg *).text-slate-400:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+        color: #64748b !important;
+      }
+
+      html.theme-light :not(svg, svg *).hover\:text-white:hover {
+        color: #0f172a !important;
+      }
+
+      /* Ensure colored buttons, gradients, and badges keep their crisp white text */
+      html.theme-light [class*="bg-blue-"] .text-white,
+      html.theme-light [class*="bg-indigo-"] .text-white,
+      html.theme-light [class*="bg-emerald-"] .text-white,
+      html.theme-light [class*="bg-amber-"] .text-white,
+      html.theme-light [class*="bg-red-"] .text-white,
+      html.theme-light [class*="bg-purple-"] .text-white,
+      html.theme-light [class*="bg-gradient-"] .text-white,
+      html.theme-light [class*="bg-blue-"].text-white,
+      html.theme-light [class*="bg-indigo-"].text-white,
+      html.theme-light [class*="bg-emerald-"].text-white,
+      html.theme-light [class*="bg-amber-"].text-white,
+      html.theme-light [class*="bg-red-"].text-white,
+      html.theme-light [class*="bg-purple-"].text-white,
+      html.theme-light [class*="bg-gradient-"].text-white {
+        color: #ffffff !important;
+      }
+
+      /* Light Theme: Form Controls */
+      html.theme-light input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+      html.theme-light select,
+      html.theme-light textarea {
+        background-color: #ffffff !important;
+        border-color: #cbd5e1 !important;
+        color: #0f172a !important;
+      }
+      html.theme-light input::placeholder,
+      html.theme-light textarea::placeholder {
+        color: #94a3b8 !important;
+      }
+      html.theme-light input[type="checkbox"],
+      html.theme-light input[type="radio"] {
+        background-color: #ffffff !important;
+        border-color: #94a3b8 !important;
+      }
+
+      /* Light Theme: Modal Backdrop Overlay */
+      html.theme-light .fixed.inset-0.bg-black\/70,
+      html.theme-light .fixed.inset-0.bg-black\/80,
+      html.theme-light .fixed.inset-0.bg-black\/85,
+      html.theme-light .fixed.inset-0.bg-slate-950\/80,
+      html.theme-light .fixed.inset-0.bg-slate-950\/90 {
+        background-color: rgba(15, 23, 42, 0.45) !important;
+      }
+
+      /* Light Theme: Dropdown & Menu Shadows */
+      html.theme-light div[class*="shadow-2xl"],
+      html.theme-light div[class*="shadow-xl"] {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+      }
+
+      /* Protect Diagram SVG from HTML text/color cascade */
+      #diagram-svg,
+      #diagram-svg * {
+        /* Handled dynamically by Diagram.tsx */
       }
     </style>
   </head>

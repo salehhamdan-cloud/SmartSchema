@@ -9,6 +9,7 @@ import { ExportModal } from './components/ExportModal';
 import { AboutModal } from './components/AboutModal';
 import { ShareModal } from './components/ShareModal';
 import { TopologyModal } from './components/TopologyModal';
+import { BuildingFloorsModal } from './components/BuildingFloorsModal';
 import { VersionHistoryModal } from './components/VersionHistoryModal';
 import { AccessBlockedView } from './components/AccessBlockedView';
 import { ReadOnlyInspector } from './components/ReadOnlyInspector';
@@ -271,6 +272,7 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showTopologyModal, setShowTopologyModal] = useState(false);
+  const [showBuildingFloorsModal, setShowBuildingFloorsModal] = useState(false);
   const [showVersionHistoryModal, setShowVersionHistoryModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showFolderSyncModal, setShowFolderSyncModal] = useState(false);
@@ -338,7 +340,31 @@ export default function App() {
   const [isStylusActive, setIsStylusActive] = useState(false);
   
   const [language, setLanguage] = useState<Language>('en');
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem('smartschema_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch {}
+    return 'light';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('smartschema_theme', theme);
+    } catch {}
+    if (theme === 'light') {
+      document.documentElement.classList.add('theme-light');
+      document.documentElement.classList.remove('theme-dark', 'dark');
+      document.body.classList.add('theme-light');
+      document.body.classList.remove('theme-dark', 'dark');
+    } else {
+      document.documentElement.classList.add('theme-dark', 'dark');
+      document.documentElement.classList.remove('theme-light');
+      document.body.classList.add('theme-dark', 'dark');
+      document.body.classList.remove('theme-light');
+    }
+  }, [theme]);
+
   const [showAddIndependentMenu, setShowAddIndependentMenu] = useState(false);
   const addIndependentMenuRef = useRef<HTMLDivElement>(null);
 
@@ -1468,6 +1494,10 @@ export default function App() {
             multimeterModel: data.multimeterModel,
             multimeterSerial: data.multimeterSerial,
             isPublicBoard: data.isPublicBoard,
+            hasTransferSwitch: data.hasTransferSwitch,
+            secondBreakerName: data.secondBreakerName,
+            secondBreakerNumber: data.secondBreakerNumber,
+            secondBreakerAmps: data.secondBreakerAmps,
             children: [],
             extraConnections: [],
             connectionStyle: { ...DEFAULT_CONNECTION_STYLE, strokeColor: connectionColor },
@@ -1547,6 +1577,10 @@ export default function App() {
             multimeterModel: data.multimeterModel,
             multimeterSerial: data.multimeterSerial,
             isPublicBoard: data.isPublicBoard,
+            hasTransferSwitch: data.hasTransferSwitch,
+            secondBreakerName: data.secondBreakerName,
+            secondBreakerNumber: data.secondBreakerNumber,
+            secondBreakerAmps: data.secondBreakerAmps,
             shape: data.shape,
             customImage: data.customImage
         }));
@@ -1858,6 +1892,14 @@ export default function App() {
               (el as SVGElement).style.unicodeBidi = 'isolate';
           }
           (el as SVGElement).style.fontFamily = multilingualFontFamily;
+
+          // Preserve text centering and vertical alignment on component badges
+          if (el.classList.contains('badge-text') || el.closest('.component-badge')) {
+              el.setAttribute('text-anchor', 'middle');
+              el.setAttribute('dominant-baseline', 'central');
+              (el as SVGElement).style.textAnchor = 'middle';
+              (el as SVGElement).style.dominantBaseline = 'central';
+          }
       });
 
       // Strip style attribute from SVG clone to remove any patterns or touch-action that break canvas rasterization
@@ -1894,6 +1936,10 @@ export default function App() {
           text[direction="rtl"] {
               direction: rtl;
               unicode-bidi: isolate;
+          }
+          text.badge-text, .component-badge text {
+              text-anchor: middle !important;
+              dominant-baseline: central !important;
           }
           .node text { pointer-events: none; }
           .node-bg { transition: none !important; shape-rendering: geometricPrecision; }
@@ -2110,6 +2156,7 @@ export default function App() {
                   (activeFilters.has('non-essential') && node.isEssential === false) ||
                   (activeFilters.has('multimeter') && node.hasMultimeter) ||
                   (activeFilters.has('publicBoard') && node.isPublicBoard) ||
+                  (activeFilters.has('transferSwitch') && node.hasTransferSwitch) ||
                   (activeFilters.has(node.type));
 
               if (!matchesFilter) return;
@@ -2137,6 +2184,14 @@ export default function App() {
                   specialFlags.push(mmDetails ? `${t.legend.multimeter || 'Multimeter'} (${mmDetails})` : (t.legend.multimeter || 'Multimeter'));
               }
               if (node.isPublicBoard) specialFlags.push(t.legend.publicBoard || 'Public Board');
+              if (node.hasTransferSwitch) {
+                  const atsDetails = [
+                    node.secondBreakerName,
+                    node.secondBreakerNumber ? `#${node.secondBreakerNumber}` : '',
+                    node.secondBreakerAmps !== undefined ? `${node.secondBreakerAmps}A` : ''
+                  ].filter(Boolean).join(' • ');
+                  specialFlags.push(atsDetails ? `${t.legend.transferSwitch || 'ATS'} (${atsDetails})` : (t.legend.transferSwitch || 'ATS'));
+              }
 
               const row: Record<string, any> = {
                   [t.csvHeaders.hierarchyTree]: treeDisplay,
@@ -2163,6 +2218,10 @@ export default function App() {
                   [t.csvHeaders.hasMultimeter || 'Has Multimeter']: node.hasMultimeter ? t.csvHeaders.yes : t.csvHeaders.no,
                   [t.csvHeaders.multimeterModel || 'Multimeter Model']: node.multimeterModel || '',
                   [t.csvHeaders.multimeterSerial || 'Multimeter Serial #']: node.multimeterSerial || '',
+                  [t.csvHeaders.hasTransferSwitch || 'Transfer Switch (ATS)']: node.hasTransferSwitch ? t.csvHeaders.yes : t.csvHeaders.no,
+                  [t.csvHeaders.secondBreakerName || 'Second Breaker Name']: node.secondBreakerName || '',
+                  [t.csvHeaders.secondBreakerNumber || 'Second Breaker #']: node.secondBreakerNumber || '',
+                  [t.csvHeaders.secondBreakerAmps || 'Second Breaker Current (A)']: node.secondBreakerAmps !== undefined && node.secondBreakerAmps !== null ? node.secondBreakerAmps : '',
                   [t.csvHeaders.generatorBackup]: node.hasGeneratorConnection ? (node.generatorName || t.csvHeaders.yes) : t.csvHeaders.no,
                   [t.csvHeaders.specialFeatures]: specialFlags.length > 0 ? specialFlags.join(', ') : '-',
                   [t.csvHeaders.model]: node.model || '',
@@ -2838,6 +2897,70 @@ export default function App() {
       setPrintSettingsFocus(focusField);
   }, []);
 
+  // Handle node navigation from Building & Floor distribution view
+  const handleNavigateToNodeFromBuildingView = useCallback((pageId: string, nodeId: string) => {
+    setShowBuildingFloorsModal(false);
+    if (activePageId !== pageId) {
+      setActivePageId(pageId);
+    }
+    
+    // Find node and select
+    const findNodeInTree = (nodes: ElectricalNode[]): ElectricalNode | null => {
+      for (const n of nodes) {
+        if (n.id === nodeId) return n;
+        if (n.children && n.children.length > 0) {
+          const childFound = findNodeInTree(n.children);
+          if (childFound) return childFound;
+        }
+      }
+      return null;
+    };
+
+    setTimeout(() => {
+      const pageToSearch = activeProject.pages.find(p => p.id === pageId) || activePage;
+      const targetNode = findNodeInTree(pageToSearch.items);
+      if (targetNode) {
+        setSelectedNode(targetNode);
+        setMultiSelection(new Set([targetNode.id]));
+        setSelectionMode('node');
+      }
+    }, 120);
+  }, [activePageId, activeProject, activePage]);
+
+  // Handle location update (building, floor, place, office) from Building & Floor view
+  const handleUpdateNodeLocation = useCallback((pageId: string, nodeId: string, updates: Partial<ElectricalNode>) => {
+    const nowIso = new Date().toISOString();
+    setProjects(prevProjects => {
+      const updateInTree = (nodes: ElectricalNode[]): ElectricalNode[] => {
+        return nodes.map(n => {
+          if (n.id === nodeId) {
+            return { ...n, ...updates };
+          }
+          if (n.children && n.children.length > 0) {
+            return { ...n, children: updateInTree(n.children) };
+          }
+          return n;
+        });
+      };
+
+      return prevProjects.map(p => {
+        const hasPage = p.pages.some(pg => pg.id === pageId);
+        if (!hasPage) return p;
+        return {
+          ...p,
+          lastUpdated: nowIso,
+          pages: p.pages.map(page => {
+            if (page.id !== pageId) return page;
+            return {
+              ...page,
+              items: updateInTree(page.items)
+            };
+          })
+        };
+      });
+    });
+  }, []);
+
   if (shareAccessStatus !== 'granted') {
     return (
       <AccessBlockedView
@@ -2885,7 +3008,7 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans ${isDark ? 'text-slate-200 bg-slate-900' : 'text-slate-800 bg-slate-50'} ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`min-h-screen flex flex-col font-sans ${isDark ? 'text-slate-200 bg-slate-900 theme-dark' : 'text-slate-800 bg-slate-50 theme-light'} ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       
       {/* Clean View Header (Used for shared read-only links and clean view mode) */}
       {(isCleanView || isReadOnly) ? (
@@ -2936,6 +3059,7 @@ export default function App() {
           isStylusActive={isStylusActive}
           onOpenExport={() => setShowExportModal(true)}
           onOpenTopology={() => setShowTopologyModal(true)}
+          onOpenBuildingFloors={() => setShowBuildingFloorsModal(true)}
           onOpenSecurity={() => setShowSecurityModal(true)}
           onLogOut={handleLogOut}
           t={t}
@@ -3279,7 +3403,8 @@ export default function App() {
                       { key: 'essential', icon: 'star', color: '#ef4444' },
                       { key: 'non-essential', icon: 'star', color: '#64748b' },
                       { key: 'multimeter', icon: 'multimeter', color: '#10b981' },
-                      { key: 'publicBoard', icon: 'public_board', color: '#14b8a6' }
+                      { key: 'publicBoard', icon: 'public_board', color: '#14b8a6' },
+                      { key: 'transferSwitch', icon: 'transfer_switch', color: '#c084fc' }
                     ].map(({ key, icon, color }) => (
                       <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-700/70 rounded-lg cursor-pointer transition-colors">
                         <input 
@@ -3461,6 +3586,15 @@ export default function App() {
             >
               <span className="material-icons-round text-base">fullscreen</span>
             </button>
+
+            {/* Building & Floor Distribution Quick Access */}
+            <button
+              onClick={() => setShowBuildingFloorsModal(true)}
+              className="p-1.5 text-amber-400 hover:text-white hover:bg-amber-600/30 rounded-lg transition-colors"
+              title={t.buildingFloors?.openTooltip || "Building & Floor Distribution"}
+            >
+              <span className="material-icons-round text-base">apartment</span>
+            </button>
           </div>
 
           {/* Group 3: Project Tools Menu Dropdown */}
@@ -3585,6 +3719,23 @@ export default function App() {
                     <span className="material-icons-round text-xs text-slate-500 group-hover:text-sky-400">chevron_right</span>
                   </button>
 
+                  {/* Building & Floor Distribution */}
+                  <button
+                    onClick={() => { setShowBuildingFloorsModal(true); setShowToolsMenu(false); }}
+                    className="w-full text-left px-2.5 py-2 hover:bg-slate-700/70 rounded-xl flex items-center justify-between text-xs text-slate-200 hover:text-white transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <span className="material-icons-round text-sm">apartment</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{t.buildingFloors?.openButton || "Building & Floors"}</span>
+                        <span className="text-[10px] text-slate-400">{t.buildingFloors?.subtitle || "Architectural elevation & layout"}</span>
+                      </div>
+                    </div>
+                    <span className="material-icons-round text-xs text-slate-500 group-hover:text-amber-400">chevron_right</span>
+                  </button>
+
                   {/* Print / PDF Layout Toggle */}
                   <button
                     onClick={() => {
@@ -3688,7 +3839,7 @@ export default function App() {
                       onClick={() => setTheme('light')}
                       className={`py-1 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all ${
                         theme === 'light'
-                          ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 shadow-sm'
+                          ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold border border-amber-500/40 shadow-sm'
                           : 'text-slate-400 hover:text-white hover:bg-slate-800'
                       }`}
                     >
@@ -4185,6 +4336,19 @@ export default function App() {
         t={t} 
         isDark={isDark} 
         isRTL={isRTL} 
+      />
+      <BuildingFloorsModal
+        isOpen={showBuildingFloorsModal}
+        onClose={() => setShowBuildingFloorsModal(false)}
+        activeProject={activeProject}
+        allProjects={projects}
+        activePage={activePage}
+        onNavigateToNode={handleNavigateToNodeFromBuildingView}
+        onUpdateNodeLocation={handleUpdateNodeLocation}
+        t={t}
+        language={language}
+        theme={theme}
+        isRTL={isRTL}
       />
       <VersionHistoryModal
         isOpen={showVersionHistoryModal}

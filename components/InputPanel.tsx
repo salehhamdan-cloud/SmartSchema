@@ -79,7 +79,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     hasMultimeter: false,
     multimeterModel: '',
     multimeterSerial: '',
-    isPublicBoard: false
+    isPublicBoard: false,
+    hasTransferSwitch: false,
+    secondBreakerName: '',
+    secondBreakerNumber: '',
+    secondBreakerAmps: undefined
   });
 
   const [connectionData, setConnectionData] = useState<ConnectionStyle>(DEFAULT_CONNECTION_STYLE);
@@ -145,7 +149,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             hasMultimeter: selectedNode.hasMultimeter || false,
             multimeterModel: selectedNode.multimeterModel || '',
             multimeterSerial: selectedNode.multimeterSerial || '',
-            isPublicBoard: selectedNode.isPublicBoard || false
+            isPublicBoard: selectedNode.isPublicBoard || false,
+            hasTransferSwitch: selectedNode.hasTransferSwitch || false,
+            secondBreakerName: selectedNode.secondBreakerName || '',
+            secondBreakerNumber: selectedNode.secondBreakerNumber || '',
+            secondBreakerAmps: selectedNode.secondBreakerAmps
         });
     } else if (activeTab === 'add') {
         setFormData({
@@ -179,7 +187,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             hasMultimeter: false,
             multimeterModel: '',
             multimeterSerial: '',
-            isPublicBoard: false
+            isPublicBoard: false,
+            hasTransferSwitch: false,
+            secondBreakerName: '',
+            secondBreakerNumber: '',
+            secondBreakerAmps: undefined
         });
     }
   }, [activeTab, selectedNode]);
@@ -209,7 +221,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
       ...prev,
       [name]: type === 'checkbox' 
         ? (e.target as HTMLInputElement).checked 
-        : (name === 'amps' || name === 'voltage' || name === 'kva') 
+        : (name === 'amps' || name === 'voltage' || name === 'kva' || name === 'secondBreakerAmps') 
             ? (value === '' ? undefined : Number(value)) 
             : value
     }));
@@ -276,7 +288,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             hasMultimeter: false,
             multimeterModel: '',
             multimeterSerial: '',
-            isPublicBoard: false
+            isPublicBoard: false,
+            hasTransferSwitch: false,
+            secondBreakerName: '',
+            secondBreakerNumber: '',
+            secondBreakerAmps: undefined
         }));
     } else {
         onEdit(formData, selectedParentId === '__root__' ? null : selectedParentId);
@@ -1261,6 +1277,73 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                     {t.inputPanel.isPublicBoard || "Public Board"}
                 </label>
             </div>
+
+            {/* Power Source Switching Controller (Dual Power Source / ATS) */}
+            <div className="flex items-center gap-2">
+                <input
+                    type="checkbox"
+                    id="hasTransferSwitch"
+                    name="hasTransferSwitch"
+                    checked={formData.hasTransferSwitch || false}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-purple-500 rounded focus:ring-purple-400 bg-slate-700 border-slate-600 cursor-pointer"
+                />
+                <label htmlFor="hasTransferSwitch" className="text-xs font-medium text-slate-300 select-none flex items-center gap-1.5 cursor-pointer">
+                    <LegendIcon icon="transfer_switch" color="#c084fc" size={16} />
+                    {t.inputPanel.hasTransferSwitch || "Power Source Switching Controller (Dual Feed / ATS)"}
+                </label>
+            </div>
+            {formData.hasTransferSwitch && (
+                <div className="pl-5 space-y-2.5 border-l-2 border-purple-500/60 my-1 py-2 bg-purple-950/25 rounded-r-lg p-3">
+                    <div className="text-[11px] text-purple-300 font-semibold flex items-center gap-1.5">
+                        <span className="material-icons-round text-xs text-purple-400">sync_alt</span>
+                        {t.inputPanel.transferSwitchHelp || "Panel is powered by two power sources (Source 1 & Source 2)"}
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">
+                            {t.inputPanel.secondBreakerName || "Second Breaker Name"}
+                        </label>
+                        <input
+                            type="text"
+                            name="secondBreakerName"
+                            value={formData.secondBreakerName || ''}
+                            onChange={handleChange}
+                            placeholder="e.g. Q2 / Generator Incomer / Source 2"
+                            className="w-full bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:outline-none focus:border-purple-500 text-sm"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-400 mb-1">
+                                {t.inputPanel.secondBreakerNumber || "Second Breaker # / Code"}
+                            </label>
+                            <input
+                                type="text"
+                                name="secondBreakerNumber"
+                                value={formData.secondBreakerNumber || ''}
+                                onChange={handleChange}
+                                placeholder="e.g. 2 / Q2 / CB-2"
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:outline-none focus:border-purple-500 text-sm font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-400 mb-1">
+                                {t.inputPanel.secondBreakerAmps || "Second Breaker Current (A)"}
+                            </label>
+                            <input
+                                type="number"
+                                name="secondBreakerAmps"
+                                value={formData.secondBreakerAmps !== undefined ? formData.secondBreakerAmps : ''}
+                                onChange={handleChange}
+                                min="0"
+                                step="any"
+                                placeholder="e.g. 160"
+                                className="w-full bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:outline-none focus:border-purple-500 text-sm font-mono"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex items-center gap-2 pt-1 border-t border-slate-700/50">
                 <input

@@ -253,6 +253,27 @@ export const ReadOnlyInspector: React.FC<ReadOnlyInspectorProps> = ({
               {t.inputPanel.reserved}
             </span>
           )}
+          {selectedNode.hasTransferSwitch && (
+            <div className="w-full p-2.5 rounded-lg bg-purple-950/60 border border-purple-700/60 text-purple-200 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-purple-300">
+                <LegendIcon icon="transfer_switch" color="#c084fc" size={14} />
+                <span>{t.inputPanel?.hasTransferSwitch || "Power Source Switching Controller (ATS)"}</span>
+              </div>
+              {(selectedNode.secondBreakerName || selectedNode.secondBreakerNumber || selectedNode.secondBreakerAmps !== undefined) && (
+                <div className="text-[11px] text-purple-300/90 pl-5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono">
+                  {selectedNode.secondBreakerName && (
+                    <span><strong className="text-purple-200">{t.inputPanel?.secondBreakerName || "Second Breaker"}:</strong> {selectedNode.secondBreakerName}</span>
+                  )}
+                  {selectedNode.secondBreakerNumber && (
+                    <span><strong className="text-purple-200">{t.inputPanel?.secondBreakerNumber || "Breaker #"}:</strong> #{selectedNode.secondBreakerNumber}</span>
+                  )}
+                  {selectedNode.secondBreakerAmps !== undefined && (
+                    <span><strong className="text-purple-200">{t.inputPanel?.secondBreakerAmps || "Current"}:</strong> {selectedNode.secondBreakerAmps}A</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

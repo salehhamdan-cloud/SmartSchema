@@ -69,6 +69,12 @@ export interface ElectricalNode {
   multimeterSerial?: string; // New: Multimeter Serial Number
   isPublicBoard?: boolean; // New: Public board classification
 
+  // Power Source Switching Controller (Dual Power Source / ATS / בקר החלפת מקורות הזנה)
+  hasTransferSwitch?: boolean;
+  secondBreakerName?: string;
+  secondBreakerNumber?: string;
+  secondBreakerAmps?: number;
+
   // Calculated Property (Recursive Load)
   calculatedLoad?: {
     amps: number;
@@ -120,6 +126,10 @@ export interface NewNodeData {
   multimeterModel?: string;
   multimeterSerial?: string;
   isPublicBoard?: boolean;
+  hasTransferSwitch?: boolean;
+  secondBreakerName?: string;
+  secondBreakerNumber?: string;
+  secondBreakerAmps?: number;
 }
 
 export interface AnnotationItem {

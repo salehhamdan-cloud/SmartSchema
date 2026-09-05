@@ -145,6 +145,16 @@ const getBadgeLines = (model?: string, serial?: string, rawNumber?: string): { l
   return { line1: '', line2: '', isTwoLine: false };
 };
 
+// Helper for ATS / Power Source Switching Controller badge
+const getTransferSwitchBadgeLines = (name?: string, num?: string, amps?: number): { line1: string; line2: string; isTwoLine: boolean } => {
+  const line1 = name?.trim() || 'ATS';
+  const parts: string[] = [];
+  if (num && num.trim()) parts.push(`#${num.trim()}`);
+  if (amps !== undefined && !isNaN(Number(amps))) parts.push(`${amps}A`);
+  const line2 = parts.join(' • ');
+  return { line1, line2, isTwoLine: Boolean(line1 && line2) };
+};
+
 // Helper to format all location fields nicely without truncation or overflow
 const getDiagramLocationLines = (data: ElectricalNode, tFloorWord?: string, maxChars: number = 30): string[] => {
   const parts: string[] = [];
@@ -186,6 +196,7 @@ const checkNodeMatchesFilters = (nodeData: ElectricalNode, filters: Set<string>)
     if (filter === 'non-essential' && nodeData.isEssential === false) return true;
     if ((filter === 'multimeter' || filter === 'hasMultimeter') && nodeData.hasMultimeter) return true;
     if ((filter === 'publicBoard' || filter === 'public-board' || filter === 'isPublicBoard') && nodeData.isPublicBoard) return true;
+    if ((filter === 'transferSwitch' || filter === 'transfer-switch' || filter === 'hasTransferSwitch' || filter === 'ats') && nodeData.hasTransferSwitch) return true;
     if (Object.values(ComponentType).includes(filter as ComponentType) && nodeData.type === filter) return true;
     
     // Location filters
@@ -631,6 +642,19 @@ export const Diagram: React.FC<DiagramProps> = ({
         badgeCount++;
       }
       if (d.data.isPublicBoard) { badgeTotalWidth += 22; badgeCount++; }
+      if (d.data.hasTransferSwitch) {
+        const { line1, line2, isTwoLine } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
+        if (isTwoLine) {
+          hasTwoLineBadge = true;
+          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
+          const w2 = getTextWidth(line2, '8px', '600', 5.0);
+          badgeTotalWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
+        } else {
+          const width = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
+          badgeTotalWidth += 20 + (line1 ? Math.ceil(width) + 8 : 0);
+        }
+        badgeCount++;
+      }
 
       if (badgeCount > 1) {
         badgeTotalWidth += (badgeCount - 1) * 5;
@@ -1746,50 +1770,87 @@ export const Diagram: React.FC<DiagramProps> = ({
         maxNodeBadgeHeight: number = 18,
         customTransform?: string
     ) => {
-        const group = gNode.append('g');
+        const group = gNode.append('g').attr('class', 'component-badge');
         const isTwoLine = Boolean(line1 && line2);
         const badgeHeight = isTwoLine ? 28 : 18;
         
-        let totalWidth = 20;
+        let textLen = 0;
+        if (isTwoLine) {
+          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
+          const w2 = getTextWidth(line2, '8px', '600', 5.0);
+          textLen = Math.max(w1, w2);
+        } else {
+          const singleText = line1 || line2 || '';
+          textLen = singleText ? getTextWidth(singleText, '9px', 'bold', 5.5) : 0;
+        }
+
+        const hasText = textLen > 0;
+        // Total badge width: icon area (20px) + measured text length + right margin (8px)
+        let totalWidth = hasText ? 20 + Math.ceil(textLen) + 8 : 20;
+        // Center text in the badge text area (between icon x=20 and badge right edge)
+        let textCenterX = hasText ? 20 + (totalWidth - 20) / 2 : 20;
+
+        let t1: d3.Selection<SVGTextElement, unknown, null, undefined> | null = null;
+        let t2: d3.Selection<SVGTextElement, unknown, null, undefined> | null = null;
 
         if (isTwoLine) {
-          const t1 = group.append('text')
-            .attr('x', 20)
-            .attr('y', 8)
+          t1 = group.append('text')
+            .attr('class', 'badge-text')
+            .attr('x', textCenterX)
+            .attr('y', 9)
+            .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
+            .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '8.5px')
             .style('font-weight', 'bold')
             .style('fill', color)
-            .style('direction', 'ltr')
             .text(line1);
 
-          const t2 = group.append('text')
-            .attr('x', 20)
-            .attr('y', 19)
+          t2 = group.append('text')
+            .attr('class', 'badge-text')
+            .attr('x', textCenterX)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
+            .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '8px')
             .style('font-weight', '600')
             .style('fill', color)
-            .style('direction', 'ltr')
             .text(line2);
 
-          const len1 = t1.node()?.getComputedTextLength() || 0;
-          const len2 = t2.node()?.getComputedTextLength() || 0;
-          totalWidth = 20 + Math.max(len1, len2) + 6;
+          const live1 = t1.node()?.getComputedTextLength() || 0;
+          const live2 = t2.node()?.getComputedTextLength() || 0;
+          const maxLive = Math.max(live1, live2);
+          if (maxLive > textLen) {
+            textLen = maxLive;
+            totalWidth = 20 + Math.ceil(textLen) + 8;
+            textCenterX = 20 + (totalWidth - 20) / 2;
+            t1.attr('x', textCenterX);
+            t2.attr('x', textCenterX);
+          }
         } else {
           const singleText = line1 || line2 || '';
-          const t1 = group.append('text')
-            .attr('x', 20)
-            .attr('y', 9)
-            .attr('dominant-baseline', 'central')
-            .style('font-size', '9px')
-            .style('font-weight', 'bold')
-            .style('fill', color)
-            .style('direction', 'ltr')
-            .text(singleText);
+          if (singleText) {
+            t1 = group.append('text')
+              .attr('class', 'badge-text')
+              .attr('x', textCenterX)
+              .attr('y', 10)
+              .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'central')
+              .style('font-family', MULTILINGUAL_FONT_FAMILY)
+              .style('font-size', '9px')
+              .style('font-weight', 'bold')
+              .style('fill', color)
+              .text(singleText);
 
-          const textLen = t1.node()?.getComputedTextLength() || 0;
-          totalWidth = 20 + (singleText ? textLen + 6 : 0);
+            const liveLen = t1.node()?.getComputedTextLength() || 0;
+            if (liveLen > textLen) {
+              textLen = liveLen;
+              totalWidth = 20 + Math.ceil(textLen) + 8;
+              textCenterX = 20 + (totalWidth - 20) / 2;
+              t1.attr('x', textCenterX);
+            }
+          }
         }
 
         group.insert('rect', 'text')
@@ -1823,22 +1884,18 @@ export const Diagram: React.FC<DiagramProps> = ({
             const { line1, line2, isTwoLine } = getBadgeLines(d.data.meterModel, d.data.meterSerial, d.data.meterNumber);
             if (isTwoLine) {
                 hasTwoLineBadge = true;
-                tempText.text(line1);
-                const w1 = tempText.node()?.getComputedTextLength() || 0;
-                tempText.text(line2);
-                const w2 = tempText.node()?.getComputedTextLength() || 0;
-                totalBadgesWidth += 20 + Math.max(w1, w2) + 6;
+                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
+                const w2 = getTextWidth(line2, '8px', '600', 5.0);
+                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
             } else {
-                tempText.text(line1 || '');
-                const textLen = tempText.node()?.getComputedTextLength() || 0;
-                totalBadgesWidth += 20 + (line1 ? textLen + 6 : 0);
+                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
+                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
             }
             badgeCount++;
         }
         if (d.data.hasGeneratorConnection) {
-            tempText.text(d.data.generatorName || '');
-            const textLen = tempText.node()?.getComputedTextLength() || 0;
-            totalBadgesWidth += 20 + (d.data.generatorName ? textLen + 6 : 0);
+            const textLen = d.data.generatorName ? getTextWidth(d.data.generatorName, '9px', 'bold', 5.5) : 0;
+            totalBadgesWidth += 20 + (d.data.generatorName ? Math.ceil(textLen) + 8 : 0);
             badgeCount++;
         }
         if (d.data.isExcludedFromMeter) { totalBadgesWidth += 22; badgeCount++; }
@@ -1850,19 +1907,29 @@ export const Diagram: React.FC<DiagramProps> = ({
             const { line1, line2, isTwoLine } = getBadgeLines(d.data.multimeterModel, d.data.multimeterSerial);
             if (isTwoLine) {
                 hasTwoLineBadge = true;
-                tempText.text(line1);
-                const w1 = tempText.node()?.getComputedTextLength() || 0;
-                tempText.text(line2);
-                const w2 = tempText.node()?.getComputedTextLength() || 0;
-                totalBadgesWidth += 20 + Math.max(w1, w2) + 6;
+                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
+                const w2 = getTextWidth(line2, '8px', '600', 5.0);
+                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
             } else {
-                tempText.text(line1 || '');
-                const textLen = tempText.node()?.getComputedTextLength() || 0;
-                totalBadgesWidth += 20 + (line1 ? textLen + 6 : 0);
+                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
+                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
             }
             badgeCount++;
         }
         if (d.data.isPublicBoard) { totalBadgesWidth += 22; badgeCount++; }
+        if (d.data.hasTransferSwitch) {
+            const { line1, line2, isTwoLine } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
+            if (isTwoLine) {
+                hasTwoLineBadge = true;
+                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
+                const w2 = getTextWidth(line2, '8px', '600', 5.0);
+                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
+            } else {
+                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
+                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
+            }
+            badgeCount++;
+        }
 
         if (badgeCount > 1) {
             totalBadgesWidth += (badgeCount - 1) * 5;
@@ -1909,6 +1976,11 @@ export const Diagram: React.FC<DiagramProps> = ({
         }
         if (d.data.isPublicBoard) {
              const w = renderBadge(gNode, '', '', 'public_board', '#14b8a6', '#ccfbf1', '#134e4a', d, startX + currentXOffset, maxNodeBadgeHeight);
+            currentXOffset += w + 5;
+        }
+        if (d.data.hasTransferSwitch) {
+            const { line1, line2 } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
+            const w = renderBadge(gNode, line1, line2, 'transfer_switch', '#a855f7', '#f3e8ff', '#581c87', d, startX + currentXOffset, maxNodeBadgeHeight);
             currentXOffset += w + 5;
         }
     });
@@ -2027,11 +2099,12 @@ export const Diagram: React.FC<DiagramProps> = ({
       { label: t.legend.reserved, icon: 'lock', color: '#eab308' },
       { label: t.legend.essential, icon: 'star', color: '#ef4444' },
       { label: t.legend.multimeter || 'Multimeter', icon: 'multimeter', color: '#10b981' },
-      { label: t.legend.publicBoard || 'Public Board', icon: 'public_board', color: '#14b8a6' }
+      { label: t.legend.publicBoard || 'Public Board', icon: 'public_board', color: '#14b8a6' },
+      { label: t.legend.transferSwitch || 'Dual Feed / ATS', icon: 'transfer_switch', color: '#a855f7' }
     ];
 
     const totalLegendItems = types.length + badgeItems.length + 1; 
-    const legendW = 200;
+    const legendW = 210;
     const legendH = 50 + totalLegendItems * 25;
 
     let legX = maxX + 50;

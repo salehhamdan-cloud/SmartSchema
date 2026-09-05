@@ -43,6 +43,7 @@ interface CleanViewHeaderProps {
   isStylusActive?: boolean;
   onOpenExport: () => void;
   onOpenTopology?: () => void;
+  onOpenBuildingFloors?: () => void;
   onOpenShare?: () => void;
   onOpenSecurity?: () => void;
   onLogOut?: () => void;
@@ -85,6 +86,7 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
   isStylusActive = false,
   onOpenExport,
   onOpenTopology,
+  onOpenBuildingFloors,
   onOpenShare,
   onOpenSecurity,
   onLogOut,
@@ -365,7 +367,8 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
                   { key: 'essential', icon: 'star', color: '#ef4444' },
                   { key: 'non-essential', icon: 'star', color: '#64748b' },
                   { key: 'multimeter', icon: 'multimeter', color: '#10b981' },
-                  { key: 'publicBoard', icon: 'public_board', color: '#14b8a6' }
+                  { key: 'publicBoard', icon: 'public_board', color: '#14b8a6' },
+                  { key: 'transferSwitch', icon: 'transfer_switch', color: '#c084fc' }
                 ].map(({ key, icon, color }) => (
                   <label key={key} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
                     <input
@@ -527,6 +530,18 @@ export const CleanViewHeader: React.FC<CleanViewHeaderProps> = ({
             title={t.connectionTopology?.openTooltip || "Connection Topology"}
           >
             <span className="material-icons-round text-base">account_tree</span>
+          </button>
+        )}
+
+        {/* Building & Floor Distribution */}
+        {onOpenBuildingFloors && (
+          <button
+            type="button"
+            onClick={onOpenBuildingFloors}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 hover:text-white rounded-lg border border-slate-700 transition-colors"
+            title={t.buildingFloors?.openTooltip || "Building & Floor Distribution"}
+          >
+            <span className="material-icons-round text-base">apartment</span>
           </button>
         )}
 

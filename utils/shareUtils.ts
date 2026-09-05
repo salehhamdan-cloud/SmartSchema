@@ -55,6 +55,12 @@ export function compactNodeForSharing(node: ElectricalNode): any {
     if (node.multimeterSerial?.trim()) result.multimeterSerial = node.multimeterSerial.trim();
   }
   if (node.isPublicBoard) result.isPublicBoard = true;
+  if (node.hasTransferSwitch) {
+    result.hasTransferSwitch = true;
+    if (node.secondBreakerName?.trim()) result.secondBreakerName = node.secondBreakerName.trim();
+    if (node.secondBreakerNumber?.trim()) result.secondBreakerNumber = node.secondBreakerNumber.trim();
+    if (node.secondBreakerAmps !== undefined) result.secondBreakerAmps = node.secondBreakerAmps;
+  }
 
   // Manual positioning offsets
   if (node.manualX) result.manualX = node.manualX;

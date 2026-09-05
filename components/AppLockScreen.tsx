@@ -47,14 +47,14 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
   return (
     <div 
       className={`min-h-screen w-full flex flex-col justify-between relative overflow-hidden font-sans select-none ${
-        theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-900 text-slate-100'
+        theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       } ${isRTL ? 'rtl' : 'ltr'}`} 
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Background ambient lighting */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
+        <div className={`absolute -top-40 -left-40 w-96 h-96 ${theme === 'dark' ? 'bg-blue-600/20' : 'bg-blue-500/10'} rounded-full blur-3xl`}></div>
+        <div className={`absolute -bottom-40 -right-40 w-96 h-96 ${theme === 'dark' ? 'bg-purple-600/20' : 'bg-indigo-500/10'} rounded-full blur-3xl`}></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sky-500/5 rounded-full blur-3xl"></div>
         {/* Circuit grid subtle overlay */}
         <div 
@@ -73,14 +73,14 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
             <span className="material-icons-round text-white text-2xl">electrical_services</span>
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">{t.appName || 'SmartSchema'}</h1>
+            <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight leading-none`}>{t.appName || 'SmartSchema'}</h1>
             <span className="text-[10px] text-slate-400 font-mono font-medium">Single-Line Diagram CAD</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Language selector */}
-          <div className="flex bg-slate-800/80 backdrop-blur-md rounded-xl border border-slate-700/80 p-0.5 shadow-md overflow-hidden">
+          <div className={`flex ${theme === 'dark' ? 'bg-slate-800/80 border-slate-700/80' : 'bg-white/80 border-slate-200'} backdrop-blur-md rounded-xl border p-0.5 shadow-md overflow-hidden`}>
             {(['en', 'he', 'ar'] as Language[]).map((lang) => (
               <button 
                 key={lang} 
@@ -88,7 +88,9 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   language === lang 
                     ? 'bg-blue-600 text-white shadow-sm' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                    : theme === 'dark'
+                      ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
                 }`}
               >
                 {lang.toUpperCase()}
@@ -99,7 +101,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
           {/* Theme toggle */}
           <button 
             onClick={onToggleTheme} 
-            className="p-2 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 rounded-xl border border-slate-700/80 backdrop-blur-md transition-colors cursor-pointer"
+            className={`p-2 ${theme === 'dark' ? 'text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border-slate-700/80' : 'text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-slate-100 border-slate-200'} rounded-xl border backdrop-blur-md transition-colors cursor-pointer`}
             title={t.toggleTheme}
           >
             <span className="material-icons-round text-lg">{theme === 'light' ? 'dark_mode' : 'light_mode'}</span>
@@ -110,7 +112,11 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
       {/* Centered Login Card */}
       <main className="relative z-10 flex-1 flex items-center justify-center p-4">
         <div 
-          className={`w-full max-w-md bg-slate-900/90 border border-slate-800/90 rounded-2xl shadow-2xl shadow-black/60 p-7 md:p-8 backdrop-blur-xl transition-transform duration-300 ${
+          className={`w-full max-w-md ${
+            theme === 'dark' 
+              ? 'bg-slate-900/90 border-slate-800/90 shadow-black/60 text-white' 
+              : 'bg-white/95 border-slate-200 shadow-slate-300/50 text-slate-900'
+          } border rounded-2xl shadow-2xl p-7 md:p-8 backdrop-blur-xl transition-transform duration-300 ${
             isShaking ? 'animate-bounce' : ''
           }`}
         >
@@ -122,7 +128,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
               </span>
             </div>
 
-            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight mb-1.5">
+            <h2 className={`text-xl md:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-900'} tracking-tight mb-1.5`}>
               {t.auth?.enterPassword || 'Enter App Password'}
             </h2>
             <p className="text-xs md:text-sm text-slate-400 leading-relaxed max-w-sm">
@@ -134,11 +140,11 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Primary password field */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+              <label className={`block text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'} mb-1.5`}>
                 {t.auth?.password || 'Password'}
               </label>
               <div className="relative">
-                <span className="absolute top-1/2 -translate-y-1/2 left-3.5 material-icons-round text-slate-500 text-lg pointer-events-none">
+                <span className="absolute top-1/2 -translate-y-1/2 left-3.5 material-icons-round text-slate-400 text-lg pointer-events-none">
                   key
                 </span>
                 <input
@@ -151,12 +157,16 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
                   placeholder={t.auth?.enterPasswordPlaceholder || 'Enter password...'}
                   autoFocus
                   required
-                  className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl py-2.5 pl-10 pr-11 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                  className={`w-full ${
+                    theme === 'dark'
+                      ? 'bg-slate-950/80 border-slate-700/80 text-white placeholder-slate-500'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  } border rounded-xl py-2.5 pl-10 pr-11 text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 -translate-y-1/2 right-3 text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                  className={`absolute top-1/2 -translate-y-1/2 right-3 ${theme === 'dark' ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'} p-1 rounded-lg transition-colors cursor-pointer`}
                   title={showPassword ? (t.auth?.hidePassword || 'Hide password') : (t.auth?.showPassword || 'Show password')}
                 >
                   <span className="material-icons-round text-base">
