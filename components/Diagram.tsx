@@ -263,6 +263,7 @@ export const Diagram: React.FC<DiagramProps> = ({
   const nodeBgColor = isDark ? '#1e293b' : '#ffffff';
   const rootNodeBgColor = isDark ? '#334155' : '#f8fafc';
   const secondaryTextColor = isDark ? '#94a3b8' : '#475569';
+  const MULTILINGUAL_FONT_FAMILY = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Arabic', 'Tahoma', Arial, sans-serif";
 
   const getTranslatedDescription = (desc?: string) => {
     if (!desc) return '';
@@ -531,7 +532,7 @@ export const Diagram: React.FC<DiagramProps> = ({
 
     const tempText = svg
       .append('text')
-      .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+      .style('font-family', MULTILINGUAL_FONT_FAMILY)
       .style('font-size', '9px')
       .style('font-weight', 'bold')
       .style('visibility', 'hidden');
@@ -539,7 +540,7 @@ export const Diagram: React.FC<DiagramProps> = ({
     const getTextWidth = (text: string, fontSize: string, fontWeight: string, fallbackCharWidth: number) => {
       if (!text) return 0;
       tempText
-        .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+        .style('font-family', MULTILINGUAL_FONT_FAMILY)
         .style('font-size', fontSize)
         .style('font-weight', fontWeight)
         .text(text);
@@ -1488,7 +1489,7 @@ export const Diagram: React.FC<DiagramProps> = ({
     });
 
     const contentG = nodesSelection.append('g')
-      .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+      .style('font-family', MULTILINGUAL_FONT_FAMILY)
       .attr('transform', (d) => {
         const shape = d.data.shape || 'rectangle';
         const box = getRectBox(d);
@@ -1543,7 +1544,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('x', 0)
             .attr('y', 30)
             .attr('text-anchor', 'middle')
-            .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+            .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '12px')
             .style('font-weight', '600')
             .style('fill', () => d.data.customColor || COMPONENT_CONFIG[d.data.type]?.color || '#94a3b8')
@@ -1553,7 +1554,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('x', 0)
             .attr('y', 46)
             .attr('text-anchor', 'middle')
-            .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+            .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '12.5px')
             .style('font-weight', '600')
             .style('fill', textColor)
@@ -1563,7 +1564,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('x', 0)
             .attr('y', 30)
             .attr('text-anchor', 'middle')
-            .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+            .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '12.5px')
             .style('font-weight', '600')
             .style('fill', textColor)
@@ -1579,7 +1580,7 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('x', 0)
           .attr('y', yOffset)
           .attr('text-anchor', 'middle')
-          .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+          .style('font-family', MULTILINGUAL_FONT_FAMILY)
           .style('font-size', '13px')
           .style('font-weight', '600')
           .style('letter-spacing', '0.01em')
@@ -1592,7 +1593,7 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('x', 0)
           .attr('y', yOffset)
           .attr('text-anchor', 'middle')
-          .style('font-family', 'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif')
+          .style('font-family', MULTILINGUAL_FONT_FAMILY)
           .style('font-size', '13px')
           .style('font-weight', '600')
           .style('fill', textColor)

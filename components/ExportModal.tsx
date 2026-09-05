@@ -4,7 +4,7 @@ import React from 'react';
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf') => void;
+  onExport: (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf' | 'raster-pdf') => void;
   onOpenShare?: () => void;
   t: any;
 }
@@ -56,74 +56,114 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExp
             </button>
           )}
 
-          <button 
-            onClick={() => onExport('png')}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-blue-500/50 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <span className="material-icons-round text-purple-400 text-2xl">image</span>
-              <div className="text-left">
-                <div className="text-sm font-bold text-slate-200 group-hover:text-white">{t.export.formats.png}</div>
-                <div className="text-xs text-slate-500">{t.export.desc.png}</div>
-              </div>
-            </div>
-            <span className="material-icons-round text-slate-500 group-hover:text-blue-400">arrow_forward</span>
-          </button>
-
-          <button 
-            onClick={() => onExport('svg')}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-blue-500/50 transition-all group"
-          >
-            <div className="flex items-center gap-3">
-              <span className="material-icons-round text-amber-400 text-2xl">polyline</span>
-              <div className="text-left">
-                <div className="text-sm font-bold text-slate-200 group-hover:text-white">{t.export.formats.svg}</div>
-                <div className="text-xs text-slate-500">{t.export.desc.svg}</div>
-              </div>
-            </div>
-            <span className="material-icons-round text-slate-500 group-hover:text-blue-400">arrow_forward</span>
-          </button>
-
+          {/* 1. Vector PDF (100% SVG Vector Sharpness) */}
           <button 
             onClick={() => onExport('pdf')}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-blue-500/50 transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-red-500/50 transition-all group"
           >
             <div className="flex items-center gap-3">
               <span className="material-icons-round text-red-400 text-2xl">picture_as_pdf</span>
               <div className="text-left">
-                <div className="text-sm font-bold text-slate-200 group-hover:text-white">{t.export.formats.pdf}</div>
-                <div className="text-xs text-slate-500">{t.export.desc.pdf}</div>
+                <div className="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+                  <span>{t.export.formats.pdf}</span>
+                  <span className="text-[10px] bg-red-500/20 text-red-300 border border-red-500/30 px-1.5 py-0.5 rounded font-semibold uppercase">
+                    {t.export.badges?.vector || "Vector / SVG Quality"}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">{t.export.desc.pdf}</div>
               </div>
             </div>
-            <span className="material-icons-round text-slate-500 group-hover:text-blue-400">arrow_forward</span>
+            <span className="material-icons-round text-slate-500 group-hover:text-red-400">arrow_forward</span>
           </button>
 
+          {/* 2. Vector SVG */}
+          <button 
+            onClick={() => onExport('svg')}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-amber-500/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-icons-round text-amber-400 text-2xl">polyline</span>
+              <div className="text-left">
+                <div className="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+                  <span>{t.export.formats.svg}</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold uppercase">
+                    Vector
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">{t.export.desc.svg}</div>
+              </div>
+            </div>
+            <span className="material-icons-round text-slate-500 group-hover:text-amber-400">arrow_forward</span>
+          </button>
+
+          {/* 3. Ultra-HD Print PDF (300 DPI) */}
+          <button 
+            onClick={() => onExport('raster-pdf')}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-rose-500/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-icons-round text-rose-400 text-2xl">print</span>
+              <div className="text-left">
+                <div className="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+                  <span>{t.export.formats.rasterPdf || "Print PDF (300 DPI Ultra-HD)"}</span>
+                  <span className="text-[10px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-semibold uppercase">
+                    {t.export.badges?.print || "300 DPI Lossless"}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">{t.export.desc.rasterPdf || "Lossless 300 DPI document, optimal for print shops and commercial plotters."}</div>
+              </div>
+            </div>
+            <span className="material-icons-round text-slate-500 group-hover:text-rose-400">arrow_forward</span>
+          </button>
+
+          {/* 4. PNG Image */}
+          <button 
+            onClick={() => onExport('png')}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-purple-500/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-icons-round text-purple-400 text-2xl">image</span>
+              <div className="text-left">
+                <div className="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+                  <span>{t.export.formats.png}</span>
+                  <span className="text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-1.5 py-0.5 rounded font-semibold uppercase">
+                    300 DPI
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">{t.export.desc.png}</div>
+              </div>
+            </div>
+            <span className="material-icons-round text-slate-500 group-hover:text-purple-400">arrow_forward</span>
+          </button>
+
+          {/* 5. Excel */}
           <button 
             onClick={() => onExport('excel')}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-blue-500/50 transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-emerald-500/50 transition-all group"
           >
             <div className="flex items-center gap-3">
               <span className="material-icons-round text-emerald-400 text-2xl">table_view</span>
               <div className="text-left">
                 <div className="text-sm font-bold text-slate-200 group-hover:text-white">{t.export.formats.excel}</div>
-                <div className="text-xs text-slate-500">{t.export.desc.excel}</div>
+                <div className="text-xs text-slate-400">{t.export.desc.excel}</div>
               </div>
             </div>
-            <span className="material-icons-round text-slate-500 group-hover:text-blue-400">arrow_forward</span>
+            <span className="material-icons-round text-slate-500 group-hover:text-emerald-400">arrow_forward</span>
           </button>
 
+          {/* 6. JSON */}
           <button 
             onClick={() => onExport('json')}
-            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-blue-500/50 transition-all group"
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-cyan-500/50 transition-all group"
           >
             <div className="flex items-center gap-3">
               <span className="material-icons-round text-cyan-400 text-2xl">data_object</span>
               <div className="text-left">
                 <div className="text-sm font-bold text-slate-200 group-hover:text-white">{t.export.formats.json}</div>
-                <div className="text-xs text-slate-500">{t.export.desc.json}</div>
+                <div className="text-xs text-slate-400">{t.export.desc.json}</div>
               </div>
             </div>
-            <span className="material-icons-round text-slate-500 group-hover:text-blue-400">arrow_forward</span>
+            <span className="material-icons-round text-slate-500 group-hover:text-cyan-400">arrow_forward</span>
           </button>
         </div>
 

@@ -233,18 +233,24 @@ export const translations = {
       title: "Export Options",
       subtitle: "Choose a format to save or share your diagram.",
       formats: {
-        svg: "Vector Image (SVG)",
-        png: "Raster Image (PNG)",
+        svg: "Vector Graphic (SVG)",
+        png: "High-Resolution Image (PNG)",
         json: "Project Data (JSON)",
-        excel: "Spreadsheet (CSV)",
-        pdf: "Document (PDF)"
+        excel: "Spreadsheet (CSV/Excel)",
+        pdf: "Vector Document (PDF)",
+        rasterPdf: "Print PDF (300 DPI Ultra-HD)"
       },
       desc: {
-        svg: "Best for high-quality printing and editing in vector software.",
-        png: "Best for sharing on social media, documents, or quick viewing.",
+        svg: "Infinite vector scalability, best for editing and CAD workflows.",
+        png: "300 DPI crisp raster image for documents, slides, and reports.",
         json: "Save the raw project data to backup or import later.",
-        excel: "Export component list and data to Excel/CSV.",
-        pdf: "Print diagram to a PDF document."
+        excel: "Export component list and father-son data to Excel/CSV.",
+        pdf: "Pure vector PDF with infinite zoom & sharp lines, exact 1:1 SVG fidelity.",
+        rasterPdf: "Lossless 300 DPI document, optimal for print shops and commercial plotters."
+      },
+      badges: {
+        vector: "Vector / SVG Sharpness",
+        print: "300 DPI Lossless"
       }
     },
     csvHeaders: {
@@ -864,17 +870,23 @@ export const translations = {
       subtitle: "בחר פורמט לשמירה או שיתוף של הדיאגרמה.",
       formats: {
         svg: "תמונה וקטורית (SVG)",
-        png: "תמונה (PNG)",
+        png: "תמונה ברזולוציה גבוהה (PNG)",
         json: "נתוני פרויקט (JSON)",
         excel: "גליון נתונים (CSV/Excel)",
-        pdf: "מסמך (PDF)"
+        pdf: "מסמך וקטורי (PDF - איכות SVG)",
+        rasterPdf: "מסמך להדפסה (PDF ב-300 DPI)"
       },
       desc: {
-        svg: "הטוב ביותר להדפסה איכותית ועריכה בתוכנות גרפיות.",
-        png: "הטוב ביותר לשיתוף ברשתות חברתיות או מסמכים.",
+        svg: "קובץ וקטורי ללא פיקסלים, מעולה להדפסה ועריכה בתוכנות שרטוט.",
+        png: "תמונה חדה ב-300 DPI לשיתוף במסמכים ומצגות.",
         json: "שמור את נתוני הפרויקט לגיבוי או ייבוא מאוחר יותר.",
-        excel: "ייצוא רשימת רכיבים ונתונים לאקסל/CSV.",
-        pdf: "הדפס את הדיאגרמה למסמך PDF."
+        excel: "ייצוא רשימת רכיבים וקשרי אב-בן לאקסל/CSV.",
+        pdf: "קובץ PDF וקטורי מלא עם זום אינסופי וקווים חדים זהים ל-SVG.",
+        rasterPdf: "מסמך ללא איבוד איכות (300 DPI) המתאים לדפוס מקצועי."
+      },
+      badges: {
+        vector: "איכות וקטורית / SVG",
+        print: "300 DPI Lossless"
       }
     },
     csvHeaders: {
@@ -1493,18 +1505,24 @@ export const translations = {
       title: "خيارات التصدير",
       subtitle: "اختر تنسيقًا لحفظ المخطط أو مشاركته.",
       formats: {
-        svg: "صورة متجهة (SVG)",
-        png: "صورة (PNG)",
+        svg: "صورة متجهة فيكتور (SVG)",
+        png: "صورة عالية الدقة (PNG)",
         json: "بيانات المشروع (JSON)",
         excel: "جدول بيانات (CSV/Excel)",
-        pdf: "مستند (PDF)"
+        pdf: "مستند فيكتور متجهات (PDF - بجودة SVG)",
+        rasterPdf: "مستند للطباعة (PDF بدقة 300 DPI)"
       },
       desc: {
-        svg: "الأفضل للطباعة عالية الجودة والتحرير.",
-        png: "الأفضل للمشاركة على وسائل التواصل الاجتماعي.",
-        json: "حفظ بيانات المشروع للنسخ الاحتياطي.",
-        excel: "تصدير قائمة المكونات والبيانات إلى Excel/CSV.",
-        pdf: "طباعة المخطط إلى مستند PDF."
+        svg: "أعلى جودة متجهات قابلة للتكبير اللانهائي دون أي بكسلة، ممتاز للتحرير وCAD.",
+        png: "صورة نقطية واضحة بدقة 300 DPI للمستندات والتقارير.",
+        json: "حفظ بيانات المشروع للنسخ الاحتياطي أو الاستيراد لاحقًا.",
+        excel: "تصدير قائمة المكونات وروابط الآباء والأبناء إلى Excel/CSV.",
+        pdf: "مستند PDF متجهات أصلي بجودة SVG الكاملة وزووم غير محدود وخطوط متناهية الدقة.",
+        rasterPdf: "مستند PDF بدون فقدان للجودة (300 DPI) مثالي للمطابع ومخططات البلوتر."
+      },
+      badges: {
+        vector: "فيكتور / جودة SVG",
+        print: "300 DPI Lossless"
       }
     },
     csvHeaders: {

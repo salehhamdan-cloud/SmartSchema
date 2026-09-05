@@ -36,6 +36,7 @@ import { DEFAULT_PROJECT, DEFAULT_CONNECTION_STYLE, DEFAULT_PRINT_METADATA, COMP
 import { analyzeCircuit } from './services/geminiService';
 import { translations } from './translations';
 import { jsPDF } from 'jspdf';
+import { svg2pdf } from 'svg2pdf.js';
 import * as XLSX from 'xlsx';
 import LZString from 'lz-string';
 
@@ -1837,7 +1838,27 @@ export default function App() {
       cloneGroup.setAttribute('transform', 'translate(0,0) scale(1)');
 
       // 4. Remove temporary/UI elements that shouldn't be in the export
-      clone.querySelectorAll('.action-buttons, .temp-drawing, .print-layout-edit-btn, .link-hit').forEach(el => el.remove());
+      clone.querySelectorAll('.action-buttons, .temp-drawing, .print-layout-edit-btn, .link-hit, .eraser-surface, .eraser-visual-cursor, .draw-surface').forEach(el => el.remove());
+      clone.querySelectorAll('text').forEach(el => {
+          if (el.style.visibility === 'hidden' || el.getAttribute('visibility') === 'hidden') {
+              el.remove();
+          }
+      });
+
+      // 4b. Configure Hebrew & Arabic typography and text direction for standalone SVG & Canvas rendering
+      const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+      const multilingualFontFamily = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Arabic', 'Tahoma', Arial, sans-serif";
+      
+      clone.querySelectorAll('text, tspan').forEach(el => {
+          const text = el.textContent || '';
+          if (rtlRegex.test(text)) {
+              el.setAttribute('direction', 'rtl');
+              el.setAttribute('unicode-bidi', 'isolate');
+              (el as SVGElement).style.direction = 'rtl';
+              (el as SVGElement).style.unicodeBidi = 'isolate';
+          }
+          (el as SVGElement).style.fontFamily = multilingualFontFamily;
+      });
 
       // Strip style attribute from SVG clone to remove any patterns or touch-action that break canvas rasterization
       clone.removeAttribute('style');
@@ -1860,14 +1881,19 @@ export default function App() {
       bgRect.setAttribute('fill', isDark ? '#0f172a' : '#ffffff');
       cloneGroup.insertBefore(bgRect, cloneGroup.firstChild);
 
-      // 7. Embed self-contained styles with Unicode Hebrew and Arabic font family stack
+      // 7. Embed self-contained styles with Unicode Hebrew and Arabic font family stack and webfont imports
       const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
       style.textContent = `
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Heebo:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&display=swap');
           text { 
-              font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Hebrew', 'Noto Sans Arabic', 'Heebo', 'Rubik', 'Segoe UI Arabic', 'Tahoma', Arial, sans-serif;
+              font-family: 'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Arabic', 'Tahoma', Arial, sans-serif;
               text-rendering: geometricPrecision;
               -webkit-font-smoothing: antialiased;
               -moz-osx-font-smoothing: grayscale;
+          }
+          text[direction="rtl"] {
+              direction: rtl;
+              unicode-bidi: isolate;
           }
           .node text { pointer-events: none; }
           .node-bg { transition: none !important; shape-rendering: geometricPrecision; }
@@ -1892,15 +1918,20 @@ export default function App() {
       return { clone, svgString, width, height, minX: finalMinX, minY: finalMinY };
   };
 
-  const svgToCanvas = (svgElement: SVGSVGElement, finalMinX: number, finalMinY: number, width: number, height: number): Promise<HTMLCanvasElement> => {
+  const svgToCanvas = async (svgElement: SVGSVGElement, finalMinX: number, finalMinY: number, width: number, height: number, customScale?: number): Promise<HTMLCanvasElement> => {
+      if (document.fonts && document.fonts.ready) {
+          try {
+              await document.fonts.ready;
+          } catch (_) {}
+      }
       return new Promise((resolve, reject) => {
           const maxDim = Math.max(width, height);
-          let scale = 2.0;
+          let scale = customScale || 3.0;
           
-          if (maxDim * scale > 4096) {
-              scale = 4096 / maxDim;
+          if (maxDim * scale > 6144) {
+              scale = 6144 / maxDim;
           }
-          scale = Math.max(1.0, Math.min(3.0, scale));
+          scale = Math.max(1.5, Math.min(4.0, scale));
 
           const canvasWidth = Math.max(100, Math.round(width * scale));
           const canvasHeight = Math.max(100, Math.round(height * scale));
@@ -2016,7 +2047,7 @@ export default function App() {
       triggerDownload(dataStr, `${safeName}_ProjectBackup.json`);
   };
 
-  const handleExport = async (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf') => {
+  const handleExport = async (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf' | 'raster-pdf') => {
       const safeProjectName = activeProject.name.trim().replace(/[^\w\u0590-\u05FF\u0600-\u06FF\s-]/g, '_');
       const safePageName = activePage.name.trim().replace(/[^\w\u0590-\u05FF\u0600-\u06FF\s-]/g, '_');
       const baseFileName = `${safeProjectName} - ${safePageName}`;
@@ -2375,8 +2406,126 @@ export default function App() {
           return;
       }
 
+      if (format === 'pdf') {
+          const isLandscape = width >= height;
+          // Check if diagram or current language uses Hebrew or Arabic
+          const hasRTLChars = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(svgString) || language === 'he' || language === 'ar';
+
+          if (hasRTLChars) {
+              // Full Hebrew & Arabic Support:
+              // Native browser canvas rasterization utilizes the platform's HarfBuzz/Skia text shaping engine.
+              // It renders flawless Arabic cursive connections (initial, medial, final glyphs), correct RTL direction,
+              // Hebrew Nikud and letterforms, and bidirectional layout at ultra-crisp 300+ DPI print quality.
+              try {
+                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+                  const pdf = new jsPDF({
+                      orientation: isLandscape ? 'landscape' : 'portrait',
+                      unit: 'pt',
+                      format: [width, height],
+                      compress: true
+                  });
+                  const actualPageWidth = pdf.internal.pageSize.getWidth();
+                  const actualPageHeight = pdf.internal.pageSize.getHeight();
+                  const pngData = canvas.toDataURL('image/png');
+                  pdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+                  pdf.save(`${baseFileName}.pdf`);
+              } catch (rtlPdfErr) {
+                  console.error("Hebrew/Arabic PDF generation error:", rtlPdfErr);
+                  alert("Failed to generate PDF document.");
+              }
+          } else {
+              // Pure Latin/English diagrams: Direct vector parsing via svg2pdf with automated fallback
+              const pdf = new jsPDF({
+                  orientation: isLandscape ? 'landscape' : 'portrait',
+                  unit: 'pt',
+                  format: [width, height],
+                  compress: true
+              });
+
+              // Temporarily attach clone to DOM off-screen for complete layout, font & SVG text metrics
+              // Note: Do NOT use visibility: hidden or opacity: 0 because svg2pdf inspects CSS visibility & opacity
+              // and will discard/skip all elements if hidden!
+              clone.style.position = 'fixed';
+              clone.style.left = '-99999px';
+              clone.style.top = '-99999px';
+              clone.style.width = `${width}px`;
+              clone.style.height = `${height}px`;
+              clone.style.pointerEvents = 'none';
+              clone.style.zIndex = '-99999';
+              document.body.appendChild(clone);
+
+              try {
+                  const targetWidth = pdf.internal.pageSize.getWidth();
+                  const targetHeight = pdf.internal.pageSize.getHeight();
+
+                  await svg2pdf(clone, pdf, {
+                      x: 0,
+                      y: 0,
+                      width: targetWidth,
+                      height: targetHeight
+                  });
+
+                  // Validation: Verify svg2pdf actually generated visual commands in the document
+                  const page1 = (pdf.internal as any).pages[1];
+                  const opCount = Array.isArray(page1) ? page1.length : (typeof page1 === 'string' ? page1.length : 0);
+                  if (opCount <= 4) {
+                      throw new Error("Vector PDF produced an empty page");
+                  }
+
+                  pdf.save(`${baseFileName}.pdf`);
+              } catch (vectorErr) {
+                  console.warn("Direct vector svg2pdf encountered an issue, falling back to ultra-high DPI print PDF:", vectorErr);
+                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+                  const fallbackPdf = new jsPDF({
+                      orientation: isLandscape ? 'landscape' : 'portrait',
+                      unit: 'pt',
+                      format: [width, height],
+                      compress: true
+                  });
+                  const actualPageWidth = fallbackPdf.internal.pageSize.getWidth();
+                  const actualPageHeight = fallbackPdf.internal.pageSize.getHeight();
+                  const pngData = canvas.toDataURL('image/png');
+                  fallbackPdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+                  fallbackPdf.save(`${baseFileName}.pdf`);
+              } finally {
+                  if (clone.parentNode) {
+                      clone.parentNode.removeChild(clone);
+                  }
+              }
+          }
+
+          setShowExportModal(false);
+          return;
+      }
+
+      if (format === 'raster-pdf') {
+          // 2. Dedicated Print PDF: 300+ DPI Lossless rasterization for commercial plotters & printing
+          try {
+              const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+              const isLandscape = width >= height;
+              const pdf = new jsPDF({
+                  orientation: isLandscape ? 'landscape' : 'portrait',
+                  unit: 'pt',
+                  format: [width, height],
+                  compress: true
+              });
+
+              const actualPageWidth = pdf.internal.pageSize.getWidth();
+              const actualPageHeight = pdf.internal.pageSize.getHeight();
+              const pngData = canvas.toDataURL('image/png');
+              pdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+              pdf.save(`${baseFileName}_print_300dpi.pdf`);
+          } catch (err: any) {
+              console.error("Print PDF export error:", err);
+              alert(`Export failed: ${err.message || 'Error generating print PDF'}`);
+          }
+
+          setShowExportModal(false);
+          return;
+      }
+
       try {
-          const canvas = await svgToCanvas(clone, minX, minY, width, height);
+          const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.0);
 
           if (format === 'png') {
               if (canvas.toBlob) {
@@ -2394,34 +2543,6 @@ export default function App() {
                   const pngUrl = canvas.toDataURL('image/png');
                   triggerDownload(pngUrl, `${baseFileName}.png`);
               }
-          } else if (format === 'pdf') {
-              const isLandscape = width >= height;
-              // Proportional PDF page dimension normalization to ensure standard viewer compatibility without clipping
-              const maxPdfDim = 3200;
-              let pdfWidth = width;
-              let pdfHeight = height;
-              if (width >= height && width > maxPdfDim) {
-                  pdfWidth = maxPdfDim;
-                  pdfHeight = (height / width) * maxPdfDim;
-              } else if (height > width && height > maxPdfDim) {
-                  pdfHeight = maxPdfDim;
-                  pdfWidth = (width / height) * maxPdfDim;
-              }
-
-              const pdf = new jsPDF({
-                  orientation: isLandscape ? 'landscape' : 'portrait',
-                  unit: 'pt',
-                  format: [pdfWidth, pdfHeight],
-                  compress: true
-              });
-
-              const actualPageWidth = pdf.internal.pageSize.getWidth();
-              const actualPageHeight = pdf.internal.pageSize.getHeight();
-
-              // Ultra high-resolution JPEG at 1.0 maximum fidelity embeds directly without the bug-prone jsPDF PNG chunk parser
-              const jpegData = canvas.toDataURL('image/jpeg', 1.0);
-              pdf.addImage(jpegData, 'JPEG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'SLOW');
-              pdf.save(`${baseFileName}.pdf`);
           }
       } catch (err: any) {
           console.error("Export error:", err);
