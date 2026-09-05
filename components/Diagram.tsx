@@ -246,6 +246,8 @@ export const Diagram: React.FC<DiagramProps> = ({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const transformRef = useRef<d3.ZoomTransform>(d3.zoomIdentity);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const hasInitialFitRef = useRef<boolean>(false);
+  const prevOrientationRef = useRef<DiagramOrientation>(orientation);
 
   // Palm Rejection & Stylus Tracking State Refs
   const lastPenTimestampRef = useRef<number>(0);
@@ -2132,27 +2134,31 @@ export const Diagram: React.FC<DiagramProps> = ({
         legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'middle' : 'start').text(item.label);
     });
 
-    // Auto-fit diagram content to screen on mount, page change, or orientation change
-    requestAnimationFrame(() => {
-      if (!svgRef.current || !zoomBehaviorRef.current) return;
-      const svgEl = svgRef.current;
-      const liveG = svgEl.querySelector('g');
-      if (!liveG) return;
-      try {
-        const bbox = liveG.getBBox();
-        if (bbox && bbox.width > 10 && bbox.height > 10) {
-          const clientW = svgEl.clientWidth || dimensions.width || 800;
-          const clientH = svgEl.clientHeight || dimensions.height || 600;
-          const pad = 60;
-          const scale = Math.max(0.15, Math.min(1.2, Math.min((clientW - pad * 2) / bbox.width, (clientH - pad * 2) / bbox.height)));
-          const tx = (clientW - bbox.width * scale) / 2 - bbox.x * scale;
-          const ty = (clientH - bbox.height * scale) / 2 - bbox.y * scale;
-          const fitTransform = d3.zoomIdentity.translate(tx, ty).scale(scale);
-          transformRef.current = fitTransform;
-          d3.select(svgEl).call(zoomBehaviorRef.current.transform, fitTransform);
-        }
-      } catch (_) {}
-    });
+    // Auto-fit diagram content to screen ONLY on initial mount or when orientation explicitly changes
+    if (!hasInitialFitRef.current || prevOrientationRef.current !== orientation) {
+      prevOrientationRef.current = orientation;
+      requestAnimationFrame(() => {
+        if (!svgRef.current || !zoomBehaviorRef.current) return;
+        const svgEl = svgRef.current;
+        const liveG = svgEl.querySelector('g');
+        if (!liveG) return;
+        try {
+          const bbox = liveG.getBBox();
+          if (bbox && bbox.width > 10 && bbox.height > 10) {
+            const clientW = svgEl.clientWidth || dimensions.width || 800;
+            const clientH = svgEl.clientHeight || dimensions.height || 600;
+            const pad = 60;
+            const scale = Math.max(0.15, Math.min(1.2, Math.min((clientW - pad * 2) / bbox.width, (clientH - pad * 2) / bbox.height)));
+            const tx = (clientW - bbox.width * scale) / 2 - bbox.x * scale;
+            const ty = (clientH - bbox.height * scale) / 2 - bbox.y * scale;
+            const fitTransform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+            transformRef.current = fitTransform;
+            d3.select(svgEl).call(zoomBehaviorRef.current.transform, fitTransform);
+            hasInitialFitRef.current = true;
+          }
+        } catch (_) {}
+      });
+    }
 
   }, [
     data, dimensions, onNodeClick, onLinkClick, selectedNodeId, selectedLinkId, orientation, searchMatches,
