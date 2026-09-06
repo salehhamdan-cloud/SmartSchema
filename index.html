@@ -70,17 +70,81 @@
          ========================================================== */
 
       /* Light Theme: Base Backgrounds */
-      html.theme-light .bg-slate-950:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]) {
+      html.theme-light,
+      body.theme-light,
+      .theme-light {
+        color-scheme: light;
+      }
+
+      html.theme-light .bg-slate-950,
+      html.theme-light .bg-slate-950\/95,
+      html.theme-light .bg-slate-950\/90,
+      html.theme-light .bg-slate-950\/80,
+      html.theme-light .bg-slate-950\/70,
+      html.theme-light .bg-slate-950\/60,
+      html.theme-light .bg-slate-950\/50,
+      html.theme-light .bg-slate-950\/40,
+      html.theme-light .bg-slate-950\/30,
+      html.theme-light .bg-slate-950\/20,
+      body.theme-light .bg-slate-950,
+      body.theme-light .bg-slate-950\/95,
+      body.theme-light .bg-slate-950\/90,
+      body.theme-light .bg-slate-950\/80,
+      body.theme-light .bg-slate-950\/70,
+      body.theme-light .bg-slate-950\/60,
+      body.theme-light .bg-slate-950\/50,
+      body.theme-light .bg-slate-950\/40,
+      body.theme-light .bg-slate-950\/30,
+      body.theme-light .bg-slate-950\/20 {
         background-color: #f8fafc !important;
       }
+
       html.theme-light nav.bg-slate-900,
+      body.theme-light nav.bg-slate-900 {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 50%, #eef2ff 100%) !important;
+        border-bottom: 2px solid #bfdbfe !important;
+        box-shadow: 0 4px 16px -2px rgba(59, 130, 246, 0.08) !important;
+      }
+
       html.theme-light aside.bg-slate-900,
       html.theme-light header.bg-slate-900,
-      html.theme-light .bg-slate-900:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      body.theme-light aside.bg-slate-900,
+      body.theme-light header.bg-slate-900,
+      html.theme-light .bg-slate-900:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         background-color: #ffffff !important;
       }
 
-      /* Semi-transparent Dark Backgrounds in Headers, Bars, Menus */
+      /* Navigation Bar Inner Control Containers & Inputs */
+      html.theme-light nav .bg-slate-800\/90,
+      body.theme-light nav .bg-slate-800\/90 {
+        background-color: #ffffff !important;
+        border-color: #cbd5e1 !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
+      }
+      html.theme-light nav .bg-slate-900\/60,
+      body.theme-light nav .bg-slate-900\/60 {
+        background-color: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+      }
+      html.theme-light nav input[type="text"] {
+        background-color: #ffffff !important;
+        border-color: #93c5fd !important;
+        color: #0f172a !important;
+        box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(147, 197, 253, 0.25) !important;
+      }
+      html.theme-light nav input[type="text"]:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+      }
+
+      /* Sidebar Active Project Indicator */
+      html.theme-light aside div[class*="border-blue-500"],
+      body.theme-light aside div[class*="border-blue-500"] {
+        background: linear-gradient(90deg, #eff6ff 0%, #f0f7ff 100%) !important;
+        color: #1e3a8a !important;
+      }
+
+      /* Semi-transparent Dark Backgrounds in Headers, Bars, Menus, Zoom Controls */
       html.theme-light .bg-slate-900\/95,
       html.theme-light .bg-slate-900\/90,
       html.theme-light .bg-slate-900\/80,
@@ -89,12 +153,22 @@
       html.theme-light .bg-slate-900\/50,
       html.theme-light .bg-slate-900\/40,
       html.theme-light .bg-slate-900\/30,
-      html.theme-light .bg-slate-900\/20 {
+      html.theme-light .bg-slate-900\/20,
+      body.theme-light .bg-slate-900\/95,
+      body.theme-light .bg-slate-900\/90,
+      body.theme-light .bg-slate-900\/80,
+      body.theme-light .bg-slate-900\/70,
+      body.theme-light .bg-slate-900\/60,
+      body.theme-light .bg-slate-900\/50,
+      body.theme-light .bg-slate-900\/40,
+      body.theme-light .bg-slate-900\/30,
+      body.theme-light .bg-slate-900\/20 {
         background-color: rgba(248, 250, 252, 0.95) !important;
       }
 
       /* Secondary Panel, Card, Button Backgrounds */
-      html.theme-light .bg-slate-800:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light .bg-slate-800:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .bg-slate-800:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         background-color: #f1f5f9 !important;
       }
 
@@ -103,14 +177,21 @@
       html.theme-light div[class*="shadow-2xl"].bg-slate-900,
       html.theme-light div[class*="shadow-xl"].bg-slate-800,
       html.theme-light div[class*="shadow-xl"].bg-slate-900,
-      html.theme-light [role="dialog"],
-      html.theme-light .fixed.inset-0 > div[class*="rounded-"] {
+      html.theme-light [role="dialog"] > div:not([class*="bg-gradient-"]):not([class*="bg-blue-"]):not([class*="bg-amber-"]):not([class*="bg-emerald-"]),
+      body.theme-light div[class*="shadow-2xl"].bg-slate-800,
+      body.theme-light div[class*="shadow-2xl"].bg-slate-900,
+      body.theme-light div[class*="shadow-xl"].bg-slate-800,
+      body.theme-light div[class*="shadow-xl"].bg-slate-900,
+      body.theme-light [role="dialog"] > div:not([class*="bg-gradient-"]):not([class*="bg-blue-"]):not([class*="bg-amber-"]):not([class*="bg-emerald-"]) {
         background-color: #ffffff !important;
       }
 
       html.theme-light .bg-slate-800\/95,
       html.theme-light .bg-slate-800\/90,
-      html.theme-light .bg-slate-800\/80 {
+      html.theme-light .bg-slate-800\/80,
+      body.theme-light .bg-slate-800\/95,
+      body.theme-light .bg-slate-800\/90,
+      body.theme-light .bg-slate-800\/80 {
         background-color: rgba(255, 255, 255, 0.96) !important;
       }
 
@@ -119,83 +200,345 @@
       html.theme-light .bg-slate-800\/50,
       html.theme-light .bg-slate-800\/40,
       html.theme-light .bg-slate-800\/30,
-      html.theme-light .bg-slate-800\/20 {
+      html.theme-light .bg-slate-800\/20,
+      body.theme-light .bg-slate-800\/70,
+      body.theme-light .bg-slate-800\/60,
+      body.theme-light .bg-slate-800\/50,
+      body.theme-light .bg-slate-800\/40,
+      body.theme-light .bg-slate-800\/30,
+      body.theme-light .bg-slate-800\/20 {
         background-color: rgba(241, 245, 249, 0.8) !important;
       }
 
+      /* Floating Zoom and View Canvas Controls in Light Mode */
+      html.theme-light .fixed.bottom-4,
+      html.theme-light .fixed.bottom-6,
+      body.theme-light .fixed.bottom-4,
+      body.theme-light .fixed.bottom-6 {
+        background: rgba(255, 255, 255, 0.96) !important;
+        border-color: #93c5fd !important;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+      }
+      html.theme-light .fixed.bottom-4 button,
+      html.theme-light .fixed.bottom-6 button,
+      body.theme-light .fixed.bottom-4 button,
+      body.theme-light .fixed.bottom-6 button {
+        background-color: #f0f7ff !important;
+        border-color: #bfdbfe !important;
+        color: #1e3a8a !important;
+      }
+      html.theme-light .fixed.bottom-4 button:hover,
+      html.theme-light .fixed.bottom-6 button:hover,
+      body.theme-light .fixed.bottom-4 button:hover,
+      body.theme-light .fixed.bottom-6 button:hover {
+        background-color: #3b82f6 !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+      }
+
+      /* Vibrant Electrical Badges & Status Pills in Light Mode */
+      html.theme-light .bg-emerald-500\/20,
+      body.theme-light .bg-emerald-500\/20,
+      html.theme-light .bg-emerald-500\/10,
+      body.theme-light .bg-emerald-500\/10,
+      html.theme-light .bg-emerald-600\/20,
+      body.theme-light .bg-emerald-600\/20 {
+        background-color: #ecfdf5 !important;
+        border-color: #6ee7b7 !important;
+        color: #047857 !important;
+      }
+      html.theme-light .bg-blue-500\/20,
+      body.theme-light .bg-blue-500\/20,
+      html.theme-light .bg-blue-600\/20,
+      body.theme-light .bg-blue-600\/20,
+      html.theme-light .bg-blue-500\/10,
+      body.theme-light .bg-blue-500\/10 {
+        background-color: #eff6ff !important;
+        border-color: #93c5fd !important;
+        color: #1d4ed8 !important;
+      }
+      html.theme-light .bg-amber-500\/20,
+      body.theme-light .bg-amber-500\/20,
+      html.theme-light .bg-amber-500\/10,
+      body.theme-light .bg-amber-500\/10,
+      html.theme-light .bg-amber-600\/20,
+      body.theme-light .bg-amber-600\/20 {
+        background-color: #fffbeb !important;
+        border-color: #fcd34d !important;
+        color: #b45309 !important;
+      }
+      html.theme-light .bg-purple-500\/20,
+      body.theme-light .bg-purple-500\/20,
+      html.theme-light .bg-purple-500\/10,
+      body.theme-light .bg-purple-500\/10,
+      html.theme-light .bg-purple-600\/20,
+      body.theme-light .bg-purple-600\/20 {
+        background-color: #faf5ff !important;
+        border-color: #d8b4fe !important;
+        color: #6d28d9 !important;
+      }
+      html.theme-light .bg-red-500\/20,
+      body.theme-light .bg-red-500\/20,
+      html.theme-light .bg-red-500\/10,
+      body.theme-light .bg-red-500\/10,
+      html.theme-light .bg-red-600\/20,
+      body.theme-light .bg-red-600\/20 {
+        background-color: #fef2f2 !important;
+        border-color: #fca5a5 !important;
+        color: #b91c1c !important;
+      }
+      html.theme-light .bg-cyan-500\/20,
+      body.theme-light .bg-cyan-500\/20,
+      html.theme-light .bg-cyan-500\/10,
+      body.theme-light .bg-cyan-500\/10 {
+        background-color: #ecfeff !important;
+        border-color: #67e8f9 !important;
+        color: #0e7490 !important;
+      }
+      html.theme-light .bg-sky-500\/20,
+      body.theme-light .bg-sky-500\/20,
+      html.theme-light .bg-sky-500\/10,
+      body.theme-light .bg-sky-500\/10 {
+        background-color: #f0f9ff !important;
+        border-color: #7dd3fc !important;
+        color: #0369a1 !important;
+      }
+      html.theme-light .bg-indigo-500\/20,
+      body.theme-light .bg-indigo-500\/20,
+      html.theme-light .bg-indigo-500\/10,
+      body.theme-light .bg-indigo-500\/10 {
+        background-color: #eef2ff !important;
+        border-color: #a5b4fc !important;
+        color: #4338ca !important;
+      }
+      html.theme-light .bg-rose-500\/20,
+      body.theme-light .bg-rose-500\/20,
+      html.theme-light .bg-rose-500\/10,
+      body.theme-light .bg-rose-500\/10 {
+        background-color: #fff1f2 !important;
+        border-color: #fda4af !important;
+        color: #be123c !important;
+      }
+
+      /* High-Contrast Colorful Text & Icons in Light Mode */
+      html.theme-light .text-blue-400,
+      body.theme-light .text-blue-400,
+      html.theme-light .text-blue-300,
+      body.theme-light .text-blue-300 {
+        color: #1d4ed8 !important;
+      }
+      html.theme-light .text-sky-400,
+      body.theme-light .text-sky-400,
+      html.theme-light .text-sky-300,
+      body.theme-light .text-sky-300 {
+        color: #0284c7 !important;
+      }
+      html.theme-light .text-emerald-400,
+      body.theme-light .text-emerald-400,
+      html.theme-light .text-emerald-300,
+      body.theme-light .text-emerald-300 {
+        color: #047857 !important;
+      }
+      html.theme-light .text-amber-400,
+      body.theme-light .text-amber-400,
+      html.theme-light .text-amber-300,
+      body.theme-light .text-amber-300 {
+        color: #b45309 !important;
+      }
+      html.theme-light .text-purple-400,
+      body.theme-light .text-purple-400,
+      html.theme-light .text-purple-300,
+      body.theme-light .text-purple-300 {
+        color: #6d28d9 !important;
+      }
+      html.theme-light .text-red-400,
+      body.theme-light .text-red-400,
+      html.theme-light .text-red-300,
+      body.theme-light .text-red-300 {
+        color: #b91c1c !important;
+      }
+      html.theme-light .text-cyan-400,
+      body.theme-light .text-cyan-400,
+      html.theme-light .text-cyan-300,
+      body.theme-light .text-cyan-300 {
+        color: #0e7490 !important;
+      }
+      html.theme-light .text-indigo-400,
+      body.theme-light .text-indigo-400,
+      html.theme-light .text-indigo-300,
+      body.theme-light .text-indigo-300 {
+        color: #4338ca !important;
+      }
+      html.theme-light .text-yellow-400,
+      body.theme-light .text-yellow-400 {
+        color: #b45309 !important;
+      }
+      html.theme-light .text-rose-400,
+      body.theme-light .text-rose-400,
+      html.theme-light .text-rose-300,
+      body.theme-light .text-rose-300 {
+        color: #be123c !important;
+      }
+
+      /* Hover States for Text */
+      html.theme-light .hover\:text-amber-400:hover,
+      body.theme-light .hover\:text-amber-400:hover {
+        color: #b45309 !important;
+      }
+      html.theme-light .hover\:text-sky-300:hover,
+      body.theme-light .hover\:text-sky-300:hover,
+      html.theme-light .hover\:text-sky-400:hover,
+      body.theme-light .hover\:text-sky-400:hover {
+        color: #0284c7 !important;
+      }
+      html.theme-light .hover\:text-indigo-300:hover,
+      body.theme-light .hover\:text-indigo-300:hover,
+      html.theme-light .hover\:text-indigo-400:hover,
+      body.theme-light .hover\:text-indigo-400:hover {
+        color: #4338ca !important;
+      }
+      html.theme-light .hover\:text-blue-300:hover,
+      body.theme-light .hover\:text-blue-300:hover,
+      html.theme-light .hover\:text-blue-400:hover,
+      body.theme-light .hover\:text-blue-400:hover {
+        color: #1d4ed8 !important;
+      }
+      html.theme-light .hover\:text-green-400:hover,
+      body.theme-light .hover\:text-green-400:hover,
+      html.theme-light .hover\:text-emerald-400:hover,
+      body.theme-light .hover\:text-emerald-400:hover {
+        color: #059669 !important;
+      }
+
       /* Tertiary / Hover / Active backgrounds */
-      html.theme-light .bg-slate-700:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light .bg-slate-700:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .bg-slate-700:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         background-color: #e2e8f0 !important;
       }
       html.theme-light .bg-slate-700\/80,
       html.theme-light .bg-slate-700\/70,
       html.theme-light .bg-slate-700\/60,
-      html.theme-light .bg-slate-700\/50 {
+      html.theme-light .bg-slate-700\/50,
+      body.theme-light .bg-slate-700\/80,
+      body.theme-light .bg-slate-700\/70,
+      body.theme-light .bg-slate-700\/60,
+      body.theme-light .bg-slate-700\/50 {
         background-color: rgba(226, 232, 240, 0.75) !important;
       }
 
-      /* Hover States */
+      /* Hover & Active States */
+      html.theme-light .hover\:bg-slate-900:hover,
+      html.theme-light .hover\:bg-slate-900\/90:hover,
       html.theme-light .hover\:bg-slate-800:hover,
       html.theme-light .hover\:bg-slate-800\/90:hover,
       html.theme-light .hover\:bg-slate-800\/80:hover,
-      html.theme-light .hover\:bg-slate-800\/50:hover {
+      html.theme-light .hover\:bg-slate-800\/50:hover,
+      body.theme-light .hover\:bg-slate-900:hover,
+      body.theme-light .hover\:bg-slate-900\/90:hover,
+      body.theme-light .hover\:bg-slate-800:hover,
+      body.theme-light .hover\:bg-slate-800\/90:hover,
+      body.theme-light .hover\:bg-slate-800\/80:hover,
+      body.theme-light .hover\:bg-slate-800\/50:hover {
         background-color: #f1f5f9 !important;
       }
       html.theme-light .hover\:bg-slate-700:hover,
       html.theme-light .hover\:bg-slate-700\/90:hover,
       html.theme-light .hover\:bg-slate-700\/80:hover,
       html.theme-light .hover\:bg-slate-700\/70:hover,
-      html.theme-light .hover\:bg-slate-700\/60:hover {
+      html.theme-light .hover\:bg-slate-700\/60:hover,
+      html.theme-light .hover\:bg-slate-600:hover,
+      body.theme-light .hover\:bg-slate-700:hover,
+      body.theme-light .hover\:bg-slate-700\/90:hover,
+      body.theme-light .hover\:bg-slate-700\/80:hover,
+      body.theme-light .hover\:bg-slate-700\/70:hover,
+      body.theme-light .hover\:bg-slate-700\/60:hover,
+      body.theme-light .hover\:bg-slate-600:hover {
         background-color: #e2e8f0 !important;
+      }
+      html.theme-light .active\:bg-slate-600:active,
+      html.theme-light .active\:bg-slate-700:active,
+      body.theme-light .active\:bg-slate-600:active,
+      body.theme-light .active\:bg-slate-700:active {
+        background-color: #cbd5e1 !important;
       }
 
       /* Light Theme: Borders */
+      html.theme-light .border-slate-950,
       html.theme-light .border-slate-900,
       html.theme-light .border-slate-800,
       html.theme-light .border-slate-800\/90,
       html.theme-light .border-slate-800\/80,
+      html.theme-light .border-slate-800\/70,
+      html.theme-light .border-slate-800\/60,
       html.theme-light .border-slate-800\/50,
-      html.theme-light .border-slate-800\/30 {
+      html.theme-light .border-slate-800\/30,
+      body.theme-light .border-slate-950,
+      body.theme-light .border-slate-900,
+      body.theme-light .border-slate-800,
+      body.theme-light .border-slate-800\/90,
+      body.theme-light .border-slate-800\/80,
+      body.theme-light .border-slate-800\/70,
+      body.theme-light .border-slate-800\/60,
+      body.theme-light .border-slate-800\/50,
+      body.theme-light .border-slate-800\/30 {
         border-color: #e2e8f0 !important;
       }
       html.theme-light .border-slate-700,
       html.theme-light .border-slate-700\/90,
       html.theme-light .border-slate-700\/80,
+      html.theme-light .border-slate-700\/70,
       html.theme-light .border-slate-700\/60,
       html.theme-light .border-slate-700\/50,
-      html.theme-light .border-slate-600 {
+      html.theme-light .border-slate-600,
+      body.theme-light .border-slate-700,
+      body.theme-light .border-slate-700\/90,
+      body.theme-light .border-slate-700\/80,
+      body.theme-light .border-slate-700\/70,
+      body.theme-light .border-slate-700\/60,
+      body.theme-light .border-slate-700\/50,
+      body.theme-light .border-slate-600 {
         border-color: #cbd5e1 !important;
       }
       html.theme-light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
-      html.theme-light .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
+      html.theme-light .divide-slate-700 > :not([hidden]) ~ :not([hidden]),
+      body.theme-light .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+      body.theme-light .divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
         border-color: #e2e8f0 !important;
       }
 
       /* Light Theme: Text Colors */
-      html.theme-light nav .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light aside .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light header .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light [class*="shadow-2xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light [class*="shadow-xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light [role="dialog"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light .fixed.inset-0 .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light nav .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light aside .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light header .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light [class*="shadow-2xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light [class*="shadow-xl"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light [role="dialog"] .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light .fixed.inset-0 .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light nav .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light aside .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light header .text-white:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         color: #0f172a !important;
       }
 
-      html.theme-light :not(svg, svg *).text-slate-100:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]),
-      html.theme-light :not(svg, svg *).text-slate-200:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light .text-slate-100:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      html.theme-light .text-slate-200:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .text-slate-100:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .text-slate-200:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         color: #1e293b !important;
       }
 
-      html.theme-light :not(svg, svg *).text-slate-300:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light .text-slate-300:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .text-slate-300:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         color: #334155 !important;
       }
 
-      html.theme-light :not(svg, svg *).text-slate-400:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]) {
+      html.theme-light .text-slate-400:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]),
+      body.theme-light .text-slate-400:not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-red-"]):not([class*="bg-purple-"]):not([class*="bg-gradient-"]):not([class*="bg-sky-"]):not([class*="bg-teal-"]):not([class*="bg-yellow-"]):not([class*="bg-rose-"]):not([class*="bg-cyan-"]):not([class*="bg-violet-"]) {
         color: #64748b !important;
       }
 
-      html.theme-light :not(svg, svg *).hover\:text-white:hover {
+      html.theme-light .hover\:text-white:hover,
+      body.theme-light .hover\:text-white:hover {
         color: #0f172a !important;
       }
 
@@ -206,6 +549,12 @@
       html.theme-light [class*="bg-amber-"] .text-white,
       html.theme-light [class*="bg-red-"] .text-white,
       html.theme-light [class*="bg-purple-"] .text-white,
+      html.theme-light [class*="bg-sky-"] .text-white,
+      html.theme-light [class*="bg-teal-"] .text-white,
+      html.theme-light [class*="bg-yellow-"] .text-white,
+      html.theme-light [class*="bg-rose-"] .text-white,
+      html.theme-light [class*="bg-cyan-"] .text-white,
+      html.theme-light [class*="bg-violet-"] .text-white,
       html.theme-light [class*="bg-gradient-"] .text-white,
       html.theme-light [class*="bg-blue-"].text-white,
       html.theme-light [class*="bg-indigo-"].text-white,
@@ -213,40 +562,88 @@
       html.theme-light [class*="bg-amber-"].text-white,
       html.theme-light [class*="bg-red-"].text-white,
       html.theme-light [class*="bg-purple-"].text-white,
-      html.theme-light [class*="bg-gradient-"].text-white {
+      html.theme-light [class*="bg-sky-"].text-white,
+      html.theme-light [class*="bg-teal-"].text-white,
+      html.theme-light [class*="bg-yellow-"].text-white,
+      html.theme-light [class*="bg-rose-"].text-white,
+      html.theme-light [class*="bg-cyan-"].text-white,
+      html.theme-light [class*="bg-violet-"].text-white,
+      html.theme-light [class*="bg-gradient-"].text-white,
+      body.theme-light [class*="bg-blue-"] .text-white,
+      body.theme-light [class*="bg-indigo-"] .text-white,
+      body.theme-light [class*="bg-emerald-"] .text-white,
+      body.theme-light [class*="bg-amber-"] .text-white,
+      body.theme-light [class*="bg-red-"] .text-white,
+      body.theme-light [class*="bg-purple-"] .text-white,
+      body.theme-light [class*="bg-sky-"] .text-white,
+      body.theme-light [class*="bg-teal-"] .text-white,
+      body.theme-light [class*="bg-yellow-"] .text-white,
+      body.theme-light [class*="bg-rose-"] .text-white,
+      body.theme-light [class*="bg-cyan-"] .text-white,
+      body.theme-light [class*="bg-violet-"] .text-white,
+      body.theme-light [class*="bg-gradient-"] .text-white,
+      body.theme-light [class*="bg-blue-"].text-white,
+      body.theme-light [class*="bg-indigo-"].text-white,
+      body.theme-light [class*="bg-emerald-"].text-white,
+      body.theme-light [class*="bg-amber-"].text-white,
+      body.theme-light [class*="bg-red-"].text-white,
+      body.theme-light [class*="bg-purple-"].text-white,
+      body.theme-light [class*="bg-sky-"].text-white,
+      body.theme-light [class*="bg-teal-"].text-white,
+      body.theme-light [class*="bg-yellow-"].text-white,
+      body.theme-light [class*="bg-rose-"].text-white,
+      body.theme-light [class*="bg-cyan-"].text-white,
+      body.theme-light [class*="bg-violet-"].text-white,
+      body.theme-light [class*="bg-gradient-"].text-white {
         color: #ffffff !important;
       }
 
       /* Light Theme: Form Controls */
       html.theme-light input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
       html.theme-light select,
-      html.theme-light textarea {
+      html.theme-light textarea,
+      body.theme-light input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]),
+      body.theme-light select,
+      body.theme-light textarea {
         background-color: #ffffff !important;
         border-color: #cbd5e1 !important;
         color: #0f172a !important;
       }
       html.theme-light input::placeholder,
-      html.theme-light textarea::placeholder {
+      html.theme-light textarea::placeholder,
+      body.theme-light input::placeholder,
+      body.theme-light textarea::placeholder {
         color: #94a3b8 !important;
       }
       html.theme-light input[type="checkbox"],
-      html.theme-light input[type="radio"] {
+      html.theme-light input[type="radio"],
+      body.theme-light input[type="checkbox"],
+      body.theme-light input[type="radio"] {
         background-color: #ffffff !important;
         border-color: #94a3b8 !important;
       }
 
       /* Light Theme: Modal Backdrop Overlay */
       html.theme-light .fixed.inset-0.bg-black\/70,
+      html.theme-light .fixed.inset-0.bg-black\/75,
       html.theme-light .fixed.inset-0.bg-black\/80,
       html.theme-light .fixed.inset-0.bg-black\/85,
       html.theme-light .fixed.inset-0.bg-slate-950\/80,
-      html.theme-light .fixed.inset-0.bg-slate-950\/90 {
+      html.theme-light .fixed.inset-0.bg-slate-950\/90,
+      body.theme-light .fixed.inset-0.bg-black\/70,
+      body.theme-light .fixed.inset-0.bg-black\/75,
+      body.theme-light .fixed.inset-0.bg-black\/80,
+      body.theme-light .fixed.inset-0.bg-black\/85,
+      body.theme-light .fixed.inset-0.bg-slate-950\/80,
+      body.theme-light .fixed.inset-0.bg-slate-950\/90 {
         background-color: rgba(15, 23, 42, 0.45) !important;
       }
 
       /* Light Theme: Dropdown & Menu Shadows */
       html.theme-light div[class*="shadow-2xl"],
-      html.theme-light div[class*="shadow-xl"] {
+      html.theme-light div[class*="shadow-xl"],
+      body.theme-light div[class*="shadow-2xl"],
+      body.theme-light div[class*="shadow-xl"] {
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
       }
 

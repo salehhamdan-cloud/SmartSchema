@@ -1897,8 +1897,37 @@ export default function App() {
           if (el.classList.contains('badge-text') || el.closest('.component-badge')) {
               el.setAttribute('text-anchor', 'middle');
               el.setAttribute('dominant-baseline', 'central');
+              el.setAttribute('dy', '0.35em');
               (el as SVGElement).style.textAnchor = 'middle';
               (el as SVGElement).style.dominantBaseline = 'central';
+          }
+      });
+
+      // 4c. Verify and ensure badge rect widths dynamically enclose badge text with adequate padding
+      clone.querySelectorAll('.component-badge').forEach(badge => {
+          const rect = badge.querySelector('rect');
+          const texts = badge.querySelectorAll('text');
+          if (rect && texts.length > 0) {
+              const currentRectWidth = parseFloat(rect.getAttribute('width') || '20');
+              let maxTextWidth = 0;
+              texts.forEach(t => {
+                  const content = t.textContent || '';
+                  const estLen = rtlRegex.test(content) ? content.length * 8.0 : content.length * 6.5;
+                  if (estLen > maxTextWidth) maxTextWidth = estLen;
+                  t.setAttribute('text-anchor', 'middle');
+                  t.setAttribute('dominant-baseline', 'central');
+                  t.setAttribute('dy', '0.35em');
+                  (t as SVGElement).style.textAnchor = 'middle';
+                  (t as SVGElement).style.dominantBaseline = 'central';
+              });
+              const requiredWidth = 20 + Math.ceil(maxTextWidth) + 14;
+              if (requiredWidth > currentRectWidth) {
+                  rect.setAttribute('width', requiredWidth.toString());
+                  const newCenterX = 20 + (requiredWidth - 20) / 2;
+                  texts.forEach(t => {
+                      t.setAttribute('x', newCenterX.toString());
+                  });
+              }
           }
       });
 
@@ -3399,6 +3428,7 @@ export default function App() {
                       { key: 'no-meter', icon: 'power_off', color: '#64748b' },
                       { key: 'generator', icon: 'letter_g', color: '#ef4444' },
                       { key: 'ac', icon: 'ac_unit', color: '#06b6d4' },
+                      { key: 'airBreaker', icon: 'air_breaker', color: '#0284c7' },
                       { key: 'reserved', icon: 'lock', color: '#eab308' },
                       { key: 'essential', icon: 'star', color: '#ef4444' },
                       { key: 'non-essential', icon: 'star', color: '#64748b' },
@@ -3956,39 +3986,91 @@ export default function App() {
       <main className="flex-1 flex overflow-hidden relative">
         {/* Sidebar */}
         {showProjectSidebar && !isCleanView && !isReadOnly && (
-            <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <h2 className="font-bold text-slate-300 text-sm uppercase tracking-wider">{t.projects}</h2>
+            <aside className={`w-72 border-r flex flex-col shrink-0 ${
+              theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-sm'
+            }`}>
+                <div className={`px-3 py-3 border-b flex items-center justify-between gap-1.5 ${
+                  theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-blue-100 bg-gradient-to-r from-sky-50/70 via-white to-blue-50/40'
+                }`}>
+                    <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                      <h2 className={`font-bold text-xs uppercase tracking-wider truncate ${theme === 'dark' ? 'text-slate-300' : 'text-slate-700'}`}>{t.projects}</h2>
                       {isReadOnly && (
-                        <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-bold uppercase">
+                        <span className="text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 px-1.5 py-0.2 rounded font-bold uppercase shrink-0">
                           {t.readOnly?.badge || "View"}
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-1">
-                         <button onClick={() => setShowFolderSyncModal(true)} className="text-slate-400 hover:text-blue-400 p-1 hover:bg-slate-800 rounded relative" title={t.folderSync?.title || "Folder Auto-Save & Sync"}>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                         <button 
+                           onClick={() => setShowFolderSyncModal(true)} 
+                           className={`p-1.5 rounded-lg transition-colors relative flex items-center justify-center ${
+                             theme === 'dark'
+                               ? 'text-slate-400 hover:text-blue-400 hover:bg-slate-800'
+                               : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                           }`} 
+                           title={t.folderSync?.title || "Folder Auto-Save & Sync"}
+                         >
                             <span className="material-icons-round text-lg">folder_shared</span>
                             {folderSettings.enabled && directoryHandle && (
-                              <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-400"></span>
+                              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-1.5 ring-white dark:ring-slate-900"></span>
                             )}
                          </button>
-                         <button onClick={() => setShowVersionHistoryModal(true)} className="text-slate-400 hover:text-indigo-400 p-1 hover:bg-slate-800 rounded" title={t.versionHistory?.openTooltip || "Version History"}>
+                         <button 
+                           onClick={() => setShowVersionHistoryModal(true)} 
+                           className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                             theme === 'dark'
+                               ? 'text-slate-400 hover:text-indigo-400 hover:bg-slate-800'
+                               : 'text-slate-500 hover:text-indigo-600 hover:bg-indigo-50'
+                           }`} 
+                           title={t.versionHistory?.openTooltip || "Version History"}
+                         >
                             <span className="material-icons-round text-lg">history</span>
                          </button>
-                         <button onClick={() => setShowShareModal(true)} className="text-slate-400 hover:text-blue-400 p-1 hover:bg-slate-800 rounded" title={t.share?.title || "Share Project"}>
+                         <button 
+                           onClick={() => setShowShareModal(true)} 
+                           className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                             theme === 'dark'
+                               ? 'text-slate-400 hover:text-blue-400 hover:bg-slate-800'
+                               : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+                           }`} 
+                           title={t.share?.title || "Share Project"}
+                         >
                             <span className="material-icons-round text-lg">share</span>
                          </button>
-                         <button onClick={handleBackupAll} className="text-slate-400 hover:text-green-400 p-1 hover:bg-slate-800 rounded" title={t.backupAll}>
+                         <button 
+                           onClick={handleBackupAll} 
+                           className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                             theme === 'dark'
+                               ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-800'
+                               : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                           }`} 
+                           title={t.backupAll}
+                         >
                             <span className="material-icons-round text-lg">archive</span>
                          </button>
                          {!isReadOnly && (
                            <>
                              <input type="file" ref={fileInputRef} onChange={handleImportProject} accept=".json" className="hidden" />
-                             <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded" title={t.importProject}>
+                             <button 
+                               onClick={() => fileInputRef.current?.click()} 
+                               className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                                 theme === 'dark'
+                                   ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                               }`} 
+                               title={t.importProject}
+                             >
                                 <span className="material-icons-round text-lg">upload_file</span>
                             </button>
-                            <button onClick={handleAddProject} className="text-blue-400 hover:text-blue-300 p-1 hover:bg-slate-800 rounded" title="Add Project">
+                            <button 
+                              onClick={handleAddProject} 
+                              className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                                theme === 'dark'
+                                  ? 'text-blue-400 hover:text-blue-300 hover:bg-slate-800'
+                                  : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                              }`} 
+                              title="Add Project"
+                            >
                                 <span className="material-icons-round text-lg">add_box</span>
                             </button>
                            </>
@@ -3998,59 +4080,79 @@ export default function App() {
 
                 {/* Folder Auto-Save Status Banner in Sidebar */}
                 {!isReadOnly && (
-                  <div className="px-3 py-2 bg-slate-950/60 border-b border-slate-800/80">
+                  <div className={`px-3 py-2 border-b ${
+                    theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-slate-50/80 border-blue-100'
+                  }`}>
                     {folderSettings.enabled && directoryHandle ? (
                       <div 
                         onClick={() => setShowFolderSyncModal(true)}
-                        className="flex items-center justify-between p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-emerald-500/30 cursor-pointer group transition-all"
+                        className={`flex items-center justify-between p-2 rounded-xl border cursor-pointer group transition-all ${
+                          theme === 'dark'
+                            ? 'bg-slate-900/90 hover:bg-slate-800/90 border-emerald-500/30'
+                            : 'bg-white hover:bg-emerald-50/50 border-emerald-300 shadow-xs'
+                        }`}
                         title={folderSettings.folderName || directoryHandle.name}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                            theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          }`}>
                             <span className="material-icons-round text-sm">folder_special</span>
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-slate-200 group-hover:text-white truncate text-[11px]">
+                            <span className={`font-bold truncate text-[11px] ${theme === 'dark' ? 'text-slate-200 group-hover:text-white' : 'text-slate-800 group-hover:text-emerald-900'}`}>
                               {folderSettings.folderName || directoryHandle.name}
                             </span>
-                            <span className="text-[9px] text-emerald-400 flex items-center gap-1 font-mono">
-                              <span className={`w-1.5 h-1.5 rounded-full ${folderSyncStatus === 'saving' ? 'bg-amber-400 animate-spin' : 'bg-emerald-400 animate-pulse'}`}></span>
+                            <span className="text-[9px] text-emerald-500 dark:text-emerald-400 flex items-center gap-1 font-mono">
+                              <span className={`w-1.5 h-1.5 rounded-full ${folderSyncStatus === 'saving' ? 'bg-amber-400 animate-spin' : 'bg-emerald-500 animate-pulse'}`}></span>
                               <span>{folderSyncStatus === 'saving' ? (t.folderSync?.statusSaving || "Saving to folder...") : (t.folderSync?.statusSynced || "Folder Synced")}</span>
                             </span>
                           </div>
                         </div>
-                        <span className="material-icons-round text-xs text-slate-500 group-hover:text-blue-400 transition-colors">tune</span>
+                        <span className="material-icons-round text-xs text-slate-400 group-hover:text-blue-500 transition-colors">tune</span>
                       </div>
                     ) : (
                       <button
                         onClick={() => setShowFolderSyncModal(true)}
-                        className="w-full py-1.5 px-2.5 bg-slate-900/80 hover:bg-slate-800 border border-dashed border-slate-700/90 hover:border-blue-500/50 rounded-xl text-[11px] font-medium text-slate-300 hover:text-blue-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer group"
+                        className={`w-full py-1.5 px-2.5 border border-dashed rounded-xl text-[11px] font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer group ${
+                          theme === 'dark'
+                            ? 'bg-slate-900/80 hover:bg-slate-800 border-slate-700/90 hover:border-blue-500/50 text-slate-300 hover:text-blue-300'
+                            : 'bg-white hover:bg-blue-50/50 border-blue-200 hover:border-blue-400 text-slate-600 hover:text-blue-700 shadow-2xs'
+                        }`}
                       >
-                        <span className="material-icons-round text-sm text-blue-400 group-hover:scale-110 transition-transform">folder_open</span>
+                        <span className="material-icons-round text-sm text-blue-500 group-hover:scale-110 transition-transform">folder_open</span>
                         <span>{t.folderSync?.chooseFolder || "Auto-Save to Local Folder"}</span>
                       </button>
                     )}
                   </div>
                 )}
-                <div className="flex-1 overflow-y-auto p-2 space-y-4">
+                <div className="flex-1 overflow-y-auto p-2 space-y-4 custom-scrollbar">
                     {projects.map(project => (
                         <div key={project.id} className="space-y-1">
                             <div 
-                                className={`px-3 py-2 rounded flex items-center justify-between group ${activeProjectId === project.id ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/50'}`}
+                                className={`px-3 py-2 rounded-lg flex items-center justify-between group transition-colors cursor-pointer ${
+                                  activeProjectId === project.id 
+                                    ? (theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-blue-50 text-blue-900 font-semibold border-l-3 border-blue-500 shadow-2xs') 
+                                    : (theme === 'dark' ? 'text-slate-400 hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100')
+                                }`}
                                 onClick={() => { setActiveProjectId(project.id); setActivePageId(project.pages[0].id); }}
                             >
                                 <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                                    <span className="material-icons-round text-sm shrink-0">folder</span>
+                                    <span className={`material-icons-round text-sm shrink-0 ${activeProjectId === project.id ? (theme === 'dark' ? 'text-blue-400' : 'text-blue-600') : 'text-slate-400'}`}>folder</span>
                                     {editingId === project.id ? (
                                         <input 
                                             type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} autoFocus
-                                            className="w-full bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white" onClick={(e) => e.stopPropagation()}
+                                            className={`w-full border rounded px-1 py-0.5 text-xs ${
+                                              theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-blue-300 text-slate-900'
+                                            }`} onClick={(e) => e.stopPropagation()}
                                         />
                                     ) : (
                                         <div className="flex flex-col min-w-0 flex-1">
                                             <span className="font-medium text-sm truncate">{project.name}</span>
                                             {project.lastUpdated && (
-                                                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors flex items-center gap-1">
+                                                <span className={`text-[10px] transition-colors flex items-center gap-1 ${
+                                                  theme === 'dark' ? 'text-slate-500 group-hover:text-slate-400' : 'text-slate-400 group-hover:text-slate-600'
+                                                }`}>
                                                     <span className="material-icons-round text-[11px] opacity-75">schedule</span>
                                                     <span>{t.projectTimestamps?.lastUpdated || "Updated"} {formatProjectTimestamp(project.lastUpdated)}</span>
                                                 </span>
@@ -4059,31 +4161,39 @@ export default function App() {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDownloadProject(project); }} className="text-slate-600 hover:text-green-400" title={t.backupProject}><span className="material-icons-round text-sm">save_alt</span></button>}
-                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); startEditing(project.id, project.name); }} className="text-slate-600 hover:text-blue-400"><span className="material-icons-round text-sm">edit</span></button>}
-                                    {!isReadOnly && projects.length > 1 && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDeleteProjectClick(project.id); }} className="text-slate-600 hover:text-red-400"><span className="material-icons-round text-sm">delete</span></button>}
+                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDownloadProject(project); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-emerald-400' : 'text-slate-400 hover:text-emerald-600'}`} title={t.backupProject}><span className="material-icons-round text-sm">save_alt</span></button>}
+                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); startEditing(project.id, project.name); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}><span className="material-icons-round text-sm">edit</span></button>}
+                                    {!isReadOnly && projects.length > 1 && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDeleteProjectClick(project.id); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}><span className="material-icons-round text-sm">delete</span></button>}
                                 </div>
                             </div>
                             
                             {activeProjectId === project.id && (
-                                <div className={`space-y-1 border-slate-800 mx-2 ${isRTL ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
+                                <div className={`space-y-1 mx-2 ${theme === 'dark' ? 'border-slate-800' : 'border-blue-200'} ${isRTL ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
                                     {project.pages.map(page => (
-                                        <div key={page.id} className={`px-3 py-1.5 rounded cursor-pointer flex items-center justify-between group ${activePageId === page.id ? 'bg-blue-600/20 text-blue-400' : 'text-slate-500 hover:text-slate-300'}`} onClick={() => setActivePageId(page.id)}>
+                                        <div key={page.id} className={`px-3 py-1.5 rounded cursor-pointer flex items-center justify-between group ${
+                                          activePageId === page.id 
+                                            ? (theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700 font-semibold') 
+                                            : (theme === 'dark' ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')
+                                        }`} onClick={() => setActivePageId(page.id)}>
                                             <div className="flex items-center gap-2 flex-1 overflow-hidden">
                                                 <span className="material-icons-round text-xs shrink-0">description</span>
                                                 {editingId === page.id ? (
-                                                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} autoFocus className="w-full bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-xs text-white" onClick={(e) => e.stopPropagation()} />
+                                                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} autoFocus className={`w-full border rounded px-1 py-0.5 text-xs ${
+                                                      theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-blue-300 text-slate-900'
+                                                    }`} onClick={(e) => e.stopPropagation()} />
                                                 ) : (
                                                     <span className="text-xs truncate">{page.name}</span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-1">
-                                                {!isReadOnly && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); startEditing(page.id, page.name); }} className="text-slate-600 hover:text-blue-400"><span className="material-icons-round text-[10px]">edit</span></button>}
-                                                {!isReadOnly && project.pages.length > 1 && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); handleDeletePageClick(project.id, page.id); }} className="text-slate-600 hover:text-red-400"><span className="material-icons-round text-[10px]">close</span></button>}
+                                                {!isReadOnly && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); startEditing(page.id, page.name); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}><span className="material-icons-round text-[10px]">edit</span></button>}
+                                                {!isReadOnly && project.pages.length > 1 && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); handleDeletePageClick(project.id, page.id); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}><span className="material-icons-round text-[10px]">close</span></button>}
                                             </div>
                                         </div>
                                     ))}
-                                    <button onClick={handleAddPage} className={`px-3 py-1.5 w-full text-xs text-slate-600 hover:text-blue-400 flex items-center gap-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+                                    <button onClick={handleAddPage} className={`px-3 py-1.5 w-full text-xs flex items-center gap-2 rounded transition-colors ${
+                                      theme === 'dark' ? 'text-slate-500 hover:text-blue-400 hover:bg-slate-800/40' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50/50'
+                                    } ${isRTL ? 'text-right' : 'text-left'}`}>
                                         <span className="material-icons-round text-sm">add</span>
                                         {t.addPage}
                                     </button>

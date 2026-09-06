@@ -550,15 +550,30 @@ export const Diagram: React.FC<DiagramProps> = ({
       .style('font-weight', 'bold')
       .style('visibility', 'hidden');
 
+    const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    let measureCanvasCtx: CanvasRenderingContext2D | null = null;
+    try {
+      measureCanvasCtx = document.createElement('canvas').getContext('2d');
+    } catch (_) {}
+
     const getTextWidth = (text: string, fontSize: string, fontWeight: string, fallbackCharWidth: number) => {
       if (!text) return 0;
+      if (measureCanvasCtx) {
+        try {
+          measureCanvasCtx.font = `${fontWeight} ${fontSize} ${MULTILINGUAL_FONT_FAMILY}`;
+          const m = measureCanvasCtx.measureText(text).width;
+          if (m && m > 0) return m;
+        } catch (_) {}
+      }
       tempText
         .style('font-family', MULTILINGUAL_FONT_FAMILY)
         .style('font-size', fontSize)
         .style('font-weight', fontWeight)
         .text(text);
       const measured = tempText.node()?.getComputedTextLength() || 0;
-      return measured > 0 ? measured : text.length * fallbackCharWidth;
+      if (measured > 0) return measured;
+      const charWidth = rtlRegex.test(text) ? Math.max(fallbackCharWidth * 1.35, 7.2) : fallbackCharWidth;
+      return text.length * charWidth;
     };
 
     const getNodeSize = (d: d3.HierarchyNode<ElectricalNode>) => {
@@ -1785,8 +1800,8 @@ export const Diagram: React.FC<DiagramProps> = ({
         }
 
         const hasText = textLen > 0;
-        // Total badge width: icon area (20px) + measured text length + right margin (8px)
-        let totalWidth = hasText ? 20 + Math.ceil(textLen) + 8 : 20;
+        // Total badge width: icon area (20px) + measured text length + right margin (14px)
+        let totalWidth = hasText ? 20 + Math.ceil(textLen) + 14 : 20;
         // Center text in the badge text area (between icon x=20 and badge right edge)
         let textCenterX = hasText ? 20 + (totalWidth - 20) / 2 : 20;
 
@@ -1798,6 +1813,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('class', 'badge-text')
             .attr('x', textCenterX)
             .attr('y', 9)
+            .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -1810,6 +1826,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('class', 'badge-text')
             .attr('x', textCenterX)
             .attr('y', 20)
+            .attr('dy', '0.35em')
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -1823,7 +1840,7 @@ export const Diagram: React.FC<DiagramProps> = ({
           const maxLive = Math.max(live1, live2);
           if (maxLive > textLen) {
             textLen = maxLive;
-            totalWidth = 20 + Math.ceil(textLen) + 8;
+            totalWidth = 20 + Math.ceil(textLen) + 14;
             textCenterX = 20 + (totalWidth - 20) / 2;
             t1.attr('x', textCenterX);
             t2.attr('x', textCenterX);
@@ -1835,6 +1852,7 @@ export const Diagram: React.FC<DiagramProps> = ({
               .attr('class', 'badge-text')
               .attr('x', textCenterX)
               .attr('y', 10)
+              .attr('dy', '0.35em')
               .attr('text-anchor', 'middle')
               .attr('dominant-baseline', 'central')
               .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -1846,20 +1864,23 @@ export const Diagram: React.FC<DiagramProps> = ({
             const liveLen = t1.node()?.getComputedTextLength() || 0;
             if (liveLen > textLen) {
               textLen = liveLen;
-              totalWidth = 20 + Math.ceil(textLen) + 8;
+              totalWidth = 20 + Math.ceil(textLen) + 14;
               textCenterX = 20 + (totalWidth - 20) / 2;
               t1.attr('x', textCenterX);
             }
           }
         }
 
-        group.insert('rect', 'text')
+        const rectEl = group.insert('rect', 'text')
           .attr('height', badgeHeight)
           .attr('width', totalWidth)
           .attr('rx', isTwoLine ? 6 : 9)
           .attr('fill', isDark ? bgColorDark : bgColorLight)
           .attr('stroke', color)
           .attr('stroke-width', 0.5);
+
+        // Keep rect width synchronized with final totalWidth
+        rectEl.attr('width', totalWidth);
 
         const defaultTrans = customTransform || (isTwoLine ? 'translate(3, 8) scale(0.5)' : 'translate(3, 3) scale(0.5)');
         renderIcon(group, iconName, color, defaultTrans);
@@ -2104,7 +2125,7 @@ export const Diagram: React.FC<DiagramProps> = ({
     ];
 
     const totalLegendItems = types.length + badgeItems.length + 1; 
-    const legendW = 210;
+    const legendW = 240;
     const legendH = 50 + totalLegendItems * 25;
 
     let legX = maxX + 50;
@@ -2187,11 +2208,11 @@ export const Diagram: React.FC<DiagramProps> = ({
       const y = 50 + i * 25;
       const config = COMPONENT_CONFIG[type];
       let iconX = isRTL ? legendW - 25 : 25;
-      let textX = isRTL ? legendW / 2 : 45;
+      let textX = isRTL ? legendW - 45 : 45;
       legendG.append('circle').attr('cx', iconX).attr('cy', y).attr('r', 8).attr('fill', isDark ? '#0f172a' : '#f8fafc').attr('stroke', config.color).attr('stroke-width', 1.5);
       const itemG = legendG.append('g').attr('transform', `translate(${iconX - 6}, ${y - 6})`);
       renderIcon(itemG, config.icon, config.color, 'scale(0.5)');
-      legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'middle' : 'start').text(t.componentTypes[type]);
+      legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'end' : 'start').text(t.componentTypes[type]);
     });
 
     const sepY = 50 + types.length * 25 + 10;
@@ -2200,11 +2221,11 @@ export const Diagram: React.FC<DiagramProps> = ({
     badgeItems.forEach((item, i) => {
         const y = sepY + 20 + i * 25;
         let iconX = isRTL ? legendW - 25 : 25;
-        let textX = isRTL ? legendW / 2 : 45;
+        let textX = isRTL ? legendW - 45 : 45;
         legendG.append('rect').attr('x', iconX - 10).attr('y', y - 9).attr('width', 20).attr('height', 18).attr('rx', 9).attr('fill', isDark ? '#1e293b' : '#f1f5f9').attr('stroke', item.color).attr('stroke-width', 0.5);
         const itemG = legendG.append('g').attr('transform', `translate(${iconX - 6}, ${y - 6})`);
         renderIcon(itemG, item.icon, item.color, 'scale(0.5)');
-        legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'middle' : 'start').text(item.label);
+        legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'end' : 'start').text(item.label);
     });
 
     // Auto-fit diagram content to screen ONLY on initial mount or when orientation explicitly changes

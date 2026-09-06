@@ -642,29 +642,29 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
       // Stats inside card: right to left
       ctx.textAlign = 'right';
-      // Total Load (right col)
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.kva.toFixed(1)} kVA`, statsX + statsWidth - 20, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalLoad || 'Total Load', statsX + statsWidth - 20, currentY + 56);
-
-      // Current (middle col)
-      ctx.fillStyle = '#e5e7eb';
-      ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.amps} A`, statsX + statsWidth - 130, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalCurrent || 'Current', statsX + statsWidth - 130, currentY + 56);
-
-      // Equipment (left col)
+      // Equipment (right col)
       ctx.fillStyle = '#38bdf8';
       ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.nodes} items`, statsX + statsWidth - 235, currentY + 38);
+      ctx.fillText(`${buildingTotals.nodes} items`, statsX + statsWidth - 20, currentY + 38);
       ctx.fillStyle = '#9ca3af';
       ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalComponents || 'Equipment', statsX + statsWidth - 235, currentY + 56);
+      ctx.fillText(bfT.totalComponents || 'Equipment', statsX + statsWidth - 20, currentY + 56);
+
+      // Distribution Boards (middle col)
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = fontSans(13, 'bold');
+      ctx.fillText(`${buildingTotals.boards}`, statsX + statsWidth - 130, currentY + 38);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = fontSans(10, 'normal');
+      ctx.fillText(bfT.boards || 'Panels', statsX + statsWidth - 130, currentY + 56);
+
+      // Levels (left col)
+      ctx.fillStyle = '#10b981';
+      ctx.font = fontSans(13, 'bold');
+      ctx.fillText(`${floorGroups.length}`, statsX + statsWidth - 235, currentY + 38);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = fontSans(10, 'normal');
+      ctx.fillText(bfT.levels || 'Levels', statsX + statsWidth - 235, currentY + 56);
 
       // Date / Page
       ctx.fillStyle = '#6b7280';
@@ -744,26 +744,26 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.kva.toFixed(1)} kVA`, svgWidth - 440, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalLoad || 'Total Load', svgWidth - 440, currentY + 56);
-
-      ctx.fillStyle = '#e5e7eb';
-      ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.amps} A`, svgWidth - 340, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalCurrent || 'Current', svgWidth - 340, currentY + 56);
-
       ctx.fillStyle = '#38bdf8';
       ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.nodes} items`, svgWidth - 245, currentY + 38);
+      ctx.fillText(`${buildingTotals.nodes} items`, svgWidth - 440, currentY + 38);
       ctx.fillStyle = '#9ca3af';
       ctx.font = fontSans(10, 'normal');
-      ctx.fillText(bfT.totalComponents || 'Equipment', svgWidth - 245, currentY + 56);
+      ctx.fillText(bfT.totalComponents || 'Equipment', svgWidth - 440, currentY + 56);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = fontSans(13, 'bold');
+      ctx.fillText(`${buildingTotals.boards}`, svgWidth - 340, currentY + 38);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = fontSans(10, 'normal');
+      ctx.fillText(bfT.boards || 'Panels', svgWidth - 340, currentY + 56);
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = fontSans(13, 'bold');
+      ctx.fillText(`${floorGroups.length}`, svgWidth - 245, currentY + 38);
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = fontSans(10, 'normal');
+      ctx.fillText(bfT.levels || 'Levels', svgWidth - 245, currentY + 56);
 
       ctx.fillStyle = '#6b7280';
       ctx.font = fontSans(9, 'normal');
@@ -775,9 +775,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     // 3. Render Each Floor Slab
     floorsToRender.forEach(floor => {
       const isUnassigned = floor.isUnassigned;
-      const slabFill = isUnassigned ? '#451a03' : '#1e293b';
-      const slabStroke = isUnassigned ? '#b45309' : '#475569';
-      const slabTitleColor = isUnassigned ? '#fde68a' : '#f8fafc';
+      const slabFill = isUnassigned ? '#451a03' : '#0284c7';
+      const slabStroke = isUnassigned ? '#b45309' : '#38bdf8';
+      const slabTitleColor = '#ffffff';
 
       // Slab Banner Bar
       drawRoundRect(ctx, 40, currentY, svgWidth - 80, 46, 8);
@@ -827,11 +827,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           ctx.fillText(`⚡ ${floor.essentialCount} ${bfT.essential || 'Essential'}`, essX + 62.5, currentY + 27);
         }
 
-        // Slab Totals on the LEFT
-        ctx.fillStyle = '#38bdf8';
+        // Slab Totals on the LEFT (No Total Load / Current)
+        ctx.fillStyle = '#ffffff';
         ctx.font = fontSans(12, 'bold');
         ctx.textAlign = 'left';
-        ctx.fillText(`${floor.totalKva.toFixed(1)} kVA • ${floor.totalAmps} A • ${floor.nodes.length} ${bfT.components || 'items'}`, 55, currentY + 28);
+        ctx.fillText(`${floor.nodes.length} ${bfT.components || 'items'}`, 55, currentY + 28);
       } else {
         // LTR Floor Banner
         // Level elevation badge on the LEFT
@@ -868,11 +868,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           ctx.fillText(`⚡ ${floor.essentialCount} ${bfT.essential || 'Essential'}`, 482, currentY + 27);
         }
 
-        // Slab Totals on Right
-        ctx.fillStyle = '#38bdf8';
+        // Slab Totals on Right (No Total Load / Current)
+        ctx.fillStyle = '#ffffff';
         ctx.font = fontSans(12, 'bold');
         ctx.textAlign = 'right';
-        ctx.fillText(`${floor.totalKva.toFixed(1)} kVA • ${floor.totalAmps} A • ${floor.nodes.length} items`, svgWidth - 55, currentY + 28);
+        ctx.fillText(`${floor.nodes.length} items`, svgWidth - 55, currentY + 28);
       }
 
       currentY += 56;
@@ -926,7 +926,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${board.place ? `• 📍 ${safeText(board.place, 14)}` : ''}`;
+            const meterBadge = [
+              board.node.hasMeter ? `[M${board.node.meterNumber ? ` #${board.node.meterNumber}` : ''}]` : '',
+              board.node.hasMultimeter ? '[MM]' : ''
+            ].filter(Boolean).join(' ');
+            const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${meterBadge ? `• ${meterBadge} ` : ''}${board.place ? `• 📍 ${safeText(board.place, 14)}` : ''}`;
 
             if (isRTL) {
               // --- RTL Enclosure Header ---
@@ -1019,6 +1023,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                 ctx.lineWidth = 1;
                 ctx.stroke();
 
+                const sonMeterTag = [
+                  sonItem.node.hasMeter ? '[M]' : '',
+                  sonItem.node.hasMultimeter ? '[MM]' : ''
+                ].filter(Boolean).join(' ');
+
                 if (isRTL) {
                   // RTL Son Card
                   ctx.fillStyle = '#f1f5f9';
@@ -1028,7 +1037,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
                   ctx.fillStyle = '#38bdf8';
                   ctx.font = fontSans(9, 'normal');
-                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA`, sX + sWidth - 8, sY + 30);
+                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonMeterTag}`, sX + sWidth - 8, sY + 30);
 
                   ctx.fillStyle = '#64748b';
                   ctx.font = fontSans(9, 'normal');
@@ -1043,7 +1052,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
                   ctx.fillStyle = '#38bdf8';
                   ctx.font = fontSans(9, 'normal');
-                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA`, sX + 8, sY + 30);
+                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonMeterTag}`, sX + 8, sY + 30);
 
                   ctx.fillStyle = '#64748b';
                   ctx.font = fontSans(9, 'normal');
@@ -1218,14 +1227,14 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     
     <!-- Stats Card on Left -->
     <rect x="${statsX - 40}" y="16" width="${statsWidth}" height="66" rx="8" fill="#1f2937" stroke="#374151" stroke-width="1" />
-    <text x="${statsX - 40 + statsWidth - 20}" y="38" fill="#f59e0b" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.kva.toFixed(1)} kVA</text>
-    <text x="${statsX - 40 + statsWidth - 20}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.totalLoad || 'Total Load')}</text>
+    <text x="${statsX - 40 + statsWidth - 20}" y="38" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.nodes} items</text>
+    <text x="${statsX - 40 + statsWidth - 20}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
     
-    <text x="${statsX - 40 + statsWidth - 130}" y="38" fill="#e5e7eb" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.amps} A</text>
-    <text x="${statsX - 40 + statsWidth - 130}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.totalCurrent || 'Current')}</text>
+    <text x="${statsX - 40 + statsWidth - 130}" y="38" fill="#f59e0b" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.boards}</text>
+    <text x="${statsX - 40 + statsWidth - 130}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.boards || 'Panels')}</text>
     
-    <text x="${statsX - 40 + statsWidth - 235}" y="38" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.nodes} items</text>
-    <text x="${statsX - 40 + statsWidth - 235}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
+    <text x="${statsX - 40 + statsWidth - 235}" y="38" fill="#10b981" font-size="13" font-weight="bold" text-anchor="end">${floorGroups.length}</text>
+    <text x="${statsX - 40 + statsWidth - 235}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.levels || 'Levels')}</text>
     
     <text x="${statsX - 40 + statsWidth - 20}" y="74" fill="#6b7280" font-size="9" text-anchor="end">${escapeXml(pageDateStr)}</text>
 
@@ -1258,14 +1267,14 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     <text x="68" y="84" fill="#60a5fa" font-size="11" font-weight="600">${escapeXml(buildingStr)}</text>
     
     <rect x="${svgWidth - 460}" y="16" width="365" height="66" rx="8" fill="#1f2937" stroke="#374151" stroke-width="1" />
-    <text x="${svgWidth - 440}" y="38" fill="#f59e0b" font-size="13" font-weight="bold">${buildingTotals.kva.toFixed(1)} kVA</text>
-    <text x="${svgWidth - 440}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.totalLoad || 'Total Load')}</text>
+    <text x="${svgWidth - 440}" y="38" fill="#38bdf8" font-size="13" font-weight="bold">${buildingTotals.nodes} items</text>
+    <text x="${svgWidth - 440}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
     
-    <text x="${svgWidth - 340}" y="38" fill="#e5e7eb" font-size="13" font-weight="bold">${buildingTotals.amps} A</text>
-    <text x="${svgWidth - 340}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.totalCurrent || 'Current')}</text>
+    <text x="${svgWidth - 340}" y="38" fill="#f59e0b" font-size="13" font-weight="bold">${buildingTotals.boards}</text>
+    <text x="${svgWidth - 340}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.boards || 'Panels')}</text>
     
-    <text x="${svgWidth - 245}" y="38" fill="#38bdf8" font-size="13" font-weight="bold">${buildingTotals.nodes} items</text>
-    <text x="${svgWidth - 245}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
+    <text x="${svgWidth - 245}" y="38" fill="#10b981" font-size="13" font-weight="bold">${floorGroups.length}</text>
+    <text x="${svgWidth - 245}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.levels || 'Levels')}</text>
     
     <text x="${svgWidth - 440}" y="74" fill="#6b7280" font-size="9">${escapeXml(pageDateStr)}</text>
   </g>
@@ -1275,9 +1284,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
     floorsToRender.forEach((floor) => {
       const isUnassigned = floor.isUnassigned;
-      const slabFill = isUnassigned ? '#451a03' : '#1e293b';
-      const slabStroke = isUnassigned ? '#b45309' : '#475569';
-      const slabTitleColor = isUnassigned ? '#fde68a' : '#f8fafc';
+      const slabFill = isUnassigned ? '#451a03' : '#0284c7';
+      const slabStroke = isUnassigned ? '#b45309' : '#38bdf8';
+      const slabTitleColor = '#ffffff';
 
       if (isRTL) {
         const badgeX = svgWidth - 127 - 40;
@@ -1298,7 +1307,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     ` : ''}
 
     <!-- Totals on Left -->
-    <text x="15" y="28" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="start">${floor.totalKva.toFixed(1)} kVA • ${floor.totalAmps} A • ${floor.nodes.length} ${escapeXml(bfT.components || 'items')}</text>
+    <text x="15" y="28" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="start">${floor.nodes.length} ${escapeXml(bfT.components || 'items')}</text>
   </g>
 `;
       } else {
@@ -1314,7 +1323,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     <text x="422" y="27" fill="#fecaca" font-size="10" font-weight="bold" text-anchor="middle">⚡ ${floor.essentialCount} ${escapeXml(bfT.essential || 'Essential')}</text>
     ` : ''}
 
-    <text x="${svgWidth - 105}" y="28" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="end">${floor.totalKva.toFixed(1)} kVA • ${floor.totalAmps} A • ${floor.nodes.length} items</text>
+    <text x="${svgWidth - 105}" y="28" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="end">${floor.nodes.length} items</text>
   </g>
 `;
       }
@@ -1363,6 +1372,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <rect width="${boxWidth}" height="${encHeight}" rx="10" fill="#0b1329" stroke="#1e293b" stroke-width="1.2" />
       <rect width="${boxWidth}" height="42" rx="10" fill="#141e33" stroke="#24334d" stroke-width="1" />
 `;
+            const svgMeterTag = [
+              board.node.hasMeter ? `[M${board.node.meterNumber ? ` #${board.node.meterNumber}` : ''}]` : '',
+              board.node.hasMultimeter ? '[MM]' : ''
+            ].filter(Boolean).join(' ');
+
             if (isRTL) {
               encSvg += `
       <!-- RTL Enclosure Header -->
@@ -1370,7 +1384,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <text x="${boxWidth - 22}" y="25" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">⚡</text>
       
       <text x="${boxWidth - 42}" y="21" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="end">${escapeXml(safeText(board.node.name || 'Panel', 24))}</text>
-      <text x="${boxWidth - 42}" y="35" fill="#94a3b8" font-size="10" text-anchor="end">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
+      <text x="${boxWidth - 42}" y="35" fill="#94a3b8" font-size="10" text-anchor="end">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${svgMeterTag ? `• ${svgMeterTag} ` : ''}${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
       
       <rect x="12" y="10" width="202" height="22" rx="6" fill="#1e293b" stroke="#334155" />
       <text x="113" y="25" fill="#f59e0b" font-size="10" font-weight="600" text-anchor="middle">${feederText}</text>
@@ -1382,7 +1396,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <text x="22" y="25" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">⚡</text>
       
       <text x="42" y="21" fill="#ffffff" font-size="13" font-weight="bold">${escapeXml(safeText(board.node.name || 'Panel', 24))}</text>
-      <text x="42" y="35" fill="#94a3b8" font-size="10">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
+      <text x="42" y="35" fill="#94a3b8" font-size="10">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${svgMeterTag ? `• ${svgMeterTag} ` : ''}${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
       
       <rect x="${boxWidth - 215}" y="10" width="202" height="22" rx="6" fill="#1e293b" stroke="#334155" />
       <text x="${boxWidth - 114}" y="25" fill="#f59e0b" font-size="10" font-weight="600" text-anchor="middle">${feederText}</text>
@@ -1396,19 +1410,23 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                 const sCol = isRTL ? (2 - (sIdx % 3)) : (sIdx % 3);
                 const sX = 12 + sCol * (sWidth + 6);
                 const sY = 50 + sRow * 44;
+                const sonSvgMeterTag = [
+                  sonItem.node.hasMeter ? '[M]' : '',
+                  sonItem.node.hasMultimeter ? '[MM]' : ''
+                ].filter(Boolean).join(' ');
 
                 if (isRTL) {
                   encSvg += `
       <rect x="${sX}" y="${sY}" width="${sWidth}" height="38" rx="6" fill="#111c33" stroke="#1f2d47" stroke-width="1" />
       <text x="${sX + sWidth - 8}" y="${sY + 16}" fill="#f1f5f9" font-size="11" font-weight="bold" text-anchor="end">${escapeXml(safeText(sonItem.node.name || 'Node', 16))}</text>
-      <text x="${sX + sWidth - 8}" y="${sY + 30}" fill="#38bdf8" font-size="9" text-anchor="end">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA</text>
+      <text x="${sX + sWidth - 8}" y="${sY + 30}" fill="#38bdf8" font-size="9" text-anchor="end">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonSvgMeterTag}</text>
       <text x="${sX + 8}" y="${sY + 30}" fill="#64748b" font-size="9" text-anchor="start">${escapeXml(safeText(sonItem.place || sonItem.office || '', 10))}</text>
 `;
                 } else {
                   encSvg += `
       <rect x="${sX}" y="${sY}" width="${sWidth}" height="38" rx="6" fill="#111c33" stroke="#1f2d47" stroke-width="1" />
       <text x="${sX + 8}" y="${sY + 16}" fill="#f1f5f9" font-size="11" font-weight="bold">${escapeXml(safeText(sonItem.node.name || 'Node', 16))}</text>
-      <text x="${sX + 8}" y="${sY + 30}" fill="#38bdf8" font-size="9">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA</text>
+      <text x="${sX + 8}" y="${sY + 30}" fill="#38bdf8" font-size="9">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonSvgMeterTag}</text>
       <text x="${sX + sWidth - 8}" y="${sY + 30}" fill="#64748b" font-size="9" text-anchor="end">${escapeXml(safeText(sonItem.place || sonItem.office || '', 10))}</text>
 `;
                 }
@@ -1655,10 +1673,12 @@ ${svgElements}
           theme === 'dark' ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-900'
         }`}
       >
-        {/* Top Header Bar */}
+        {/* Top Header Bar (Light Blue in light mode / Elegant Navy Blue in dark mode) */}
         <div
           className={`px-5 py-3.5 border-b flex flex-wrap items-center justify-between gap-3 shrink-0 ${
-            theme === 'dark' ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200'
+            theme === 'dark'
+              ? 'bg-gradient-to-r from-blue-950/90 via-slate-900 to-slate-900 border-blue-900/50 text-slate-100'
+              : 'bg-gradient-to-r from-blue-50 via-sky-50 to-blue-100/60 border-blue-200 text-slate-900 shadow-sm'
           }`}
         >
           {/* Title & Badge */}
@@ -1674,7 +1694,9 @@ ${svgElements}
                 <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30">
                   {activeProject.name}
                 </span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 hidden sm:inline-flex items-center gap-1">
+                <span className={`text-[11px] px-2 py-0.5 rounded-full border hidden sm:inline-flex items-center gap-1 ${
+                  theme === 'dark' ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-white text-slate-700 border-slate-200 shadow-2xs'
+                }`}>
                   <span className="material-icons-round text-xs text-sky-400">layers</span>
                   {floorGroups.length} {bfT.levels || 'Levels'}
                 </span>
@@ -1688,13 +1710,15 @@ ${svgElements}
           {/* Scope Selector, Building Filter & Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Scan Scope Radio Pill */}
-            <div className="bg-slate-800/80 p-1 rounded-xl border border-slate-700 flex items-center text-xs">
+            <div className={`p-1 rounded-xl border flex items-center text-xs ${
+              theme === 'dark' ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'
+            }`}>
               <button
                 onClick={() => setScanScope('active_project')}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                   scanScope === 'active_project'
                     ? 'bg-amber-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Scan all pages in this project"
               >
@@ -1705,7 +1729,7 @@ ${svgElements}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                   scanScope === 'active_page'
                     ? 'bg-amber-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Scan only current active page"
               >
@@ -1716,7 +1740,7 @@ ${svgElements}
                 className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                   scanScope === 'all_projects'
                     ? 'bg-amber-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Scan across all projects"
               >
@@ -1726,18 +1750,22 @@ ${svgElements}
 
             {/* Building Selector */}
             {availableBuildings.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700 text-xs">
+              <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs ${
+                theme === 'dark' ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'
+              }`}>
                 <span className="material-icons-round text-sm text-amber-400">domain</span>
                 <select
                   value={selectedBuilding}
                   onChange={(e) => setSelectedBuilding(e.target.value)}
-                  className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer text-xs"
+                  className={`bg-transparent font-medium focus:outline-none cursor-pointer text-xs ${
+                    theme === 'dark' ? 'text-slate-200' : 'text-slate-800'
+                  }`}
                 >
-                  <option value="ALL" className="bg-slate-900 text-slate-200">{bfT.allBuildings || 'All Buildings'}</option>
+                  <option value="ALL" className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>{bfT.allBuildings || 'All Buildings'}</option>
                   {availableBuildings.map(bld => (
-                    <option key={bld} value={bld} className="bg-slate-900 text-slate-200">{bld}</option>
+                    <option key={bld} value={bld} className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>{bld}</option>
                   ))}
-                  <option value="__unassigned__" className="bg-slate-900 text-slate-200">{bfT.unassignedBuilding || 'Main / Unassigned'}</option>
+                  <option value="__unassigned__" className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>{bfT.unassignedBuilding || 'Main / Unassigned'}</option>
                 </select>
               </div>
             )}
@@ -1745,7 +1773,11 @@ ${svgElements}
             {/* Export SVG */}
             <button
               onClick={handleExportSVG}
-              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-2xs'
+              }`}
               title={bfT.exportSvg || 'Export SVG'}
             >
               <span className="material-icons-round text-sm text-sky-400">download</span>
@@ -1785,7 +1817,11 @@ ${svgElements}
             <button
               onClick={handlePrint}
               disabled={isGeneratingPdf}
-              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors border ${
+                theme === 'dark'
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-200 shadow-2xs'
+              }`}
               title={bfT.printPdf || 'Print'}
             >
               <span className="material-icons-round text-sm text-slate-400">print</span>
@@ -1794,7 +1830,11 @@ ${svgElements}
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"
+              className={`p-1.5 rounded-xl transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-slate-800 text-slate-400 hover:text-white'
+                  : 'hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+              }`}
               title={bfT.cancel || 'Close'}
             >
               <span className="material-icons-round text-xl">close</span>
@@ -1818,7 +1858,11 @@ ${svgElements}
               placeholder={bfT.searchPlaceholder || 'Search components, room, type, floor...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full bg-slate-800/90 border border-slate-700 rounded-xl py-1.5 ${isRTL ? 'pr-9 pl-8 text-right' : 'pl-9 pr-8 text-left'} text-xs text-white focus:outline-none focus:border-amber-500 transition-all placeholder-slate-500`}
+              className={`w-full border rounded-xl py-1.5 ${isRTL ? 'pr-9 pl-8 text-right' : 'pl-9 pr-8 text-left'} text-xs focus:outline-none focus:border-amber-500 transition-all ${
+                theme === 'dark'
+                  ? 'bg-slate-800/90 border-slate-700 text-white placeholder-slate-500'
+                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+              }`}
             />
             {searchQuery && (
               <button
@@ -1836,7 +1880,9 @@ ${svgElements}
             <select
               value={selectedTypeFilter}
               onChange={(e) => setSelectedTypeFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none cursor-pointer"
+              className={`rounded-xl px-2.5 py-1.5 text-xs focus:outline-none cursor-pointer border ${
+                theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+              }`}
             >
               <option value="ALL">{bfT.filterByType || 'All Types'}</option>
               {Object.values(ComponentType).map(type => (
@@ -1850,7 +1896,9 @@ ${svgElements}
               className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 essentialOnly
                   ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-sm'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                  : theme === 'dark'
+                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                    : 'bg-white border-slate-300 text-slate-600 hover:text-slate-900 shadow-2xs'
               }`}
             >
               <span className="material-icons-round text-sm">bolt</span>
@@ -1858,7 +1906,9 @@ ${svgElements}
             </button>
 
             {/* Clean Physical Layout Notice */}
-            <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-800/60 px-3 py-1 rounded-xl border border-slate-700/60">
+            <div className={`hidden lg:flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-xl border ${
+              theme === 'dark' ? 'text-slate-400 bg-slate-800/60 border-slate-700/60' : 'text-slate-600 bg-slate-100 border-slate-200'
+            }`}>
               <span className="material-icons-round text-xs text-amber-400">clean_hands</span>
               <span>{bfT.noLinesNote || 'Feeder connections grouped physically by enclosure bay'}</span>
             </div>
@@ -1869,29 +1919,33 @@ ${svgElements}
         <div className="flex-1 flex overflow-hidden">
           
           {/* Left: Architectural Elevation Riser Silhouette Profile */}
-          <aside className="w-56 xl:w-64 border-r border-slate-800 bg-slate-900/40 p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar hidden md:flex">
-            <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
+          <aside className={`w-56 xl:w-64 border-r p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar hidden md:flex ${
+            theme === 'dark' ? 'border-slate-800 bg-slate-900/40 text-slate-200' : 'border-blue-100 bg-gradient-to-b from-sky-50/60 via-slate-50 to-indigo-50/40 text-slate-800'
+          }`}>
+            <div className={`flex items-center justify-between pb-2 mb-3 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-blue-100'}`}>
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                <span className="material-icons-round text-sm text-amber-400">corporate_fare</span>
+                <span className="material-icons-round text-sm text-amber-500">corporate_fare</span>
                 {bfT.elevationRiser || 'Building Elevation'}
               </span>
               <span className="text-[10px] font-mono text-slate-500">NTS</span>
             </div>
 
-            {/* Building Totalizer Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-4 shadow-sm">
-              <div className="text-[10px] uppercase font-bold text-slate-500 mb-1">{bfT.totalLoad || 'Total Load'}</div>
-              <div className="text-lg font-bold text-amber-400 font-mono leading-tight">
-                {buildingTotals.kva.toFixed(1)} <span className="text-xs text-slate-400 font-sans">kVA</span>
+            {/* Building Overview Card (No Total Load / Current) */}
+            <div className={`rounded-xl p-3 mb-4 shadow-sm border ${
+              theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-gradient-to-br from-white via-sky-50/40 to-blue-50/30 border-blue-200 shadow-xs'
+            }`}>
+              <div className="text-[10px] uppercase font-bold text-sky-500 mb-1">{bfT.totalComponents || 'Total Equipment'}</div>
+              <div className={`text-lg font-bold font-mono leading-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                {buildingTotals.nodes} <span className="text-xs text-slate-400 font-sans">items</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-800/80 text-[11px]">
+              <div className={`grid grid-cols-2 gap-2 mt-2 pt-2 border-t text-[11px] ${theme === 'dark' ? 'border-slate-800/80' : 'border-blue-100'}`}>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">{bfT.totalCurrent || 'Total Current'}</span>
-                  <span className="font-bold text-slate-300 font-mono">{buildingTotals.amps} A</span>
+                  <span className="text-slate-500 block text-[10px]">{bfT.boards || 'Panels'}</span>
+                  <span className="font-bold text-amber-500 font-mono">{buildingTotals.boards}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">{bfT.totalComponents || 'Components'}</span>
-                  <span className="font-bold text-sky-400 font-mono">{buildingTotals.nodes}</span>
+                  <span className="text-slate-500 block text-[10px]">{bfT.levels || 'Levels'}</span>
+                  <span className="font-bold text-emerald-500 font-mono">{floorGroups.length}</span>
                 </div>
               </div>
             </div>
@@ -1916,10 +1970,10 @@ ${svgElements}
                     onClick={() => handleScrollToFloor(floor.key)}
                     className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between group relative overflow-hidden ${
                       floor.isUnassigned
-                        ? 'bg-amber-950/20 border-amber-800/40 hover:bg-amber-900/30'
+                        ? theme === 'dark' ? 'bg-amber-950/20 border-amber-800/40 hover:bg-amber-900/30' : 'bg-amber-50/90 border-amber-300 hover:bg-amber-100/80 text-amber-900'
                         : isActive
-                        ? 'bg-amber-600/20 border-amber-500/60 shadow-md'
-                        : 'bg-slate-800/60 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
+                        ? theme === 'dark' ? 'bg-amber-600/20 border-amber-500/60 shadow-md text-white' : 'bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border-blue-500 shadow-sm text-blue-950 font-bold ring-2 ring-blue-400/30'
+                        : theme === 'dark' ? 'bg-slate-800/60 border-slate-800 hover:bg-slate-800 hover:border-slate-700 text-slate-200' : 'bg-white border-slate-200 hover:bg-sky-50/60 hover:border-sky-300 text-slate-800 shadow-2xs'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -1929,13 +1983,15 @@ ${svgElements}
                             ? 'bg-amber-900/40 text-amber-300'
                             : isActive
                             ? 'bg-amber-500 text-white'
-                            : 'bg-slate-700 text-slate-300'
+                            : theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700'
                         }`}
                       >
                         {floor.isUnassigned ? '?' : floor.levelRank}
                       </div>
-                      <div className="truncate">
-                        <div className="text-xs font-semibold text-slate-200 truncate group-hover:text-amber-400 transition-colors">
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-xs font-semibold break-words leading-tight transition-colors ${
+                          theme === 'dark' ? 'text-slate-200 group-hover:text-amber-400' : 'text-slate-800 group-hover:text-blue-600'
+                        }`} title={floor.displayName}>
                           {floor.displayName}
                         </div>
                         <div className="text-[10px] font-mono text-slate-500">
@@ -1945,11 +2001,11 @@ ${svgElements}
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="text-[11px] font-bold font-mono text-amber-400">
-                        {floor.totalKva > 0 ? `${floor.totalKva.toFixed(0)}kVA` : '-'}
+                      <div className="text-[11px] font-bold font-mono text-sky-500">
+                        {floor.nodes.length} items
                       </div>
                       <div className="text-[9px] text-slate-500">
-                        {floor.nodes.length} items
+                        {floor.enclosures.length} {bfT.boards || 'panels'}
                       </div>
                     </div>
                   </button>
@@ -1983,16 +2039,22 @@ ${svgElements}
                   id={slabId}
                   className={`rounded-2xl border transition-all overflow-hidden ${
                     floor.isUnassigned
-                      ? 'bg-slate-900/40 border-dashed border-amber-700/50'
-                      : 'bg-slate-900/80 border-slate-800 shadow-xl'
+                      ? theme === 'dark'
+                        ? 'bg-slate-900/40 border-dashed border-amber-700/50'
+                        : 'bg-amber-50/50 border-dashed border-amber-300 shadow-sm'
+                      : theme === 'dark'
+                        ? 'bg-slate-900/80 border-slate-800 shadow-xl'
+                        : 'bg-white border-blue-100 shadow-md'
                   }`}
                 >
-                  {/* Architectural Floor Concrete Slab Header */}
+                  {/* Architectural Floor Concrete Slab Header (Blue Title Bar) */}
                   <div
                     className={`px-5 py-3 border-b flex flex-wrap items-center justify-between gap-3 ${
                       floor.isUnassigned
-                        ? 'bg-amber-950/30 border-amber-800/40 text-amber-300'
-                        : 'bg-gradient-to-r from-slate-800 via-slate-800/90 to-slate-800/70 border-slate-700/80 text-white'
+                        ? theme === 'dark'
+                          ? 'bg-amber-900/40 border-amber-700/60 text-amber-200'
+                          : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 border-amber-400 text-white shadow-md'
+                        : 'bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 border-blue-500 text-white shadow-md'
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -2000,8 +2062,10 @@ ${svgElements}
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wider uppercase border flex items-center gap-1.5 ${
                           floor.isUnassigned
-                            ? 'bg-amber-900/50 border-amber-700/60 text-amber-200'
-                            : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+                            ? theme === 'dark'
+                              ? 'bg-amber-900/60 border-amber-600/70 text-amber-200'
+                              : 'bg-amber-200/80 border-amber-400 text-amber-900'
+                            : 'bg-white/15 border-white/30 text-white'
                         }`}
                       >
                         <span className="material-icons-round text-sm">
@@ -2021,28 +2085,23 @@ ${svgElements}
                           )}
                         </div>
                         {floor.isUnassigned && (
-                          <p className="text-[11px] text-amber-400/80 mt-0.5">
+                          <p className={`text-[11px] mt-0.5 ${theme === 'dark' ? 'text-amber-400/80' : 'text-amber-800'}`}>
                             {bfT.unassignedDesc || 'Components with no floor assigned yet. Assign a floor or room below to organize them.'}
                           </p>
                         )}
                       </div>
                     </div>
 
-                    {/* Floor Aggregate Metrics Bar */}
+                    {/* Floor Aggregate Metrics Bar (No Total Load / Current) */}
                     <div className="flex items-center gap-2 sm:gap-3 text-xs">
-                      <div className="bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-700/60 flex items-center gap-1.5 font-mono">
-                        <span className="text-slate-400 text-[10px]">{bfT.totalLoad || 'Load'}:</span>
-                        <span className="font-bold text-amber-400">{floor.totalKva.toFixed(1)} kVA</span>
+                      <div className="bg-black/25 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 font-mono text-white">
+                        <span className="text-white/80 text-[10px]">{bfT.boards || 'Panels'}:</span>
+                        <span className="font-bold text-white">{floor.enclosures.length}</span>
                       </div>
 
-                      <div className="bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-700/60 flex items-center gap-1.5 font-mono">
-                        <span className="text-slate-400 text-[10px]">{bfT.totalCurrent || 'Current'}:</span>
-                        <span className="font-bold text-slate-200">{floor.totalAmps} A</span>
-                      </div>
-
-                      <div className="bg-slate-900/70 px-2.5 py-1 rounded-lg border border-slate-700/60 flex items-center gap-1.5 font-mono">
-                        <span className="text-slate-400 text-[10px]">{bfT.totalComponents || 'Items'}:</span>
-                        <span className="font-bold text-sky-400">{floor.nodes.length}</span>
+                      <div className="bg-black/25 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 font-mono text-white">
+                        <span className="text-white/80 text-[10px]">{bfT.totalComponents || 'Items'}:</span>
+                        <span className="font-bold text-white">{floor.nodes.length}</span>
                       </div>
                     </div>
                   </div>
@@ -2053,7 +2112,7 @@ ${svgElements}
                     {/* 1. Panel Enclosures & Distribution Boards (Cabinet Bays containing their sons) */}
                     {floor.enclosures.length > 0 && (
                       <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-wider">
                           <span className="material-icons-round text-sm text-sky-400">dns</span>
                           <span>{bfT.enclosureBay || 'Panel Enclosure & Downstream Feed'}</span>
                           <span className="text-[10px] font-mono text-slate-500">({floor.enclosures.length})</span>
@@ -2066,37 +2125,62 @@ ${svgElements}
                             return (
                               <div
                                 key={board.node.id}
-                                className={`rounded-xl border transition-all overflow-hidden bg-slate-950/80 ${
+                                className={`rounded-xl border transition-all overflow-hidden ${
                                   isSelected
                                     ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-lg'
-                                    : 'border-slate-800 hover:border-slate-700'
+                                    : theme === 'dark'
+                                    ? 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
+                                    : 'bg-white border-blue-200 hover:border-blue-400 hover:shadow-md transition-all shadow-xs'
                                 }`}
                               >
-                                {/* Enclosure Header: Distribution Board Specs */}
+                                {/* Enclosure Header: Distribution Board Specs (Blue Tinted Title Bar) */}
                                 <div
                                   onClick={() => handleInspect(board)}
-                                  className="p-3.5 bg-gradient-to-r from-slate-900 to-slate-900/80 border-b border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors flex items-center justify-between"
+                                  className={`p-3.5 border-b cursor-pointer transition-colors flex items-center justify-between gap-3 ${
+                                    theme === 'dark'
+                                      ? 'bg-gradient-to-r from-blue-950/60 via-slate-900 to-sky-950/40 border-blue-900/40 hover:bg-blue-900/30'
+                                      : 'bg-gradient-to-r from-blue-50 via-sky-50/60 to-indigo-50/40 border-blue-200 hover:from-blue-100/70 hover:to-indigo-100/70'
+                                  }`}
                                 >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                      theme === 'dark' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-blue-600 text-white shadow-xs'
+                                    }`}>
                                       <span className="material-icons-round text-lg">
                                         {board.node.type === ComponentType.SYSTEM_ROOT ? 'domain' : 'dns'}
                                       </span>
                                     </div>
 
-                                    <div>
-                                      <div className="flex items-center gap-2">
-                                        <h4 className="text-sm font-bold text-white tracking-tight hover:text-amber-400 transition-colors">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <h4 className={`text-sm font-bold tracking-tight transition-colors break-words leading-snug ${
+                                          theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
+                                        }`} title={board.node.name}>
                                           {board.node.name}
                                         </h4>
                                         {board.node.componentNumber && (
-                                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                                          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border shrink-0 ${
+                                            theme === 'dark' ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                          }`}>
                                             #{board.node.componentNumber}
                                           </span>
                                         )}
+                                        {/* Meter and Multimeter Badges */}
+                                        {board.node.hasMeter && (
+                                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1 font-semibold" title={board.node.meterNumber ? `Meter #${board.node.meterNumber}` : 'Energy Meter'}>
+                                            <span className="material-icons-round text-xs">speed</span>
+                                            <span>{board.node.meterNumber ? `M #${board.node.meterNumber}` : 'Meter'}</span>
+                                          </span>
+                                        )}
+                                        {board.node.hasMultimeter && (
+                                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center gap-1 font-semibold" title="Multimeter (V, A, Hz, PF)">
+                                            <span className="material-icons-round text-xs">multiline_chart</span>
+                                            <span>Multimeter</span>
+                                          </span>
+                                        )}
                                       </div>
-                                      <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                                        <span className="text-sky-400 font-semibold font-mono">
+                                      <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                        <span className="text-sky-500 font-semibold font-mono">
                                           {board.node.amps || 0}A • {board.node.voltage || 400}V • {board.node.kva || 0}kVA
                                         </span>
                                         {board.place && (
@@ -2109,12 +2193,14 @@ ${svgElements}
                                   {/* Feeder / Parent badge (NO LINES!) */}
                                   <div className="text-right shrink-0">
                                     {board.parent ? (
-                                      <div className="text-[10px] bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700 text-slate-300 flex items-center gap-1" title="Feeding Source">
-                                        <span className="material-icons-round text-xs text-amber-400">arrow_upward</span>
-                                        <span>{bfT.parentFeeder || 'Feeder'}: <strong className="text-white">{board.parent.name}</strong></span>
+                                      <div className={`text-[10px] px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                                        theme === 'dark' ? 'bg-slate-800/80 border-slate-700 text-slate-300' : 'bg-white border-blue-200 text-slate-700 shadow-2xs'
+                                      }`} title="Feeding Source">
+                                        <span className="material-icons-round text-xs text-amber-500">arrow_upward</span>
+                                        <span>{bfT.parentFeeder || 'Feeder'}: <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{board.parent.name}</strong></span>
                                       </div>
                                     ) : (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 font-semibold">
+                                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-semibold">
                                         {bfT.independentSource || 'Main Source'}
                                       </span>
                                     )}
@@ -2122,10 +2208,10 @@ ${svgElements}
                                 </div>
 
                                 {/* Enclosure Interior: Modular Slots for Downstream Sons */}
-                                <div className="p-3 bg-slate-950/40">
+                                <div className={`p-3 ${theme === 'dark' ? 'bg-slate-950/40' : 'bg-gradient-to-b from-blue-50/20 via-slate-50/40 to-white'}`}>
                                   <div className="text-[10px] uppercase font-bold text-slate-500 mb-2 flex items-center justify-between">
                                     <span>{bfT.downstreamSons || 'Downstream Sons'} ({localSons.length + remoteSons.length})</span>
-                                    <span className="text-[9px] font-mono text-slate-600">ENCLOSURE SLOTS</span>
+                                    <span className="text-[9px] font-mono text-slate-400">ENCLOSURE SLOTS</span>
                                   </div>
 
                                   {/* Local Sons (Living on this floor) */}
@@ -2140,23 +2226,39 @@ ${svgElements}
                                             onClick={() => handleInspect(son)}
                                             className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-between group ${
                                               isSonSelected
-                                                ? 'bg-amber-500/10 border-amber-500/70 text-white'
-                                                : 'bg-slate-900/90 border-slate-800/80 hover:bg-slate-800 hover:border-slate-700'
+                                                ? 'bg-amber-500/10 border-amber-500/70 shadow-2xs'
+                                                : theme === 'dark'
+                                                ? 'bg-slate-900/90 border-slate-800/80 hover:bg-slate-800 hover:border-slate-700'
+                                                : 'bg-white border-slate-200 hover:bg-blue-50/60 hover:border-blue-300 shadow-2xs'
                                             }`}
                                           >
-                                            <div className="flex items-center gap-2 min-w-0">
-                                              <div className="w-6 h-6 rounded bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
+                                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                                              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${
+                                                theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
+                                              }`}>
                                                 <LegendIcon
                                                   icon={COMPONENT_CONFIG[son.node.type]?.icon || 'help'}
                                                   color={COMPONENT_CONFIG[son.node.type]?.color || '#94a3b8'}
                                                   size={14}
                                                 />
                                               </div>
-                                              <div className="truncate">
-                                                <div className="text-xs font-semibold text-slate-200 group-hover:text-amber-400 truncate transition-colors">
-                                                  {son.node.name}
+                                              <div className="min-w-0 flex-1">
+                                                <div className={`text-xs font-semibold transition-colors flex items-center gap-1.5 flex-wrap ${
+                                                  theme === 'dark' ? 'text-slate-200 group-hover:text-amber-400' : 'text-slate-800 group-hover:text-blue-600'
+                                                }`}>
+                                                  <span className="break-words leading-tight" title={son.node.name}>{son.node.name}</span>
+                                                  {son.node.hasMeter && (
+                                                    <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono font-bold shrink-0" title="Meter">
+                                                      M
+                                                    </span>
+                                                  )}
+                                                  {son.node.hasMultimeter && (
+                                                    <span className="text-[9px] px-1 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 font-mono font-bold shrink-0" title="Multimeter">
+                                                      MM
+                                                    </span>
+                                                  )}
                                                 </div>
-                                                <div className="text-[10px] font-mono text-slate-400">
+                                                <div className="text-[10px] font-mono text-slate-500 mt-0.5">
                                                   {son.node.amps ? `${son.node.amps}A` : ''} {son.node.kva ? `• ${son.node.kva}kVA` : ''}
                                                 </div>
                                               </div>
@@ -2173,7 +2275,7 @@ ${svgElements}
 
                                   {/* Remote Sons (Fed from here but physically located on other floors) */}
                                   {remoteSons.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-slate-800/60">
+                                    <div className={`mt-2 pt-2 border-t ${theme === 'dark' ? 'border-slate-800/60' : 'border-slate-200'}`}>
                                       <span className="text-[10px] text-slate-500 block mb-1.5">
                                         ⚡ Feeds sub-panels on other floors (no crossing lines):
                                       </span>
@@ -2182,10 +2284,16 @@ ${svgElements}
                                           <button
                                             key={rSon.node.id}
                                             onClick={() => handleInspect(rSon)}
-                                            className="text-[10px] px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/60 flex items-center gap-1 transition-colors"
+                                            className={`text-[10px] px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
+                                              theme === 'dark'
+                                                ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700/60'
+                                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
+                                            }`}
                                           >
-                                            <span className="font-semibold text-slate-200">{rSon.node.name}</span>
-                                            <span className="text-amber-400 font-mono">({rSon.floor || 'No floor'})</span>
+                                            <span className="font-semibold break-words leading-tight" title={rSon.node.name}>{rSon.node.name}</span>
+                                            {rSon.node.hasMeter && <span className="text-[8px] text-emerald-500 font-mono shrink-0">[M]</span>}
+                                            {rSon.node.hasMultimeter && <span className="text-[8px] text-purple-500 font-mono shrink-0">[MM]</span>}
+                                            <span className="text-amber-500 font-mono shrink-0">({rSon.floor || 'No floor'})</span>
                                           </button>
                                         ))}
                                       </div>
@@ -2193,7 +2301,7 @@ ${svgElements}
                                   )}
 
                                   {localSons.length === 0 && remoteSons.length === 0 && (
-                                    <div className="text-xs text-slate-600 py-1 italic">
+                                    <div className="text-xs text-slate-500 py-1 italic">
                                       No downstream circuits attached.
                                     </div>
                                   )}
@@ -2208,8 +2316,8 @@ ${svgElements}
                     {/* 2. Standalone Equipment & Branch Loads on this Floor */}
                     {floor.standaloneNodes.length > 0 && (
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                          <span className="material-icons-round text-sm text-emerald-400">devices</span>
+                        <div className="flex items-center gap-2 text-xs font-bold text-blue-500 uppercase tracking-wider">
+                          <span className="material-icons-round text-sm text-emerald-500">devices</span>
                           <span>{bfT.individualDevices || 'Equipment & Loads on this Floor'}</span>
                           <span className="text-[10px] font-mono text-slate-500">({floor.standaloneNodes.length})</span>
                         </div>
@@ -2222,61 +2330,81 @@ ${svgElements}
                               <div
                                 key={item.node.id}
                                 onClick={() => handleInspect(item)}
-                                className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between bg-slate-900/60 hover:bg-slate-800/80 ${
+                                className={`p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                                   isSelected
                                     ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
-                                    : 'border-slate-800 hover:border-slate-700'
+                                    : theme === 'dark'
+                                    ? 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800 hover:border-slate-700'
+                                    : 'bg-white hover:bg-indigo-50/40 border-blue-100 hover:border-blue-300 shadow-2xs'
                                 }`}
                               >
                                 <div>
                                   <div className="flex items-start justify-between gap-2">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
+                                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                                        theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      }`}>
                                         <LegendIcon
                                           icon={COMPONENT_CONFIG[item.node.type]?.icon || 'help'}
                                           color={COMPONENT_CONFIG[item.node.type]?.color || '#94a3b8'}
                                           size={16}
                                         />
                                       </div>
-                                      <div className="truncate">
-                                        <h5 className="text-xs font-bold text-white truncate">
+                                      <div className="min-w-0 flex-1">
+                                        <h5 className={`text-xs font-bold break-words leading-snug ${
+                                          theme === 'dark' ? 'text-white' : 'text-slate-900'
+                                        }`} title={item.node.name}>
                                           {item.node.name}
                                         </h5>
-                                        <span className="text-[10px] text-slate-400 block truncate">
+                                        <span className="text-[10px] text-slate-500 block mt-0.5">
                                           {t.componentTypes[item.node.type] || item.node.type}
                                         </span>
                                       </div>
                                     </div>
 
-                                    {item.node.isEssential && (
-                                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-semibold uppercase shrink-0">
-                                        EMERGENCY
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {item.node.hasMeter && (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-semibold" title={item.node.meterNumber ? `Meter #${item.node.meterNumber}` : 'Meter'}>
+                                          {item.node.meterNumber ? `M#${item.node.meterNumber}` : 'M'}
+                                        </span>
+                                      )}
+                                      {item.node.hasMultimeter && (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono font-semibold" title="Multimeter">
+                                          MM
+                                        </span>
+                                      )}
+                                      {item.node.isEssential && (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-semibold uppercase">
+                                          EMERGENCY
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   <div className="mt-2.5 flex items-center gap-2 text-[11px] font-mono">
-                                    <span className="text-amber-400 font-semibold">
+                                    <span className="text-amber-500 font-semibold">
                                       {item.node.amps ? `${item.node.amps}A` : ''}
                                     </span>
                                     {item.node.kva && (
-                                      <span className="text-slate-400">• {item.node.kva}kVA</span>
+                                      <span className="text-slate-500">• {item.node.kva}kVA</span>
                                     )}
                                     {item.place && (
-                                      <span className="text-slate-500 truncate">• {item.place}</span>
+                                      <span className="text-slate-500 break-words">• {item.place}</span>
                                     )}
                                   </div>
                                 </div>
 
                                 {/* Feeder Reference Badge (NO LINES!) */}
-                                <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px]">
+                                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-[10px] ${
+                                  theme === 'dark' ? 'border-slate-800/60' : 'border-slate-100'
+                                }`}>
                                   {item.parent ? (
-                                    <span className="text-slate-400 truncate flex items-center gap-1" title={`Fed by ${item.parent.name}`}>
-                                      <span className="material-icons-round text-xs text-amber-400">bolt</span>
-                                      <span className="truncate">Fed by: <strong className="text-slate-200">{item.parent.name}</strong></span>
+                                    <span className="text-slate-500 flex items-center gap-1 min-w-0 flex-1 mr-2" title={`Fed by ${item.parent.name}`}>
+                                      <span className="material-icons-round text-xs text-amber-500 shrink-0">bolt</span>
+                                      <span className="break-words leading-tight">Fed by: <strong className={theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}>{item.parent.name}</strong></span>
                                     </span>
                                   ) : (
-                                    <span className="text-emerald-400 font-medium">Independent</span>
+                                    <span className="text-emerald-500 font-medium">Independent</span>
                                   )}
 
                                   {/* Quick assign button if unassigned */}
@@ -2286,7 +2414,7 @@ ${svgElements}
                                         e.stopPropagation();
                                         setQuickAssignTargetId(quickAssignTargetId === item.node.id ? null : item.node.id);
                                       }}
-                                      className="px-2 py-0.5 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40 text-[10px] font-semibold transition-colors"
+                                      className="px-2 py-0.5 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-500 border border-amber-500/40 text-[10px] font-semibold transition-colors"
                                     >
                                       {bfT.assignFloor || 'Assign Floor'}
                                     </button>
@@ -2297,9 +2425,11 @@ ${svgElements}
                                 {quickAssignTargetId === item.node.id && (
                                   <div
                                     onClick={(e) => e.stopPropagation()}
-                                    className="mt-2 p-2 bg-slate-950 border border-amber-500/50 rounded-xl shadow-xl space-y-1.5 animate-fadeIn"
+                                    className={`mt-2 p-2 rounded-xl shadow-xl space-y-1.5 animate-fadeIn border ${
+                                      theme === 'dark' ? 'bg-slate-950 border-amber-500/50' : 'bg-white border-amber-400'
+                                    }`}
                                   >
-                                    <div className="text-[10px] font-bold text-amber-400 uppercase">
+                                    <div className="text-[10px] font-bold text-amber-500 uppercase">
                                       {bfT.quickAssign || 'Quick Assign to Floor'}:
                                     </div>
                                     <div className="grid grid-cols-2 gap-1 text-[11px]">
@@ -2307,7 +2437,11 @@ ${svgElements}
                                         <button
                                           key={flr}
                                           onClick={() => handleQuickAssignFloor(item, flr)}
-                                          className="px-2 py-1 bg-slate-800 hover:bg-amber-600 hover:text-white rounded text-slate-300 transition-colors text-left truncate"
+                                          className={`px-2 py-1 rounded transition-colors text-left truncate ${
+                                            theme === 'dark'
+                                              ? 'bg-slate-800 hover:bg-amber-600 hover:text-white text-slate-300'
+                                              : 'bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-700'
+                                          }`}
                                         >
                                           {flr}
                                         </button>
@@ -2336,24 +2470,30 @@ ${svgElements}
 
           {/* Right: Component Detail & Location Editor Inspector Drawer */}
           {inspectedItem && (
-            <aside className="w-80 xl:w-96 border-l border-slate-800 bg-slate-900/60 p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar animate-fadeIn">
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+            <aside className={`w-80 xl:w-96 border-l p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar animate-fadeIn ${
+              theme === 'dark' ? 'border-slate-800 bg-slate-900/60 text-slate-200' : 'border-blue-100 bg-gradient-to-b from-sky-50/40 via-white to-blue-50/30 text-slate-800 shadow-md'
+            }`}>
+              <div className={`flex items-center justify-between pb-3 mb-4 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-blue-100'}`}>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <span className="material-icons-round text-sm text-amber-400">info</span>
+                  <span className="material-icons-round text-sm text-amber-500">info</span>
                   {t.propertiesActions || 'Component Inspector'}
                 </span>
                 <button
                   onClick={() => setInspectedNodeId(null)}
-                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                  className={`p-1 rounded-lg transition-colors ${
+                    theme === 'dark' ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-900'
+                  }`}
                 >
                   <span className="material-icons-round text-base">close</span>
                 </button>
               </div>
 
               {/* Component Header Card */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 shadow-sm">
+              <div className={`border rounded-xl p-3.5 mb-4 shadow-sm ${
+                theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-200 shadow-2xs'
+              }`}>
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-500 border border-amber-500/30 flex items-center justify-center shrink-0">
                     <LegendIcon
                       icon={COMPONENT_CONFIG[inspectedItem.node.type]?.icon || 'help'}
                       color={COMPONENT_CONFIG[inspectedItem.node.type]?.color || '#f59e0b'}
@@ -2362,10 +2502,10 @@ ${svgElements}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-white truncate">
+                    <h3 className={`text-sm font-bold break-words leading-snug ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`} title={inspectedItem.node.name}>
                       {inspectedItem.node.name}
                     </h3>
-                    <div className="text-xs text-amber-400/90 font-medium">
+                    <div className="text-xs text-amber-500 font-medium">
                       {t.componentTypes[inspectedItem.node.type] || inspectedItem.node.type}
                     </div>
                     {inspectedItem.node.componentNumber && (
@@ -2377,64 +2517,118 @@ ${svgElements}
                 </div>
 
                 {/* Ratings Grid */}
-                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-800 text-center text-xs">
-                  <div className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                <div className={`grid grid-cols-3 gap-2 mt-3 pt-3 border-t text-center text-xs ${
+                  theme === 'dark' ? 'border-slate-800' : 'border-blue-100'
+                }`}>
+                  <div className={`p-1.5 rounded-lg border ${
+                    theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-blue-50/80 border-blue-200'
+                  }`}>
                     <span className="text-[9px] text-slate-500 block">Amps</span>
-                    <span className="font-bold text-slate-200 font-mono">{inspectedItem.node.amps || 0}A</span>
+                    <span className={`font-bold font-mono ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{inspectedItem.node.amps || 0}A</span>
                   </div>
-                  <div className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                  <div className={`p-1.5 rounded-lg border ${
+                    theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-sky-50/80 border-sky-200'
+                  }`}>
                     <span className="text-[9px] text-slate-500 block">Voltage</span>
-                    <span className="font-bold text-slate-200 font-mono">{inspectedItem.node.voltage || 400}V</span>
+                    <span className={`font-bold font-mono ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{inspectedItem.node.voltage || 400}V</span>
                   </div>
-                  <div className="bg-slate-950/60 p-1.5 rounded-lg border border-slate-800/80">
+                  <div className={`p-1.5 rounded-lg border ${
+                    theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-amber-50/80 border-amber-200'
+                  }`}>
                     <span className="text-[9px] text-slate-500 block">Power</span>
-                    <span className="font-bold text-amber-400 font-mono">{inspectedItem.node.kva || 0}kVA</span>
+                    <span className="font-bold text-amber-500 font-mono">{inspectedItem.node.kva || 0}kVA</span>
                   </div>
                 </div>
+
+                {/* Meter and Multimeter Specs Card */}
+                {(inspectedItem.node.hasMeter || inspectedItem.node.hasMultimeter) && (
+                  <div className={`mt-3 pt-3 border-t space-y-1.5 text-xs ${
+                    theme === 'dark' ? 'border-slate-800' : 'border-slate-100'
+                  }`}>
+                    <div className="text-[10px] uppercase font-bold text-blue-500 flex items-center gap-1">
+                      <span className="material-icons-round text-xs">speed</span>
+                      <span>Instrumentation & Metering</span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {inspectedItem.node.hasMeter && (
+                        <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                          <span className="text-emerald-500 font-medium flex items-center gap-1">
+                            <span className="material-icons-round text-xs">electric_meter</span>
+                            <span>Energy Meter</span>
+                          </span>
+                          <span className="font-mono text-[11px] text-emerald-500 font-bold">
+                            {inspectedItem.node.meterNumber ? `#${inspectedItem.node.meterNumber}` : 'Active'}
+                          </span>
+                        </div>
+                      )}
+                      {inspectedItem.node.hasMultimeter && (
+                        <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-between">
+                          <span className="text-purple-500 font-medium flex items-center gap-1">
+                            <span className="material-icons-round text-xs">multiline_chart</span>
+                            <span>Digital Multimeter</span>
+                          </span>
+                          <span className="font-mono text-[10px] text-purple-500 font-semibold">
+                            V • A • Hz • PF
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Father / Source Feeder Box (NO LINES!) */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-4">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 flex items-center gap-1">
-                  <span className="material-icons-round text-xs text-sky-400">arrow_upward</span>
+              <div className={`border rounded-xl p-3 mb-4 ${
+                theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
+              }`}>
+                <span className="text-[10px] uppercase font-bold text-blue-500 block mb-2 flex items-center gap-1">
+                  <span className="material-icons-round text-xs text-sky-500">arrow_upward</span>
                   {bfT.parentFeeder || 'Direct Parent (Father Feeder)'}
                 </span>
 
                 {inspectedItem.parent ? (
                   <div
                     onClick={() => handleInspect(extractedMap.get(inspectedItem.parent!.id) || inspectedItem)}
-                    className="p-2.5 bg-slate-950 rounded-lg border border-slate-800 hover:border-slate-700 cursor-pointer transition-colors"
+                    className={`p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                    }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white hover:text-amber-400 transition-colors">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-xs font-bold transition-colors break-words leading-snug ${
+                        theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
+                      }`} title={inspectedItem.parent.name}>
                         {inspectedItem.parent.name}
                       </span>
-                      <span className="text-[10px] text-amber-400 font-mono">
+                      <span className="text-[10px] text-amber-500 font-mono shrink-0">
                         {inspectedItem.parent.floor || 'Floor ?'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">
+                    <div className="text-[10px] text-slate-500 mt-0.5">
                       {t.componentTypes[inspectedItem.parent.type]} • {inspectedItem.parent.amps || 0}A
                     </div>
                     {inspectedItem.feederCable && (
-                      <div className="text-[10px] font-mono text-sky-400 mt-1 flex items-center gap-1">
+                      <div className="text-[10px] font-mono text-sky-500 mt-1 flex items-center gap-1">
                         <span className="material-icons-round text-xs">cable</span>
                         <span>{inspectedItem.feederCable}</span>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="text-xs text-emerald-400 font-semibold p-2 bg-emerald-950/20 border border-emerald-800/40 rounded-lg">
+                  <div className="text-xs text-emerald-500 font-semibold p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
                     ⚡ {bfT.independentSource || 'Root / Independent Power Supply'}
                   </div>
                 )}
               </div>
 
               {/* Downstream Fed Sons List */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-4">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2 flex items-center justify-between">
+              <div className={`border rounded-xl p-3 mb-4 ${
+                theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
+              }`}>
+                <span className="text-[10px] uppercase font-bold text-blue-500 block mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-1">
-                    <span className="material-icons-round text-xs text-emerald-400">arrow_downward</span>
+                    <span className="material-icons-round text-xs text-emerald-500">arrow_downward</span>
                     <span>{bfT.downstreamSons || 'Downstream Fed Sons'}</span>
                   </span>
                   <span className="text-slate-500 font-mono">({inspectedItem.directSons.length})</span>
@@ -2449,13 +2643,19 @@ ${svgElements}
                           const ext = extractedMap.get(son.id);
                           if (ext) handleInspect(ext);
                         }}
-                        className="p-2 bg-slate-950 rounded-lg border border-slate-800/80 hover:border-slate-700 cursor-pointer flex items-center justify-between text-xs"
+                        className={`p-2 rounded-lg border cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                          theme === 'dark'
+                            ? 'bg-slate-950 border-slate-800/80 hover:border-slate-700'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
                       >
-                        <div className="truncate">
-                          <span className="font-semibold text-slate-200 block truncate">{son.name}</span>
-                          <span className="text-[10px] text-slate-500">{son.amps ? `${son.amps}A` : ''}</span>
+                        <div className="min-w-0 flex-1 flex items-center gap-1.5 flex-wrap mr-2">
+                          <span className={`font-semibold block break-words leading-tight ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`} title={son.name}>{son.name}</span>
+                          {son.hasMeter && <span className="text-[9px] text-emerald-500 font-mono font-bold shrink-0">[M]</span>}
+                          {son.hasMultimeter && <span className="text-[9px] text-purple-500 font-mono font-bold shrink-0">[MM]</span>}
+                          <span className="text-[10px] text-slate-500 shrink-0">{son.amps ? `${son.amps}A` : ''}</span>
                         </div>
-                        <span className="text-[10px] text-amber-400 font-mono shrink-0">
+                        <span className="text-[10px] text-amber-500 font-mono shrink-0">
                           {son.floor || 'No floor'}
                         </span>
                       </div>
@@ -2469,42 +2669,50 @@ ${svgElements}
               </div>
 
               {/* Location Editor Form */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 mb-4 space-y-3">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block flex items-center gap-1">
-                  <span className="material-icons-round text-xs text-amber-400">edit_location</span>
+              <div className={`border rounded-xl p-3.5 mb-4 space-y-3 ${
+                theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
+              }`}>
+                <span className="text-[10px] uppercase font-bold text-slate-500 block flex items-center gap-1">
+                  <span className="material-icons-round text-xs text-amber-500">edit_location</span>
                   {bfT.editLocation || 'Edit Floor & Location'}
                 </span>
 
                 <div>
-                  <label className="text-[10px] font-semibold text-slate-400 block mb-1">{bfT.building || 'Building'}</label>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-1">{bfT.building || 'Building'}</label>
                   <input
                     type="text"
                     value={editLocationForm.building}
                     onChange={(e) => setEditLocationForm({ ...editLocationForm, building: e.target.value })}
                     placeholder="e.g. Main Building, Tower A"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-500 outline-none"
+                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-500 outline-none ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-semibold text-slate-400 block mb-1">{bfT.floor || 'Floor'}</label>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-1">{bfT.floor || 'Floor'}</label>
                   <input
                     type="text"
                     value={editLocationForm.floor}
                     onChange={(e) => setEditLocationForm({ ...editLocationForm, floor: e.target.value })}
                     placeholder="e.g. Floor 2, Ground, Roof, B1"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-500 outline-none"
+                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-500 outline-none ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-semibold text-slate-400 block mb-1">{bfT.room || 'Room / Area'}</label>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-1">{bfT.room || 'Room / Area'}</label>
                   <input
                     type="text"
                     value={editLocationForm.place}
                     onChange={(e) => setEditLocationForm({ ...editLocationForm, place: e.target.value })}
                     placeholder={bfT.roomPlaceholder || 'e.g. Electrical Room 101, Server Rack...'}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-amber-500 outline-none"
+                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-500 outline-none ${
+                      theme === 'dark' ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                 </div>
 
@@ -2520,7 +2728,11 @@ ${svgElements}
               {/* Locate in Diagram Action */}
               <button
                 onClick={() => onNavigateToNode(inspectedItem.pageId, inspectedItem.node.id)}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 rounded-xl text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2"
+                className={`w-full py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2 border ${
+                  theme === 'dark'
+                    ? 'bg-slate-800 hover:bg-slate-700 text-sky-400 border-slate-700'
+                    : 'bg-white hover:bg-slate-100 text-sky-600 border-slate-200 shadow-2xs'
+                }`}
               >
                 <span className="material-icons-round text-sm">open_in_new</span>
                 <span>{bfT.locateInDiagram || 'Locate in SLD Diagram'}</span>
