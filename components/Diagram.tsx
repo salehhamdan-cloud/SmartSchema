@@ -1812,8 +1812,7 @@ export const Diagram: React.FC<DiagramProps> = ({
           t1 = group.append('text')
             .attr('class', 'badge-text')
             .attr('x', textCenterX)
-            .attr('y', 9)
-            .attr('dy', '0.35em')
+            .attr('y', 8.5)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -1825,8 +1824,7 @@ export const Diagram: React.FC<DiagramProps> = ({
           t2 = group.append('text')
             .attr('class', 'badge-text')
             .attr('x', textCenterX)
-            .attr('y', 20)
-            .attr('dy', '0.35em')
+            .attr('y', 19.5)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -1851,8 +1849,7 @@ export const Diagram: React.FC<DiagramProps> = ({
             t1 = group.append('text')
               .attr('class', 'badge-text')
               .attr('x', textCenterX)
-              .attr('y', 10)
-              .attr('dy', '0.35em')
+              .attr('y', 9)
               .attr('text-anchor', 'middle')
               .attr('dominant-baseline', 'central')
               .style('font-family', MULTILINGUAL_FONT_FAMILY)
@@ -2125,7 +2122,7 @@ export const Diagram: React.FC<DiagramProps> = ({
     ];
 
     const totalLegendItems = types.length + badgeItems.length + 1; 
-    const legendW = 240;
+    const legendW = isRTL ? 285 : 240;
     const legendH = 50 + totalLegendItems * 25;
 
     let legX = maxX + 50;
@@ -2199,33 +2196,92 @@ export const Diagram: React.FC<DiagramProps> = ({
     const legendG = g
       .append('g')
       .attr('class', 'legend-group')
-      .attr('transform', `translate(${legX}, ${legY})`);
+      .attr('transform', `translate(${legX}, ${legY})`)
+      .attr('direction', isRTL ? 'rtl' : 'ltr')
+      .style('direction', isRTL ? 'rtl' : 'ltr');
 
-    legendG.append('rect').attr('width', legendW).attr('height', legendH).attr('rx', 8).attr('fill', isDark ? '#1e293b' : '#ffffff').attr('stroke', secondaryTextColor).attr('stroke-width', 1).attr('opacity', 0.95);
-    legendG.append('text').attr('x', legendW / 2).attr('y', 25).attr('text-anchor', 'middle').attr('font-weight', 'bold').attr('fill', textColor).attr('font-size', '12px').text(t.legend.title);
+    legendG.append('rect')
+      .attr('width', legendW)
+      .attr('height', legendH)
+      .attr('rx', 8)
+      .attr('fill', isDark ? '#1e293b' : '#ffffff')
+      .attr('stroke', secondaryTextColor)
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.95);
+
+    legendG.append('text')
+      .attr('x', legendW / 2)
+      .attr('y', 25)
+      .attr('text-anchor', 'middle')
+      .attr('font-weight', 'bold')
+      .attr('fill', textColor)
+      .attr('font-size', '12px')
+      .attr('direction', isRTL ? 'rtl' : 'ltr')
+      .style('direction', isRTL ? 'rtl' : 'ltr')
+      .style('font-family', isRTL ? "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, sans-serif" : 'inherit')
+      .text(t.legend.title);
+
+    const rtlFont = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
     types.forEach((type, i) => {
       const y = 50 + i * 25;
       const config = COMPONENT_CONFIG[type];
-      let iconX = isRTL ? legendW - 25 : 25;
-      let textX = isRTL ? legendW - 45 : 45;
+      let iconX = isRTL ? legendW - 24 : 24;
+      let textX = isRTL ? legendW - 46 : 46;
       legendG.append('circle').attr('cx', iconX).attr('cy', y).attr('r', 8).attr('fill', isDark ? '#0f172a' : '#f8fafc').attr('stroke', config.color).attr('stroke-width', 1.5);
       const itemG = legendG.append('g').attr('transform', `translate(${iconX - 6}, ${y - 6})`);
       renderIcon(itemG, config.icon, config.color, 'scale(0.5)');
-      legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'end' : 'start').text(t.componentTypes[type]);
+      legendG.append('text')
+        .attr('x', textX)
+        .attr('y', y)
+        .attr('dominant-baseline', 'central')
+        .attr('fill', textColor)
+        .attr('font-size', '11px')
+        .attr('direction', isRTL ? 'rtl' : 'ltr')
+        .attr('text-anchor', 'start')
+        .style('direction', isRTL ? 'rtl' : 'ltr')
+        .style('unicode-bidi', 'isolate')
+        .style('font-family', isRTL ? rtlFont : 'inherit')
+        .text(t.componentTypes[type]);
     });
 
     const sepY = 50 + types.length * 25 + 10;
-    legendG.append('line').attr('x1', 20).attr('y1', sepY).attr('x2', legendW - 20).attr('y2', sepY).attr('stroke', secondaryTextColor).attr('stroke-width', 1).attr('opacity', 0.5);
+    legendG.append('line')
+      .attr('x1', 16)
+      .attr('y1', sepY)
+      .attr('x2', legendW - 16)
+      .attr('y2', sepY)
+      .attr('stroke', secondaryTextColor)
+      .attr('stroke-width', 1)
+      .attr('opacity', 0.5);
 
     badgeItems.forEach((item, i) => {
         const y = sepY + 20 + i * 25;
-        let iconX = isRTL ? legendW - 25 : 25;
-        let textX = isRTL ? legendW - 45 : 45;
-        legendG.append('rect').attr('x', iconX - 10).attr('y', y - 9).attr('width', 20).attr('height', 18).attr('rx', 9).attr('fill', isDark ? '#1e293b' : '#f1f5f9').attr('stroke', item.color).attr('stroke-width', 0.5);
+        let iconX = isRTL ? legendW - 24 : 24;
+        let textX = isRTL ? legendW - 46 : 46;
+        legendG.append('rect')
+          .attr('x', iconX - 10)
+          .attr('y', y - 9)
+          .attr('width', 20)
+          .attr('height', 18)
+          .attr('rx', 9)
+          .attr('fill', isDark ? '#1e293b' : '#f1f5f9')
+          .attr('stroke', item.color)
+          .attr('stroke-width', 0.5);
         const itemG = legendG.append('g').attr('transform', `translate(${iconX - 6}, ${y - 6})`);
         renderIcon(itemG, item.icon, item.color, 'scale(0.5)');
-        legendG.append('text').attr('x', textX).attr('y', y).attr('dominant-baseline', 'middle').attr('fill', textColor).attr('font-size', '11px').attr('text-anchor', isRTL ? 'end' : 'start').text(item.label);
+        legendG.append('text')
+          .attr('x', textX)
+          .attr('y', y)
+          .attr('dominant-baseline', 'central')
+          .attr('fill', textColor)
+          .attr('font-size', '11px')
+          .attr('direction', isRTL ? 'rtl' : 'ltr')
+          .attr('text-anchor', 'start')
+          .style('direction', isRTL ? 'rtl' : 'ltr')
+          .style('unicode-bidi', 'isolate')
+          .style('font-family', isRTL ? rtlFont : 'inherit')
+          .text(item.label);
     });
 
     // Auto-fit diagram content to screen ONLY on initial mount or when orientation explicitly changes

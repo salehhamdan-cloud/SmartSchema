@@ -1897,7 +1897,7 @@ export default function App() {
           if (el.classList.contains('badge-text') || el.closest('.component-badge')) {
               el.setAttribute('text-anchor', 'middle');
               el.setAttribute('dominant-baseline', 'central');
-              el.setAttribute('dy', '0.35em');
+              el.removeAttribute('dy');
               (el as SVGElement).style.textAnchor = 'middle';
               (el as SVGElement).style.dominantBaseline = 'central';
           }
@@ -1916,7 +1916,7 @@ export default function App() {
                   if (estLen > maxTextWidth) maxTextWidth = estLen;
                   t.setAttribute('text-anchor', 'middle');
                   t.setAttribute('dominant-baseline', 'central');
-                  t.setAttribute('dy', '0.35em');
+                  t.removeAttribute('dy');
                   (t as SVGElement).style.textAnchor = 'middle';
                   (t as SVGElement).style.dominantBaseline = 'central';
               });
