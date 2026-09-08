@@ -1883,6 +1883,15 @@ export default function App() {
       const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
       const multilingualFontFamily = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Arabic', 'Tahoma', Arial, sans-serif";
       
+      // Explicit BiDi hierarchy for legend group
+      clone.querySelectorAll('g.legend-group').forEach(lg => {
+          if (isRTL) {
+              lg.setAttribute('direction', 'rtl');
+              (lg as SVGElement).style.direction = 'rtl';
+              (lg as SVGElement).style.unicodeBidi = 'embed';
+          }
+      });
+
       clone.querySelectorAll('text, tspan').forEach(el => {
           const text = el.textContent || '';
           if (rtlRegex.test(text)) {
@@ -1892,6 +1901,22 @@ export default function App() {
               (el as SVGElement).style.unicodeBidi = 'isolate';
           }
           (el as SVGElement).style.fontFamily = multilingualFontFamily;
+
+          // Maintain explicit BiDi hierarchy and alignment for legend text elements
+          if (el.closest('.legend-group')) {
+              if (isRTL) {
+                  el.setAttribute('direction', 'rtl');
+                  el.setAttribute('unicode-bidi', 'embed');
+                  (el as SVGElement).style.direction = 'rtl';
+                  (el as SVGElement).style.unicodeBidi = 'embed';
+              }
+              const currentAnchor = el.getAttribute('text-anchor');
+              if (currentAnchor !== 'middle') {
+                  el.setAttribute('text-anchor', 'start');
+                  (el as SVGElement).style.textAnchor = 'start';
+              }
+              return;
+          }
 
           // Preserve text centering and vertical alignment on component badges
           if (el.classList.contains('badge-text') || el.closest('.component-badge')) {

@@ -576,6 +576,264 @@ export const Diagram: React.FC<DiagramProps> = ({
       return text.length * charWidth;
     };
 
+    interface NodeBadgeItem {
+      id: string;
+      line1: string;
+      line2: string;
+      iconName: string;
+      color: string;
+      bgColorLight: string;
+      bgColorDark: string;
+      isTwoLine: boolean;
+      hasText: boolean;
+      width: number;
+      height: number;
+    }
+
+    interface NodeBadgeRow {
+      items: NodeBadgeItem[];
+      totalWidth: number;
+      rowHeight: number;
+    }
+
+    const getNodeBadgeItems = (nodeData: ElectricalNode): NodeBadgeItem[] => {
+      const items: NodeBadgeItem[] = [];
+
+      const calcTextBadgeWidth = (l1: string, l2: string, twoLine: boolean) => {
+        if (!l1 && !l2) return 20;
+        let tLen = 0;
+        if (twoLine) {
+          const w1 = getTextWidth(l1, '8.5px', 'bold', 6.2);
+          const w2 = getTextWidth(l2, '8px', '600', 5.6);
+          tLen = Math.max(w1, w2);
+        } else {
+          const single = l1 || l2 || '';
+          tLen = getTextWidth(single, '9px', 'bold', 6.2);
+        }
+        const isRtl = rtlRegex.test(l1) || rtlRegex.test(l2);
+        const finalTLen = isRtl ? Math.ceil(tLen * 1.2) : Math.ceil(tLen);
+        return 20 + finalTLen + 14;
+      };
+
+      if (nodeData.hasMeter) {
+        const { line1, line2, isTwoLine } = getBadgeLines(nodeData.meterModel, nodeData.meterSerial, nodeData.meterNumber);
+        const hasText = Boolean(line1 || line2);
+        const width = calcTextBadgeWidth(line1, line2, isTwoLine);
+        items.push({
+          id: 'meter',
+          line1,
+          line2,
+          iconName: 'speed',
+          color: '#3b82f6',
+          bgColorLight: '#dbeafe',
+          bgColorDark: '#1e3a8a',
+          isTwoLine,
+          hasText,
+          width,
+          height: isTwoLine ? 28 : 18,
+        });
+      }
+
+      if (nodeData.hasMultimeter) {
+        const { line1, line2, isTwoLine } = getBadgeLines(nodeData.multimeterModel, nodeData.multimeterSerial, nodeData.multimeterNumber);
+        const hasText = Boolean(line1 || line2);
+        const width = calcTextBadgeWidth(line1, line2, isTwoLine);
+        items.push({
+          id: 'multimeter',
+          line1,
+          line2,
+          iconName: 'multimeter',
+          color: '#10b981',
+          bgColorLight: '#d1fae5',
+          bgColorDark: '#064e3b',
+          isTwoLine,
+          hasText,
+          width,
+          height: isTwoLine ? 28 : 18,
+        });
+      }
+
+      if (nodeData.hasGeneratorConnection) {
+        const genName = nodeData.generatorName || '';
+        const hasText = Boolean(genName);
+        const width = calcTextBadgeWidth(genName, '', false);
+        items.push({
+          id: 'generator',
+          line1: genName,
+          line2: '',
+          iconName: 'letter_g',
+          color: '#ef4444',
+          bgColorLight: '#fee2e2',
+          bgColorDark: '#7f1d1d',
+          isTwoLine: false,
+          hasText,
+          width,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isExcludedFromMeter) {
+        items.push({
+          id: 'power_off',
+          line1: '',
+          line2: '',
+          iconName: 'power_off',
+          color: '#64748b',
+          bgColorLight: '#f1f5f9',
+          bgColorDark: '#334155',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isAirConditioning) {
+        items.push({
+          id: 'ac_unit',
+          line1: '',
+          line2: '',
+          iconName: 'ac_unit',
+          color: '#06b6d4',
+          bgColorLight: '#cffafe',
+          bgColorDark: '#155e75',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isAirBreaker) {
+        items.push({
+          id: 'air_breaker',
+          line1: '',
+          line2: '',
+          iconName: 'air_breaker',
+          color: '#0284c7',
+          bgColorLight: '#e0f2fe',
+          bgColorDark: '#0369a1',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isReserved) {
+        items.push({
+          id: 'lock',
+          line1: '',
+          line2: '',
+          iconName: 'lock',
+          color: '#eab308',
+          bgColorLight: '#fef9c3',
+          bgColorDark: '#713f12',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isEssential) {
+        items.push({
+          id: 'star',
+          line1: '',
+          line2: '',
+          iconName: 'star',
+          color: '#ef4444',
+          bgColorLight: '#fee2e2',
+          bgColorDark: '#7f1d1d',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.isPublicBoard) {
+        items.push({
+          id: 'public_board',
+          line1: '',
+          line2: '',
+          iconName: 'public_board',
+          color: '#14b8a6',
+          bgColorLight: '#ccfbf1',
+          bgColorDark: '#134e4a',
+          isTwoLine: false,
+          hasText: false,
+          width: 20,
+          height: 18,
+        });
+      }
+
+      if (nodeData.hasTransferSwitch) {
+        const { line1, line2, isTwoLine } = getTransferSwitchBadgeLines(nodeData.secondBreakerName, nodeData.secondBreakerNumber, nodeData.secondBreakerAmps);
+        const hasText = Boolean(line1 || line2);
+        const width = calcTextBadgeWidth(line1, line2, isTwoLine);
+        items.push({
+          id: 'transfer_switch',
+          line1,
+          line2,
+          iconName: 'transfer_switch',
+          color: '#a855f7',
+          bgColorLight: '#f3e8ff',
+          bgColorDark: '#581c87',
+          isTwoLine,
+          hasText,
+          width,
+          height: isTwoLine ? 28 : 18,
+        });
+      }
+
+      return items;
+    };
+
+    const layoutBadgeRows = (items: NodeBadgeItem[], maxRowWidth: number): NodeBadgeRow[] => {
+      if (items.length === 0) return [];
+      const rows: NodeBadgeRow[] = [];
+      let currentRow: NodeBadgeItem[] = [];
+      let currentRowWidth = 0;
+      let currentRowHasTwoLine = false;
+
+      // Special rule: if both meter and multimeter are present, they MUST be one beside the other
+      const hasMeter = items.some(i => i.id === 'meter');
+      const hasMultimeter = items.some(i => i.id === 'multimeter');
+      const meterAndMmPair = hasMeter && hasMultimeter;
+
+      items.forEach((item) => {
+        const itemGap = currentRow.length > 0 ? 5 : 0;
+        // Keep multimeter beside meter on the same row:
+        const isPairingWithMeter = meterAndMmPair && item.id === 'multimeter' && currentRow.some(i => i.id === 'meter');
+
+        if (currentRow.length === 0 || isPairingWithMeter || currentRowWidth + itemGap + item.width <= maxRowWidth) {
+          currentRow.push(item);
+          currentRowWidth += itemGap + item.width;
+          if (item.isTwoLine) currentRowHasTwoLine = true;
+        } else {
+          rows.push({
+            items: currentRow,
+            totalWidth: currentRowWidth,
+            rowHeight: currentRowHasTwoLine ? 28 : 18,
+          });
+          currentRow = [item];
+          currentRowWidth = item.width;
+          currentRowHasTwoLine = item.isTwoLine;
+        }
+      });
+
+      if (currentRow.length > 0) {
+        rows.push({
+          items: currentRow,
+          totalWidth: currentRowWidth,
+          rowHeight: currentRowHasTwoLine ? 28 : 18,
+        });
+      }
+
+      return rows;
+    };
+
     const getNodeSize = (d: d3.HierarchyNode<ElectricalNode>) => {
       if (d.data.id === 'virtual-root') return { w: 1, h: 1 };
 
@@ -614,79 +872,37 @@ export const Diagram: React.FC<DiagramProps> = ({
         maxLocLen = Math.max(maxLocLen, getTextWidth(l, '11px', '500', 5.4)); 
       });
 
-      let badgeTotalWidth = 0;
-      let badgeCount = 0;
-      let hasTwoLineBadge = false;
-
-      if (d.data.hasMeter) {
-        const { line1, line2, isTwoLine } = getBadgeLines(d.data.meterModel, d.data.meterSerial, d.data.meterNumber);
-        if (isTwoLine) {
-          hasTwoLineBadge = true;
-          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.2);
-          const w2 = getTextWidth(line2, '8px', '600', 4.8);
-          badgeTotalWidth += 20 + Math.max(w1, w2) + 6;
-        } else {
-          const width = getTextWidth(line1 || '', '9px', 'bold', 5.4);
-          badgeTotalWidth += 20 + (line1 ? width + 6 : 0);
-        }
-        badgeCount++;
-      }
-      if (d.data.hasGeneratorConnection) {
-        const width = getTextWidth(d.data.generatorName || '', '9px', 'bold', 5.4);
-        const totalW = 20 + (d.data.generatorName ? width + 6 : 0);
-        badgeTotalWidth += totalW;
-        badgeCount++;
-      }
-      
-      if (d.data.isExcludedFromMeter) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.isAirConditioning) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.isAirBreaker) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.isReserved) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.isEssential) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.hasMultimeter) {
-        const { line1, line2, isTwoLine } = getBadgeLines(d.data.multimeterModel, d.data.multimeterSerial);
-        if (isTwoLine) {
-          hasTwoLineBadge = true;
-          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.2);
-          const w2 = getTextWidth(line2, '8px', '600', 4.8);
-          badgeTotalWidth += 20 + Math.max(w1, w2) + 6;
-        } else {
-          const width = getTextWidth(line1 || '', '9px', 'bold', 5.4);
-          badgeTotalWidth += 20 + (line1 ? width + 6 : 0);
-        }
-        badgeCount++;
-      }
-      if (d.data.isPublicBoard) { badgeTotalWidth += 22; badgeCount++; }
-      if (d.data.hasTransferSwitch) {
-        const { line1, line2, isTwoLine } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
-        if (isTwoLine) {
-          hasTwoLineBadge = true;
-          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
-          const w2 = getTextWidth(line2, '8px', '600', 5.0);
-          badgeTotalWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
-        } else {
-          const width = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
-          badgeTotalWidth += 20 + (line1 ? Math.ceil(width) + 8 : 0);
-        }
-        badgeCount++;
-      }
-
-      if (badgeCount > 1) {
-        badgeTotalWidth += (badgeCount - 1) * 5;
-      }
-
-      const contentWidth = Math.max(
+      const badgeItems = getNodeBadgeItems(d.data);
+      const baseContentWidth = Math.max(
         nameLen,
         typeLen,
         specLen,
         modelLen,
         maxDescLen,
         maxLocLen,
-        badgeTotalWidth,
         80
       );
-      // Snug, compact node width with reduced empty space on sides
-      const nodeW = Math.max(contentWidth + 18, badgeTotalWidth + 16, 96);
+
+      // If both meter and multimeter are present, ensure node is wide enough to fit them side-by-side
+      const hasMeter = badgeItems.some(i => i.id === 'meter');
+      const hasMultimeter = badgeItems.some(i => i.id === 'multimeter');
+      let meterPairWidth = 0;
+      if (hasMeter && hasMultimeter) {
+        const m = badgeItems.find(i => i.id === 'meter');
+        const mm = badgeItems.find(i => i.id === 'multimeter');
+        if (m && mm) {
+          meterPairWidth = m.width + 5 + mm.width;
+        }
+      }
+
+      // Wrap badges/icons into rows if multiple badges or many icons exceed content width
+      const maxRowWidth = Math.max(baseContentWidth, meterPairWidth, 140);
+      const rows = layoutBadgeRows(badgeItems, maxRowWidth);
+      const maxBadgesRowWidth = rows.reduce((max, r) => Math.max(max, r.totalWidth), 0);
+      const totalBadgesHeight = rows.reduce((sum, r) => sum + r.rowHeight, 0) + Math.max(0, rows.length - 1) * 5;
+
+      // Ensure node is always wide enough to contain every badge row with comfortable margin
+      const nodeW = Math.max(baseContentWidth + 24, maxBadgesRowWidth + 24, meterPairWidth > 0 ? meterPairWidth + 24 : 0, 96);
 
       // Height calculation - tightly fitted to content with zero wasted gaps
       // Top icon center is at 25px
@@ -699,8 +915,8 @@ export const Diagram: React.FC<DiagramProps> = ({
       if (descLines.length > 0) contentHeight += (descLines.length * 15) + 4;
       if (locLines.length > 0) contentHeight += (locLines.length * 14) + 4;
       
-      if (badgeCount > 0) {
-        contentHeight += (hasTwoLineBadge ? 28 : 18) + 16;
+      if (rows.length > 0) {
+        contentHeight += totalBadgesHeight + 16;
       } else {
         contentHeight += 12;
       }
@@ -1782,7 +1998,7 @@ export const Diagram: React.FC<DiagramProps> = ({
         bgColorDark: string, 
         d: ExtendedHierarchyNode,
         badgeX: number,
-        maxNodeBadgeHeight: number = 18,
+        badgeY: number,
         customTransform?: string
     ) => {
         const group = gNode.append('g').attr('class', 'component-badge');
@@ -1791,13 +2007,15 @@ export const Diagram: React.FC<DiagramProps> = ({
         
         let textLen = 0;
         if (isTwoLine) {
-          const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
-          const w2 = getTextWidth(line2, '8px', '600', 5.0);
+          const w1 = getTextWidth(line1, '8.5px', 'bold', 6.2);
+          const w2 = getTextWidth(line2, '8px', '600', 5.6);
           textLen = Math.max(w1, w2);
         } else {
           const singleText = line1 || line2 || '';
-          textLen = singleText ? getTextWidth(singleText, '9px', 'bold', 5.5) : 0;
+          textLen = singleText ? getTextWidth(singleText, '9px', 'bold', 6.2) : 0;
         }
+        const isRtl = rtlRegex.test(line1) || rtlRegex.test(line2);
+        if (isRtl) textLen = Math.ceil(textLen * 1.2);
 
         const hasText = textLen > 0;
         // Total badge width: icon area (20px) + measured text length + right margin (14px)
@@ -1815,6 +2033,10 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('y', 8.5)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
+            .attr('alignment-baseline', 'central')
+            .style('dominant-baseline', 'central')
+            .style('alignment-baseline', 'central')
+            .style('line-height', '1')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '8.5px')
             .style('font-weight', 'bold')
@@ -1827,6 +2049,10 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('y', 19.5)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'central')
+            .attr('alignment-baseline', 'central')
+            .style('dominant-baseline', 'central')
+            .style('alignment-baseline', 'central')
+            .style('line-height', '1')
             .style('font-family', MULTILINGUAL_FONT_FAMILY)
             .style('font-size', '8px')
             .style('font-weight', '600')
@@ -1849,9 +2075,13 @@ export const Diagram: React.FC<DiagramProps> = ({
             t1 = group.append('text')
               .attr('class', 'badge-text')
               .attr('x', textCenterX)
-              .attr('y', 9)
+              .attr('y', badgeHeight / 2)
               .attr('text-anchor', 'middle')
               .attr('dominant-baseline', 'central')
+              .attr('alignment-baseline', 'central')
+              .style('dominant-baseline', 'central')
+              .style('alignment-baseline', 'central')
+              .style('line-height', '1')
               .style('font-family', MULTILINGUAL_FONT_FAMILY)
               .style('font-size', '9px')
               .style('font-weight', 'bold')
@@ -1882,125 +2112,59 @@ export const Diagram: React.FC<DiagramProps> = ({
         const defaultTrans = customTransform || (isTwoLine ? 'translate(3, 8) scale(0.5)' : 'translate(3, 3) scale(0.5)');
         renderIcon(group, iconName, color, defaultTrans);
         
-        if (d.data.shape && d.data.shape !== 'rectangle') {
-             group.attr('transform', `translate(${badgeX}, -35)`);
-        } else {
-             const box = getRectBox(d);
-             const y = box.y + box.h - maxNodeBadgeHeight - 8 + (maxNodeBadgeHeight - badgeHeight) / 2;
-             group.attr('transform', `translate(${badgeX}, ${y})`);
-        }
+        group.attr('transform', `translate(${badgeX}, ${badgeY})`);
         return totalWidth;
     };
 
     nodesSelection.each(function(d: any) {
         const gNode = d3.select(this as SVGGElement);
-        let totalBadgesWidth = 0;
-        let badgeCount = 0;
-        let hasTwoLineBadge = false;
-
-        if (d.data.hasMeter) {
-            const { line1, line2, isTwoLine } = getBadgeLines(d.data.meterModel, d.data.meterSerial, d.data.meterNumber);
-            if (isTwoLine) {
-                hasTwoLineBadge = true;
-                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
-                const w2 = getTextWidth(line2, '8px', '600', 5.0);
-                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
-            } else {
-                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
-                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
-            }
-            badgeCount++;
-        }
-        if (d.data.hasGeneratorConnection) {
-            const textLen = d.data.generatorName ? getTextWidth(d.data.generatorName, '9px', 'bold', 5.5) : 0;
-            totalBadgesWidth += 20 + (d.data.generatorName ? Math.ceil(textLen) + 8 : 0);
-            badgeCount++;
-        }
-        if (d.data.isExcludedFromMeter) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.isAirConditioning) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.isAirBreaker) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.isReserved) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.isEssential) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.hasMultimeter) {
-            const { line1, line2, isTwoLine } = getBadgeLines(d.data.multimeterModel, d.data.multimeterSerial);
-            if (isTwoLine) {
-                hasTwoLineBadge = true;
-                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
-                const w2 = getTextWidth(line2, '8px', '600', 5.0);
-                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
-            } else {
-                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
-                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
-            }
-            badgeCount++;
-        }
-        if (d.data.isPublicBoard) { totalBadgesWidth += 22; badgeCount++; }
-        if (d.data.hasTransferSwitch) {
-            const { line1, line2, isTwoLine } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
-            if (isTwoLine) {
-                hasTwoLineBadge = true;
-                const w1 = getTextWidth(line1, '8.5px', 'bold', 5.5);
-                const w2 = getTextWidth(line2, '8px', '600', 5.0);
-                totalBadgesWidth += 20 + Math.ceil(Math.max(w1, w2)) + 8;
-            } else {
-                const textLen = line1 ? getTextWidth(line1, '9px', 'bold', 5.5) : 0;
-                totalBadgesWidth += 20 + (line1 ? Math.ceil(textLen) + 8 : 0);
-            }
-            badgeCount++;
-        }
-
-        if (badgeCount > 1) {
-            totalBadgesWidth += (badgeCount - 1) * 5;
-        }
-
         const box = getRectBox(d);
-        const startX = box.x + Math.max(8, (box.w - totalBadgesWidth) / 2);
-        let currentXOffset = 0;
-        const maxNodeBadgeHeight = hasTwoLineBadge ? 28 : 18;
+        const shape = d.data.shape || 'rectangle';
 
-        if (d.data.hasMeter) {
-            const { line1, line2 } = getBadgeLines(d.data.meterModel, d.data.meterSerial, d.data.meterNumber);
-            const w = renderBadge(gNode, line1, line2, 'speed', '#3b82f6', '#dbeafe', '#1e3a8a', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.hasGeneratorConnection) {
-            const w = renderBadge(gNode, d.data.generatorName || '', '', 'letter_g', '#ef4444', '#fee2e2', '#7f1d1d', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isExcludedFromMeter) {
-             const w = renderBadge(gNode, '', '', 'power_off', '#64748b', '#f1f5f9', '#334155', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isAirConditioning) {
-             const w = renderBadge(gNode, '', '', 'ac_unit', '#06b6d4', '#cffafe', '#155e75', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isAirBreaker) {
-             const w = renderBadge(gNode, '', '', 'air_breaker', '#0284c7', '#e0f2fe', '#0369a1', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isReserved) {
-             const w = renderBadge(gNode, '', '', 'lock', '#eab308', '#fef9c3', '#713f12', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isEssential) {
-             const w = renderBadge(gNode, '', '', 'star', '#ef4444', '#fee2e2', '#7f1d1d', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.hasMultimeter) {
-             const { line1, line2 } = getBadgeLines(d.data.multimeterModel, d.data.multimeterSerial);
-             const w = renderBadge(gNode, line1, line2, 'multimeter', '#10b981', '#d1fae5', '#064e3b', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.isPublicBoard) {
-             const w = renderBadge(gNode, '', '', 'public_board', '#14b8a6', '#ccfbf1', '#134e4a', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
-        if (d.data.hasTransferSwitch) {
-            const { line1, line2 } = getTransferSwitchBadgeLines(d.data.secondBreakerName, d.data.secondBreakerNumber, d.data.secondBreakerAmps);
-            const w = renderBadge(gNode, line1, line2, 'transfer_switch', '#a855f7', '#f3e8ff', '#581c87', d, startX + currentXOffset, maxNodeBadgeHeight);
-            currentXOffset += w + 5;
-        }
+        const badgeItems = getNodeBadgeItems(d.data);
+        if (badgeItems.length === 0) return;
+
+        const maxRowWidth = Math.max(d.width - 24, 140);
+        const rows = layoutBadgeRows(badgeItems, maxRowWidth);
+        const totalBadgesHeight = rows.reduce((sum, r) => sum + r.rowHeight, 0) + Math.max(0, rows.length - 1) * 5;
+
+        let yOffset = 0;
+        rows.forEach((row, rowIndex) => {
+            let rowStartX: number;
+            let rowY: number;
+
+            if (shape !== 'rectangle') {
+                rowStartX = -row.totalWidth / 2;
+                rowY = -35 - (rows.length - 1 - rowIndex) * (row.rowHeight + 4);
+            } else {
+                rowStartX = box.x + (box.w - row.totalWidth) / 2;
+                rowY = box.y + box.h - totalBadgesHeight - 8 + yOffset;
+            }
+
+            let itemXOffset = 0;
+            row.items.forEach((item) => {
+                const itemY = shape !== 'rectangle'
+                    ? rowY
+                    : rowY + (row.rowHeight - item.height) / 2;
+
+                const actualWidth = renderBadge(
+                    gNode,
+                    item.line1,
+                    item.line2,
+                    item.iconName,
+                    item.color,
+                    item.bgColorLight,
+                    item.bgColorDark,
+                    d,
+                    rowStartX + itemXOffset,
+                    itemY
+                );
+
+                itemXOffset += Math.max(item.width, actualWidth) + 5;
+            });
+
+            yOffset += row.rowHeight + 5;
+        });
     });
 
     linksToRender.forEach((d: any) => {
@@ -2122,7 +2286,7 @@ export const Diagram: React.FC<DiagramProps> = ({
     ];
 
     const totalLegendItems = types.length + badgeItems.length + 1; 
-    const legendW = isRTL ? 285 : 240;
+    const legendW = isRTL ? 340 : 260;
     const legendH = 50 + totalLegendItems * 25;
 
     let legX = maxX + 50;
@@ -2198,7 +2362,8 @@ export const Diagram: React.FC<DiagramProps> = ({
       .attr('class', 'legend-group')
       .attr('transform', `translate(${legX}, ${legY})`)
       .attr('direction', isRTL ? 'rtl' : 'ltr')
-      .style('direction', isRTL ? 'rtl' : 'ltr');
+      .style('direction', isRTL ? 'rtl' : 'ltr')
+      .style('unicode-bidi', 'embed');
 
     legendG.append('rect')
       .attr('width', legendW)
@@ -2209,40 +2374,51 @@ export const Diagram: React.FC<DiagramProps> = ({
       .attr('stroke-width', 1)
       .attr('opacity', 0.95);
 
+    const rtlFont = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    const iconX = isRTL ? legendW - 28 : 28;
+    const textX = isRTL ? legendW - 52 : 52;
+
     legendG.append('text')
       .attr('x', legendW / 2)
       .attr('y', 25)
       .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
       .attr('font-weight', 'bold')
       .attr('fill', textColor)
       .attr('font-size', '12px')
       .attr('direction', isRTL ? 'rtl' : 'ltr')
       .style('direction', isRTL ? 'rtl' : 'ltr')
-      .style('font-family', isRTL ? "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, sans-serif" : 'inherit')
+      .style('unicode-bidi', 'embed')
+      .style('font-family', isRTL ? rtlFont : 'inherit')
       .text(t.legend.title);
-
-    const rtlFont = "'Cairo', 'Heebo', 'Rubik', 'Noto Sans Arabic', 'Noto Sans Hebrew', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
     types.forEach((type, i) => {
       const y = 50 + i * 25;
       const config = COMPONENT_CONFIG[type];
-      let iconX = isRTL ? legendW - 24 : 24;
-      let textX = isRTL ? legendW - 46 : 46;
-      legendG.append('circle').attr('cx', iconX).attr('cy', y).attr('r', 8).attr('fill', isDark ? '#0f172a' : '#f8fafc').attr('stroke', config.color).attr('stroke-width', 1.5);
+      const labelText = t.componentTypes[type] || type;
+      legendG.append('circle')
+        .attr('cx', iconX)
+        .attr('cy', y)
+        .attr('r', 8)
+        .attr('fill', isDark ? '#0f172a' : '#f8fafc')
+        .attr('stroke', config.color)
+        .attr('stroke-width', 1.5);
       const itemG = legendG.append('g').attr('transform', `translate(${iconX - 6}, ${y - 6})`);
       renderIcon(itemG, config.icon, config.color, 'scale(0.5)');
       legendG.append('text')
         .attr('x', textX)
         .attr('y', y)
         .attr('dominant-baseline', 'central')
+        .attr('alignment-baseline', 'central')
         .attr('fill', textColor)
         .attr('font-size', '11px')
         .attr('direction', isRTL ? 'rtl' : 'ltr')
-        .attr('text-anchor', 'start')
         .style('direction', isRTL ? 'rtl' : 'ltr')
-        .style('unicode-bidi', 'isolate')
+        .style('unicode-bidi', 'embed')
+        .attr('text-anchor', 'start')
+        .style('text-anchor', 'start')
         .style('font-family', isRTL ? rtlFont : 'inherit')
-        .text(t.componentTypes[type]);
+        .text(labelText);
     });
 
     const sepY = 50 + types.length * 25 + 10;
@@ -2257,8 +2433,6 @@ export const Diagram: React.FC<DiagramProps> = ({
 
     badgeItems.forEach((item, i) => {
         const y = sepY + 20 + i * 25;
-        let iconX = isRTL ? legendW - 24 : 24;
-        let textX = isRTL ? legendW - 46 : 46;
         legendG.append('rect')
           .attr('x', iconX - 10)
           .attr('y', y - 9)
@@ -2274,12 +2448,14 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('x', textX)
           .attr('y', y)
           .attr('dominant-baseline', 'central')
+          .attr('alignment-baseline', 'central')
           .attr('fill', textColor)
           .attr('font-size', '11px')
           .attr('direction', isRTL ? 'rtl' : 'ltr')
-          .attr('text-anchor', 'start')
           .style('direction', isRTL ? 'rtl' : 'ltr')
-          .style('unicode-bidi', 'isolate')
+          .style('unicode-bidi', 'embed')
+          .attr('text-anchor', 'start')
+          .style('text-anchor', 'start')
           .style('font-family', isRTL ? rtlFont : 'inherit')
           .text(item.label);
     });

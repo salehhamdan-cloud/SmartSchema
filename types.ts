@@ -65,6 +65,7 @@ export interface ElectricalNode {
   isReserved?: boolean; // New: Reserved Breaker
   isEssential?: boolean; // New: Essential vs Non-Essential Component (Emergency load)
   hasMultimeter?: boolean; // New: Multimeter installed on the board
+  multimeterNumber?: string; // Multimeter Number / Tag
   multimeterModel?: string; // New: Multimeter Model
   multimeterSerial?: string; // New: Multimeter Serial Number
   isPublicBoard?: boolean; // New: Public board classification
@@ -123,6 +124,7 @@ export interface NewNodeData {
   isReserved?: boolean;
   isEssential?: boolean;
   hasMultimeter?: boolean;
+  multimeterNumber?: string;
   multimeterModel?: string;
   multimeterSerial?: string;
   isPublicBoard?: boolean;

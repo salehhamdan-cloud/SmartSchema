@@ -57,7 +57,7 @@ interface BuildingFloorsModalProps {
 }
 
 // Helper to determine floor ordering rank and default elevation
-function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
+function parseFloorLevel(rawFloor?: string, tFloorNames?: any, language?: string, isRTL?: boolean): {
   key: string;
   displayName: string;
   rank: number;
@@ -67,7 +67,7 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
   if (!rawFloor || !rawFloor.trim()) {
     return {
       key: '__unassigned__',
-      displayName: tFloorNames?.unassigned || 'Unassigned Floor',
+      displayName: tFloorNames?.unassigned || (language === 'ar' ? 'بدون دور محدد' : (language === 'he' ? 'ללא קומה' : 'Unassigned Floor')),
       rank: -9999,
       elevation: '--',
       isUnassigned: true
@@ -78,10 +78,10 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
   const lower = str.toLowerCase();
 
   // Roof / Penthouse
-  if (/roof|גג|سطح|penthouse/i.test(lower)) {
+  if (/roof|גג|سطח|penthouse/i.test(lower)) {
     return {
       key: 'Roof',
-      displayName: tFloorNames?.roof || 'Roof / Penthouse',
+      displayName: tFloorNames?.roof || (language === 'ar' ? 'السطح / الروف' : (language === 'he' ? 'גג / חדר מכונות' : 'Roof / Penthouse')),
       rank: 1000,
       elevation: '+12.00m',
       isUnassigned: false
@@ -92,7 +92,7 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
   if (/b2|-2|basement\s*2|מרתף\s*2|بدروم\s*2|قبو\s*2/i.test(lower)) {
     return {
       key: 'Basement 2',
-      displayName: tFloorNames?.basement2 || 'Basement 2 (B2)',
+      displayName: tFloorNames?.basement2 || (language === 'ar' ? 'بدروم 2 (B2)' : (language === 'he' ? 'מרתף 2 (B2)' : 'Basement 2 (B2)')),
       rank: -2,
       elevation: '-6.50m',
       isUnassigned: false
@@ -103,7 +103,7 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
   if (/b1|-1|basement|מרתף|بدروم|قبو/i.test(lower)) {
     return {
       key: 'Basement 1',
-      displayName: tFloorNames?.basement1 || 'Basement 1 (B1)',
+      displayName: tFloorNames?.basement1 || (language === 'ar' ? 'بدروم 1 (B1)' : (language === 'he' ? 'מרתף 1 (B1)' : 'Basement 1 (B1)')),
       rank: -1,
       elevation: '-3.20m',
       isUnassigned: false
@@ -114,7 +114,7 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
   if (/ground|קרקע|ارضي|أرضي|g|0/i.test(lower) && !/\d+/.test(lower.replace(/ground|קרקע|ارضي|أرضي|g|0/gi, ''))) {
     return {
       key: 'Ground Floor',
-      displayName: tFloorNames?.ground || 'Ground Floor (Level 0)',
+      displayName: tFloorNames?.ground || (language === 'ar' ? 'الدور الأرضي' : (language === 'he' ? 'קומת קרקע' : 'Ground Floor')),
       rank: 0,
       elevation: '±0.00m',
       isUnassigned: false
@@ -132,7 +132,9 @@ function parseFloorLevel(rawFloor?: string, tFloorNames?: any): {
     else if (num === 2 && tFloorNames?.floor2) dispName = tFloorNames.floor2;
     else if (num === 3 && tFloorNames?.floor3) dispName = tFloorNames.floor3;
     else if (!str.includes(' ') && !str.includes('Floor') && !str.includes('קומה') && !str.includes('طابق')) {
-      dispName = `Floor ${num}`;
+      if (language === 'he') dispName = `קומה ${num}`;
+      else if (language === 'ar') dispName = `الدور ${num}`;
+      else dispName = `Floor ${num}`;
     }
 
     return {
@@ -309,7 +311,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
     // Process each filtered node
     filteredNodes.forEach(item => {
-      const parsed = parseFloorLevel(item.floor, floorNamesT);
+      const parsed = parseFloorLevel(item.floor, floorNamesT, language, isRTL);
       let group = map.get(parsed.key);
 
       if (!group) {
@@ -373,7 +375,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           item.directSons.forEach(son => {
             const sonExtracted = extractedMap.get(son.id);
             if (sonExtracted) {
-              const sonParsedFloor = parseFloorLevel(sonExtracted.floor, floorNamesT);
+              const sonParsedFloor = parseFloorLevel(sonExtracted.floor, floorNamesT, language, isRTL);
               if (sonParsedFloor.key === group.key || (!sonExtracted.floor && group.isUnassigned)) {
                 localSons.push(sonExtracted);
               } else {
@@ -426,7 +428,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       if (b.isUnassigned) return -1;
       return b.levelRank - a.levelRank;
     });
-  }, [filteredNodes, floorNamesT, extractedMap, language]);
+  }, [filteredNodes, floorNamesT, extractedMap, language, isRTL]);
 
   // Selected Inspected Node
   const inspectedItem = useMemo(() => {
@@ -550,28 +552,590 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             enc1 ? enc1.localSons.length : 0,
             enc2 ? enc2.localSons.length : 0
           );
-          const sonsRows = Math.ceil(maxSons / 3);
-          const encHeight = 62 + (maxSons > 0 ? sonsRows * 44 + 14 : 14);
-          height += encHeight + 14;
+          const sonCols = 2;
+          const sonsRows = Math.ceil(maxSons / sonCols);
+          const sonCardHeight = 88;
+          const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
+          height += encHeight + 16;
         }
       }
       if (floor.standaloneNodes.length > 0) {
         height += 24; // section label
-        const devRows = Math.ceil(floor.standaloneNodes.length / 4);
-        height += devRows * (44 + 8) + 10;
+        const devCols = 3;
+        const devCardHeight = 88;
+        const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
+        height += devRows * (devCardHeight + 12) + 16;
       }
-      height += 22; // floor bottom gap
+      height += 24; // floor bottom gap
     });
-    height += 55; // footer
+    height += 100; // badges legend + footer
     return Math.max(900, height);
   };
 
   // Helper: Truncate string safely without clipping unicode or undefined values
-  const safeText = (text: string | undefined | null, maxLen: number = 24): string => {
+  const safeText = (text: string | undefined | null, maxLen: number = 65): string => {
     if (!text) return '';
     const str = String(text).trim();
     if (str.length <= maxLen) return str;
     return str.slice(0, maxLen - 1) + '…';
+  };
+
+  // Helper: Retrieve full untruncated display name for any node
+  const getNodeFullName = (node?: ElectricalNode | null): string => {
+    if (!node) return '';
+    const baseName = (node.name || '').trim();
+    const typeKey = node.type;
+    const translatedType = t.componentTypes?.[typeKey] || typeKey;
+    if (
+      !baseName ||
+      baseName.toUpperCase() === typeKey ||
+      baseName.replace(/_/g, ' ').toUpperCase() === typeKey.replace(/_/g, ' ')
+    ) {
+      return translatedType || baseName || 'Node';
+    }
+    return baseName;
+  };
+
+  // Helper: Format meter display with model and number
+  const getMeterDisplay = (node: ElectricalNode, isCompact: boolean = false): string => {
+    if (!node.hasMeter) return '';
+    const num = node.meterNumber || node.meterSerial;
+    const model = node.meterModel;
+    const meterWord = t.legend?.meter || 'Meter';
+    if (model && num) {
+      return isCompact ? `${model} #${num}` : `${meterWord}: ${model} (#${num})`;
+    } else if (model) {
+      return isCompact ? model : `${meterWord}: ${model}`;
+    } else if (num) {
+      return isCompact ? `M #${num}` : `${meterWord} #${num}`;
+    }
+    return isCompact ? meterWord : (t.legend?.meter || 'Energy Meter');
+  };
+
+  // Helper: Format multimeter display with model and number/serial
+  const getMultimeterDisplay = (node: ElectricalNode, isCompact: boolean = false): string => {
+    if (!node.hasMultimeter) return '';
+    const num = node.multimeterNumber || node.multimeterSerial;
+    const model = node.multimeterModel;
+    const mmWord = t.legend?.multimeter || 'Multimeter';
+    if (model && num) {
+      return isCompact ? `${model} #${num}` : `${mmWord}: ${model} (#${num})`;
+    } else if (model) {
+      return isCompact ? model : `${mmWord}: ${model}`;
+    } else if (num) {
+      return isCompact ? `MM #${num}` : `${mmWord} #${num}`;
+    }
+    return isCompact ? mmWord : (t.legend?.multimeter || 'Digital Multimeter');
+  };
+
+  // Helper: Format meter and multimeter tags for Canvas / SVG with model and numbers
+  const getMeterTag = (node: ElectricalNode, prefix: string = 'Meter'): string => {
+    const parts: string[] = [];
+    if (node.hasMeter) {
+      const num = node.meterNumber || node.meterSerial;
+      const model = node.meterModel;
+      if (model && num) {
+        parts.push(`[${prefix}: ${model} #${num}]`);
+      } else if (model) {
+        parts.push(`[${prefix}: ${model}]`);
+      } else if (num) {
+        parts.push(`[${prefix} #${num}]`);
+      } else {
+        parts.push(`[${prefix}]`);
+      }
+    }
+    if (node.hasMultimeter) {
+      const num = node.multimeterNumber || node.multimeterSerial;
+      const model = node.multimeterModel;
+      const mmPrefix = prefix === 'Meter' ? 'MM' : 'MM';
+      if (model && num) {
+        parts.push(`[${mmPrefix}: ${model} #${num}]`);
+      } else if (model) {
+        parts.push(`[${mmPrefix}: ${model}]`);
+      } else if (num) {
+        parts.push(`[${mmPrefix} #${num}]`);
+      } else {
+        parts.push(`[${mmPrefix}]`);
+      }
+    }
+    return parts.join(' ');
+  };
+
+  // Badge definition for exported Canvas (PDF) and SVG drawings
+  interface ExportBadgeInfo {
+    key: string;
+    label: string;
+    icon: string;
+    bg: string;
+    text: string;
+    border: string;
+  }
+
+  const fontSans = (size: number, weight: string = 'normal', style: string = 'normal') => {
+    const isItalic = weight === 'italic' || style === 'italic';
+    const actualWeight = weight === 'italic' ? 'normal' : weight;
+    const stylePrefix = isItalic ? 'italic ' : '';
+    return `${stylePrefix}${actualWeight} ${size}px "Cairo", "Heebo", "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+  };
+
+  const fontMono = (size: number, weight: string = 'bold') =>
+    `${weight} ${size}px "Roboto Mono", ui-monospace, SFMono-Regular, monospace`;
+
+  // Helper: Visual icons, colors and background styling for component types in Canvas & SVG exports
+  const getComponentTypeExportVisual = (type: ComponentType) => {
+    switch (type) {
+      case ComponentType.SYSTEM_ROOT:
+        return { symbol: '🏢', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+      case ComponentType.DISTRIBUTION_BOARD:
+        return { symbol: '⚡', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+      case ComponentType.TRANSFORMER:
+        return { symbol: '⎎', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+      case ComponentType.METER:
+        return { symbol: '⏱', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
+      case ComponentType.BREAKER:
+        return { symbol: '⏻', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+      case ComponentType.SWITCH:
+        return { symbol: '⏼', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' };
+      case ComponentType.LOAD:
+        return { symbol: '💡', color: '#9333ea', bg: '#faf5ff', border: '#e9d5ff' };
+      case ComponentType.GENERATOR:
+        return { symbol: '⚙', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+      case ComponentType.UPS:
+        return { symbol: '🔋', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' };
+      case ComponentType.BUSBAR:
+        return { symbol: '═', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+      default:
+        return { symbol: '⚡', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
+    }
+  };
+
+  // Helper: Extract complete set of badges/icons with labels and colors for PDF & SVG exports
+  const getNodeExportBadges = (node: ElectricalNode): ExportBadgeInfo[] => {
+    const list: ExportBadgeInfo[] = [];
+
+    // 1. Meter
+    if (node.hasMeter) {
+      const label = getMeterDisplay(node, false);
+      list.push({
+        key: 'meter',
+        label,
+        icon: '⚡M',
+        bg: '#ecfdf5',
+        text: '#059669',
+        border: '#a7f3d0'
+      });
+    }
+
+    // 2. Multimeter
+    if (node.hasMultimeter) {
+      const label = getMultimeterDisplay(node, false);
+      list.push({
+        key: 'multimeter',
+        label,
+        icon: '📊',
+        bg: '#faf5ff',
+        text: '#7c3aed',
+        border: '#ddd6fe'
+      });
+    }
+
+    // 3. Generator Connection
+    if (node.hasGeneratorConnection) {
+      const genWord = t.legend?.generator || 'Generator';
+      const genName = node.generatorName ? `${genWord}: ${node.generatorName}` : genWord;
+      list.push({
+        key: 'generator',
+        label: genName,
+        icon: '⚡G',
+        bg: '#fef2f2',
+        text: '#dc2626',
+        border: '#fecaca'
+      });
+    }
+
+    // 4. Transfer Switch / ATS
+    if (node.hasTransferSwitch) {
+      const atsWord = t.legend?.transferSwitch || 'ATS';
+      const atsName = node.secondBreakerName ? `${atsWord}: ${node.secondBreakerName}` : atsWord;
+      list.push({
+        key: 'ats',
+        label: atsName,
+        icon: '⇄',
+        bg: '#fffbeb',
+        text: '#d97706',
+        border: '#fde68a'
+      });
+    }
+
+    // 5. Essential / Emergency
+    if (node.isEssential) {
+      list.push({
+        key: 'essential',
+        label: t.legend?.essential || 'Emergency',
+        icon: '★',
+        bg: '#fef2f2',
+        text: '#e11d48',
+        border: '#fecdd3'
+      });
+    }
+
+    // 6. Air Conditioning
+    if (node.isAirConditioning) {
+      list.push({
+        key: 'ac',
+        label: t.legend?.ac || 'AC',
+        icon: '❄',
+        bg: '#ecfeff',
+        text: '#0891b2',
+        border: '#a5f3fc'
+      });
+    }
+
+    // 7. Air Circuit Breaker
+    if (node.isAirBreaker) {
+      list.push({
+        key: 'acb',
+        label: t.legend?.airBreaker || 'ACB',
+        icon: '💨',
+        bg: '#f0f9ff',
+        text: '#0284c7',
+        border: '#bae6fd'
+      });
+    }
+
+    // 8. Reserved
+    if (node.isReserved) {
+      list.push({
+        key: 'reserved',
+        label: t.legend?.reserved || 'Reserved',
+        icon: '🔒',
+        bg: '#fefce8',
+        text: '#ca8a04',
+        border: '#fef08a'
+      });
+    }
+
+    // 9. Public Board
+    if (node.isPublicBoard) {
+      list.push({
+        key: 'public',
+        label: t.legend?.publicBoard || 'Public',
+        icon: '👥',
+        bg: '#f0fdfa',
+        text: '#0d9488',
+        border: '#99f6e4'
+      });
+    }
+
+    // 10. Excluded from Meter
+    if (node.isExcludedFromMeter) {
+      list.push({
+        key: 'unmetered',
+        label: t.legend?.noMeter || 'Unmetered',
+        icon: '⊘',
+        bg: '#f8fafc',
+        text: '#64748b',
+        border: '#cbd5e1'
+      });
+    }
+
+    return list;
+  };
+
+  // Helper: Draw badge pills onto HTML Canvas 2D with multi-line wrapping
+  const drawBadgePillsOnCanvas = (
+    ctx: CanvasRenderingContext2D,
+    badges: ExportBadgeInfo[],
+    anchorX: number,
+    startY: number,
+    maxWidth: number,
+    alignRight: boolean,
+    maxRows: number = 2
+  ) => {
+    if (!badges || badges.length === 0) return;
+    const pillHeight = 15;
+    const badgeGap = 5;
+    const rowGap = 3;
+    ctx.font = fontSans(7.5, '600');
+
+    const measured = badges.map(b => {
+      const text = `${b.icon}  ${b.label}`;
+      const textMetrics = ctx.measureText(text);
+      const w = Math.min(maxWidth, Math.max(34, Math.ceil(textMetrics.width) + 12));
+      return { ...b, fullText: text, w };
+    });
+
+    const rows: (typeof measured)[] = [];
+    let currentRow: typeof measured = [];
+    let currentW = 0;
+
+    for (const m of measured) {
+      if (currentRow.length === 0) {
+        currentRow.push(m);
+        currentW = m.w;
+      } else if (currentW + badgeGap + m.w <= maxWidth) {
+        currentRow.push(m);
+        currentW += badgeGap + m.w;
+      } else if (rows.length + 1 < maxRows) {
+        rows.push(currentRow);
+        currentRow = [m];
+        currentW = m.w;
+      } else {
+        break;
+      }
+    }
+    if (currentRow.length > 0) {
+      rows.push(currentRow);
+    }
+
+    rows.forEach((rowPills, rIdx) => {
+      const y = startY + rIdx * (pillHeight + rowGap);
+      if (alignRight) {
+        let rightEdge = anchorX;
+        rowPills.forEach(p => {
+          const px = rightEdge - p.w;
+          drawRoundRect(ctx, px, y, p.w, pillHeight, 4);
+          ctx.fillStyle = p.bg;
+          ctx.fill();
+          ctx.strokeStyle = p.border;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+
+          ctx.fillStyle = p.text;
+          ctx.textAlign = 'center';
+          ctx.fillText(p.fullText, px + p.w / 2, y + 10.5);
+          rightEdge -= (p.w + badgeGap);
+        });
+      } else {
+        let leftEdge = anchorX;
+        rowPills.forEach(p => {
+          drawRoundRect(ctx, leftEdge, y, p.w, pillHeight, 4);
+          ctx.fillStyle = p.bg;
+          ctx.fill();
+          ctx.strokeStyle = p.border;
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+
+          ctx.fillStyle = p.text;
+          ctx.textAlign = 'center';
+          ctx.fillText(p.fullText, leftEdge + p.w / 2, y + 10.5);
+          leftEdge += (p.w + badgeGap);
+        });
+      }
+    });
+  };
+
+  // Helper: Render badge pills as SVG vector string with multi-line wrapping
+  const renderSvgBadgePills = (
+    badges: ExportBadgeInfo[],
+    anchorX: number,
+    startY: number,
+    maxWidth: number,
+    alignRight: boolean,
+    maxRows: number = 2
+  ): string => {
+    if (!badges || badges.length === 0) return '';
+    const pillHeight = 15;
+    const badgeGap = 5;
+    const rowGap = 3;
+
+    const measured = badges.map(b => {
+      const text = `${b.icon}  ${b.label}`;
+      let charW = 0;
+      for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        charW += (code > 255) ? 6.5 : 4.6;
+      }
+      const w = Math.min(maxWidth, Math.max(34, Math.ceil(charW) + 12));
+      return { ...b, fullText: text, w };
+    });
+
+    const rows: (typeof measured)[] = [];
+    let currentRow: typeof measured = [];
+    let currentW = 0;
+
+    for (const m of measured) {
+      if (currentRow.length === 0) {
+        currentRow.push(m);
+        currentW = m.w;
+      } else if (currentW + badgeGap + m.w <= maxWidth) {
+        currentRow.push(m);
+        currentW += badgeGap + m.w;
+      } else if (rows.length + 1 < maxRows) {
+        rows.push(currentRow);
+        currentRow = [m];
+        currentW = m.w;
+      } else {
+        break;
+      }
+    }
+    if (currentRow.length > 0) {
+      rows.push(currentRow);
+    }
+
+    let out = '';
+    rows.forEach((rowPills, rIdx) => {
+      const y = startY + rIdx * (pillHeight + rowGap);
+      if (alignRight) {
+        let rightEdge = anchorX;
+        rowPills.forEach(p => {
+          const px = rightEdge - p.w;
+          out += `
+          <rect x="${px}" y="${y}" width="${p.w}" height="${pillHeight}" rx="4" fill="${p.bg}" stroke="${p.border}" stroke-width="0.8" />
+          <text x="${px + p.w / 2}" y="${y + 10.5}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="middle">${escapeXml(p.fullText)}</text>`;
+          rightEdge -= (p.w + badgeGap);
+        });
+      } else {
+        let leftEdge = anchorX;
+        rowPills.forEach(p => {
+          out += `
+          <rect x="${leftEdge}" y="${y}" width="${p.w}" height="${pillHeight}" rx="4" fill="${p.bg}" stroke="${p.border}" stroke-width="0.8" />
+          <text x="${leftEdge + p.w / 2}" y="${y + 10.5}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="middle">${escapeXml(p.fullText)}</text>`;
+          leftEdge += (p.w + badgeGap);
+        });
+      }
+    });
+
+    return out;
+  };
+
+  // Helper: Render all node badges and icons cleanly at the BOTTOM of the node (never beside the name)
+  // Ordered strictly as: 1. Meter badge with type and number, 2. Multimeter badge with type and number, 3. Other icons/badges
+  const renderNodeBadgesBottom = (node: ElectricalNode, isCompact: boolean = false) => {
+    const hasAnyBadge = Boolean(
+      node.hasMeter ||
+      node.hasMultimeter ||
+      node.hasGeneratorConnection ||
+      node.hasTransferSwitch ||
+      node.isEssential ||
+      node.isAirConditioning ||
+      node.isAirBreaker ||
+      node.isReserved ||
+      node.isPublicBoard ||
+      node.isExcludedFromMeter
+    );
+
+    if (!hasAnyBadge) return null;
+
+    return (
+      <div className={`flex items-center gap-2.5 flex-wrap pt-2.5 mt-2.5 border-t ${
+        theme === 'dark' ? 'border-slate-800/80' : 'border-slate-200/80'
+      }`}>
+        {/* 1. Meter badge with Type/Model AND Number */}
+        {node.hasMeter && (
+          <span
+            className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5 font-semibold"
+            title={node.meterModel ? `${t.legend?.meter || 'Meter'}: ${node.meterModel}${node.meterNumber ? ` • #${node.meterNumber}` : (node.meterSerial ? ` • #${node.meterSerial}` : '')}` : (node.meterNumber ? `${t.legend?.meter || 'Meter'} #${node.meterNumber}` : (t.legend?.meter || 'Energy Meter'))}
+          >
+            <span className="material-icons-round text-xs">speed</span>
+            <span>
+              {getMeterDisplay(node, isCompact)}
+            </span>
+          </span>
+        )}
+
+        {/* 2. Multimeter badge with Type/Model AND Number */}
+        {node.hasMultimeter && (
+          <span
+            className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center gap-1.5 font-semibold"
+            title={node.multimeterModel ? `${t.legend?.multimeter || 'Multimeter'}: ${node.multimeterModel}${node.multimeterSerial ? ` • S/N: ${node.multimeterSerial}` : ''}` : (t.legend?.multimeter || 'Multimeter (V, A, Hz, PF)')}
+          >
+            <span className="material-icons-round text-xs">multiline_chart</span>
+            <span>
+              {getMultimeterDisplay(node, isCompact)}
+            </span>
+          </span>
+        )}
+
+        {/* 3. Generator Connection */}
+        {node.hasGeneratorConnection && (
+          <span
+            className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1.5 font-semibold"
+            title={node.generatorName ? `${t.legend?.generator || 'Generator'}: ${node.generatorName}` : (t.legend?.generator || 'Generator Connection')}
+          >
+            <span className="material-icons-round text-xs">power</span>
+            <span>{node.generatorName ? `${t.legend?.generator || 'Gen'}: ${node.generatorName}` : (t.legend?.generator || 'Generator')}</span>
+          </span>
+        )}
+
+        {/* 4. ATS / Transfer Switch */}
+        {node.hasTransferSwitch && (
+          <span
+            className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1.5 font-semibold"
+            title={node.secondBreakerName ? `${t.legend?.transferSwitch || 'ATS'}: ${node.secondBreakerName}` : (t.legend?.transferSwitch || 'ATS Switch')}
+          >
+            <span className="material-icons-round text-xs">swap_horiz</span>
+            <span>{node.secondBreakerName ? `${t.legend?.transferSwitch || 'ATS'}: ${node.secondBreakerName}` : (t.legend?.transferSwitch || 'ATS')}</span>
+          </span>
+        )}
+
+        {/* 5. Essential / Emergency */}
+        {node.isEssential && (
+          <span
+            className="text-[10px] font-mono px-2.5 py-1 rounded-md bg-red-500/20 text-red-400 border border-red-500/40 flex items-center gap-1.5 font-semibold uppercase"
+            title={t.legend?.essential || "Essential Emergency Load"}
+          >
+            <span className="material-icons-round text-xs">star</span>
+            <span>{t.legend?.essential || 'Emergency'}</span>
+          </span>
+        )}
+
+        {/* 6. Air Conditioning */}
+        {node.isAirConditioning && (
+          <span
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center gap-1.5 font-semibold"
+            title={t.legend?.ac || "Air Conditioning Unit"}
+          >
+            <span className="material-icons-round text-xs">ac_unit</span>
+            <span>{t.legend?.ac || 'AC'}</span>
+          </span>
+        )}
+
+        {/* 7. Air Breaker */}
+        {node.isAirBreaker && (
+          <span
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-sky-500/20 text-sky-400 border border-sky-500/40 flex items-center gap-1.5 font-semibold"
+            title={t.legend?.airBreaker || "Air Circuit Breaker (ACB)"}
+          >
+            <span className="material-icons-round text-xs">air</span>
+            <span>{t.legend?.airBreaker || 'ACB'}</span>
+          </span>
+        )}
+
+        {/* 8. Reserved */}
+        {node.isReserved && (
+          <span
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 flex items-center gap-1.5 font-semibold"
+            title={t.legend?.reserved || "Reserved / Lock"}
+          >
+            <span className="material-icons-round text-xs">lock</span>
+            <span>{t.legend?.reserved || 'Reserved'}</span>
+          </span>
+        )}
+
+        {/* 9. Public Board */}
+        {node.isPublicBoard && (
+          <span
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-teal-500/20 text-teal-400 border border-teal-500/40 flex items-center gap-1.5 font-semibold"
+            title={t.legend?.publicBoard || "Public / Communal Board"}
+          >
+            <span className="material-icons-round text-xs">people</span>
+            <span>{t.legend?.publicBoard || 'Public'}</span>
+          </span>
+        )}
+
+        {/* 10. Excluded from Meter */}
+        {node.isExcludedFromMeter && (
+          <span
+            className="text-[10px] font-mono px-2 py-1 rounded-md bg-slate-500/20 text-slate-400 border border-slate-500/40 flex items-center gap-1.5 font-semibold"
+            title={t.legend?.noMeter || "Not Connected to Meter"}
+          >
+            <span className="material-icons-round text-xs">power_off</span>
+            <span>{t.legend?.noMeter || 'Unmetered'}</span>
+          </span>
+        )}
+      </div>
+    );
   };
 
   // Direct Canvas 2D Renderer for architectural building elevation (100% reliable, zero image decoding, native RTL)
@@ -601,17 +1165,8 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     } catch (_) {}
     ctx.textBaseline = 'alphabetic';
 
-    const fontSans = (size: number, weight: string = 'normal', style: string = 'normal') => {
-      const isItalic = weight === 'italic' || style === 'italic';
-      const actualWeight = weight === 'italic' ? 'normal' : weight;
-      const stylePrefix = isItalic ? 'italic ' : '';
-      return `${stylePrefix}${actualWeight} ${size}px "Cairo", "Heebo", "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
-    };
-    const fontMono = (size: number, weight: string = 'bold') =>
-      `${weight} ${size}px "Roboto Mono", ui-monospace, SFMono-Regular, monospace`;
-
-    // 1. Dark Blueprint Background
-    ctx.fillStyle = '#090d16';
+    // 1. Clean Light Architectural CAD Background
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, svgWidth, totalHeight);
 
     let currentY = 30;
@@ -619,9 +1174,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
     // 2. Title Block Header
     drawRoundRect(ctx, 40, currentY, svgWidth - 80, headerHeight, 12);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#f8fafc';
     ctx.fill();
-    ctx.strokeStyle = '#374151';
+    ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -634,40 +1189,40 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       const statsWidth = 365;
       const statsX = 55;
       drawRoundRect(ctx, statsX, currentY + 16, statsWidth, 66, 8);
-      ctx.fillStyle = '#1f2937';
+      ctx.fillStyle = '#ffffff';
       ctx.fill();
-      ctx.strokeStyle = '#374151';
+      ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
       ctx.stroke();
 
       // Stats inside card: right to left
       ctx.textAlign = 'right';
       // Equipment (right col)
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#0284c7';
       ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.nodes} items`, statsX + statsWidth - 20, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillText(`${buildingTotals.nodes} ${bfT.components || 'items'}`, statsX + statsWidth - 20, currentY + 38);
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.totalComponents || 'Equipment', statsX + statsWidth - 20, currentY + 56);
 
       // Distribution Boards (middle col)
-      ctx.fillStyle = '#f59e0b';
+      ctx.fillStyle = '#d97706';
       ctx.font = fontSans(13, 'bold');
       ctx.fillText(`${buildingTotals.boards}`, statsX + statsWidth - 130, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.boards || 'Panels', statsX + statsWidth - 130, currentY + 56);
 
       // Levels (left col)
-      ctx.fillStyle = '#10b981';
+      ctx.fillStyle = '#059669';
       ctx.font = fontSans(13, 'bold');
       ctx.fillText(`${floorGroups.length}`, statsX + statsWidth - 235, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.levels || 'Levels', statsX + statsWidth - 235, currentY + 56);
 
       // Date / Page
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = '#94a3b8';
       ctx.font = fontSans(9, 'normal');
       ctx.fillText(pageDateStr, statsX + statsWidth - 20, currentY + 74);
 
@@ -675,32 +1230,32 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       const iconCenterX = svgWidth - 68;
       ctx.beginPath();
       ctx.arc(iconCenterX, currentY + 38, 18, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
       ctx.fill();
 
       // Vector Building Path
-      ctx.strokeStyle = '#f59e0b';
+      ctx.strokeStyle = '#d97706';
       ctx.lineWidth = 1.8;
       ctx.strokeRect(iconCenterX - 9, currentY + 29, 18, 18);
-      ctx.fillStyle = '#f59e0b';
+      ctx.fillStyle = '#d97706';
       ctx.fillRect(iconCenterX - 5, currentY + 33, 3, 3);
       ctx.fillRect(iconCenterX + 2, currentY + 33, 3, 3);
       ctx.fillRect(iconCenterX - 5, currentY + 39, 3, 3);
       ctx.fillRect(iconCenterX + 2, currentY + 39, 3, 3);
 
       // Title Text (Right-aligned)
-      ctx.fillStyle = '#f9fafb';
+      ctx.fillStyle = '#0f172a';
       ctx.font = fontSans(20, 'bold');
       ctx.textAlign = 'right';
       ctx.fillText(`${activeProject.name} — ${bfT.title || 'Building & Floor Distribution'}`, svgWidth - 100, currentY + 38);
 
       // Subtitle
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(12, 'normal');
       ctx.fillText(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines', svgWidth - 100, currentY + 62);
 
       // Scope & Building
-      ctx.fillStyle = '#60a5fa';
+      ctx.fillStyle = '#0284c7';
       ctx.font = fontSans(11, '600');
       ctx.fillText(buildingStr, svgWidth - 100, currentY + 84);
     } else {
@@ -708,13 +1263,13 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       // Building Icon Badge
       ctx.beginPath();
       ctx.arc(68, currentY + 38, 18, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.18)';
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
       ctx.fill();
 
-      ctx.strokeStyle = '#f59e0b';
+      ctx.strokeStyle = '#d97706';
       ctx.lineWidth = 1.8;
       ctx.strokeRect(59, currentY + 29, 18, 18);
-      ctx.fillStyle = '#f59e0b';
+      ctx.fillStyle = '#d97706';
       ctx.fillRect(63, currentY + 33, 3, 3);
       ctx.fillRect(70, currentY + 33, 3, 3);
       ctx.fillRect(63, currentY + 39, 3, 3);
@@ -722,50 +1277,50 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
       // Title Text
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#f9fafb';
+      ctx.fillStyle = '#0f172a';
       ctx.font = fontSans(20, 'bold');
       ctx.fillText(`${activeProject.name} — ${bfT.title || 'Building & Floor Distribution'}`, 100, currentY + 38);
 
       // Subtitle
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(12, 'normal');
       ctx.fillText(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines', 100, currentY + 62);
 
       // Scope & Building
-      ctx.fillStyle = '#60a5fa';
+      ctx.fillStyle = '#0284c7';
       ctx.font = fontSans(11, '600');
       ctx.fillText(buildingStr, 100, currentY + 84);
 
       // Stats Card on the RIGHT
       drawRoundRect(ctx, svgWidth - 460, currentY + 16, 365, 66, 8);
-      ctx.fillStyle = '#1f2937';
+      ctx.fillStyle = '#ffffff';
       ctx.fill();
-      ctx.strokeStyle = '#374151';
+      ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
       ctx.stroke();
 
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#0284c7';
       ctx.font = fontSans(13, 'bold');
-      ctx.fillText(`${buildingTotals.nodes} items`, svgWidth - 440, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillText(`${buildingTotals.nodes} ${bfT.components || 'items'}`, svgWidth - 440, currentY + 38);
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.totalComponents || 'Equipment', svgWidth - 440, currentY + 56);
 
-      ctx.fillStyle = '#f59e0b';
+      ctx.fillStyle = '#d97706';
       ctx.font = fontSans(13, 'bold');
       ctx.fillText(`${buildingTotals.boards}`, svgWidth - 340, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.boards || 'Panels', svgWidth - 340, currentY + 56);
 
-      ctx.fillStyle = '#10b981';
+      ctx.fillStyle = '#059669';
       ctx.font = fontSans(13, 'bold');
       ctx.fillText(`${floorGroups.length}`, svgWidth - 245, currentY + 38);
-      ctx.fillStyle = '#9ca3af';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.fillText(bfT.levels || 'Levels', svgWidth - 245, currentY + 56);
 
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = '#94a3b8';
       ctx.font = fontSans(9, 'normal');
       ctx.fillText(pageDateStr, svgWidth - 440, currentY + 74);
     }
@@ -775,8 +1330,8 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     // 3. Render Each Floor Slab
     floorsToRender.forEach(floor => {
       const isUnassigned = floor.isUnassigned;
-      const slabFill = isUnassigned ? '#451a03' : '#0284c7';
-      const slabStroke = isUnassigned ? '#b45309' : '#38bdf8';
+      const slabFill = isUnassigned ? '#c2410c' : '#0284c7';
+      const slabStroke = isUnassigned ? '#9a3412' : '#0369a1';
       const slabTitleColor = '#ffffff';
 
       // Slab Banner Bar
@@ -788,40 +1343,26 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       ctx.stroke();
 
       if (isRTL) {
-        // RTL Floor Banner
-        // Level elevation badge on the RIGHT
-        const badgeX = svgWidth - 127;
-        drawRoundRect(ctx, badgeX, currentY + 9, 75, 28, 6);
-        ctx.fillStyle = '#0f172a';
-        ctx.fill();
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = fontMono(11, 'bold');
-        ctx.textAlign = 'center';
-        ctx.fillText(floor.elevation, badgeX + 37.5, currentY + 27);
-
-        // Floor Name on the RIGHT (to the left of badge)
+        // RTL Floor Banner (No floor heights)
+        // Floor Name on the RIGHT
         ctx.fillStyle = slabTitleColor;
         ctx.font = fontSans(16, 'bold');
         ctx.textAlign = 'right';
-        ctx.fillText(floor.displayName, badgeX - 15, currentY + 29);
+        ctx.fillText(floor.displayName, svgWidth - 65, currentY + 29);
 
         // Essential Badge
         if (floor.essentialCount > 0) {
           ctx.font = fontSans(16, 'bold');
           const nameWidth = ctx.measureText(floor.displayName).width;
-          const essX = Math.max(380, badgeX - 25 - nameWidth - 130);
+          const essX = Math.max(380, svgWidth - 75 - nameWidth - 135);
           drawRoundRect(ctx, essX, currentY + 11, 125, 24, 12);
-          ctx.fillStyle = '#7f1d1d';
+          ctx.fillStyle = '#fee2e2';
           ctx.fill();
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 0.8;
           ctx.stroke();
 
-          ctx.fillStyle = '#fecaca';
+          ctx.fillStyle = '#b91c1c';
           ctx.font = fontSans(10, 'bold');
           ctx.textAlign = 'center';
           ctx.fillText(`⚡ ${floor.essentialCount} ${bfT.essential || 'Essential'}`, essX + 62.5, currentY + 27);
@@ -833,53 +1374,43 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         ctx.textAlign = 'left';
         ctx.fillText(`${floor.nodes.length} ${bfT.components || 'items'}`, 55, currentY + 28);
       } else {
-        // LTR Floor Banner
-        // Level elevation badge on the LEFT
-        drawRoundRect(ctx, 52, currentY + 9, 75, 28, 6);
-        ctx.fillStyle = '#0f172a';
-        ctx.fill();
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = fontMono(11, 'bold');
-        ctx.textAlign = 'center';
-        ctx.fillText(floor.elevation, 89, currentY + 27);
-
+        // LTR Floor Banner (No floor heights)
         // Floor Name on the LEFT
         ctx.fillStyle = slabTitleColor;
         ctx.font = fontSans(16, 'bold');
         ctx.textAlign = 'left';
-        ctx.fillText(floor.displayName, 140, currentY + 29);
+        ctx.fillText(floor.displayName, 55, currentY + 29);
 
         // Essential Badge
         if (floor.essentialCount > 0) {
-          drawRoundRect(ctx, 420, currentY + 11, 125, 24, 12);
-          ctx.fillStyle = '#7f1d1d';
+          ctx.font = fontSans(16, 'bold');
+          const nameWidth = ctx.measureText(floor.displayName).width;
+          const essX = Math.min(svgWidth - 250, 55 + nameWidth + 20);
+          drawRoundRect(ctx, essX, currentY + 11, 125, 24, 12);
+          ctx.fillStyle = '#fee2e2';
           ctx.fill();
           ctx.strokeStyle = '#ef4444';
           ctx.lineWidth = 0.8;
           ctx.stroke();
 
-          ctx.fillStyle = '#fecaca';
+          ctx.fillStyle = '#b91c1c';
           ctx.font = fontSans(10, 'bold');
           ctx.textAlign = 'center';
-          ctx.fillText(`⚡ ${floor.essentialCount} ${bfT.essential || 'Essential'}`, 482, currentY + 27);
+          ctx.fillText(`⚡ ${floor.essentialCount} ${bfT.essential || 'Essential'}`, essX + 62.5, currentY + 27);
         }
 
         // Slab Totals on Right (No Total Load / Current)
         ctx.fillStyle = '#ffffff';
         ctx.font = fontSans(12, 'bold');
         ctx.textAlign = 'right';
-        ctx.fillText(`${floor.nodes.length} items`, svgWidth - 55, currentY + 28);
+        ctx.fillText(`${floor.nodes.length} ${bfT.components || 'items'}`, svgWidth - 55, currentY + 28);
       }
 
       currentY += 56;
 
       // Enclosure Bays
       if (floor.enclosures.length > 0) {
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = '#475569';
         ctx.font = fontSans(11, 'bold');
         if (isRTL) {
           ctx.textAlign = 'right';
@@ -898,8 +1429,10 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             enc1 ? enc1.localSons.length : 0,
             enc2 ? enc2.localSons.length : 0
           );
-          const sonsRows = Math.ceil(maxSons / 3);
-          const encHeight = 62 + (maxSons > 0 ? sonsRows * 44 + 14 : 14);
+          const sonCols = 2;
+          const sonsRows = Math.ceil(maxSons / sonCols);
+          const sonCardHeight = 88;
+          const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
 
           const renderEnclosureOnCanvas = (encItem: typeof enc1, boxX: number, boxWidth: number) => {
             if (!encItem) return;
@@ -908,167 +1441,212 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             const rawFeeder = board.parent
               ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}`
               : (bfT.independentSource || 'Main Grid Source');
-            const feederText = safeText(rawFeeder, 30);
+            const feederText = safeText(rawFeeder, 40);
 
             // Enclosure main container
             drawRoundRect(ctx, boxX, currentY, boxWidth, encHeight, 10);
-            ctx.fillStyle = '#0b1329';
+            ctx.fillStyle = '#ffffff';
             ctx.fill();
-            ctx.strokeStyle = '#1e293b';
+            ctx.strokeStyle = '#cbd5e1';
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Enclosure header strip
-            drawRoundRect(ctx, boxX, currentY, boxWidth, 42, 10);
-            ctx.fillStyle = '#141e33';
+            // Enclosure header strip (height 86)
+            drawRoundRect(ctx, boxX, currentY, boxWidth, 86, 10);
+            ctx.fillStyle = '#f1f5f9';
             ctx.fill();
-            ctx.strokeStyle = '#24334d';
+            ctx.strokeStyle = '#e2e8f0';
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            const meterBadge = [
-              board.node.hasMeter ? `[M${board.node.meterNumber ? ` #${board.node.meterNumber}` : ''}]` : '',
-              board.node.hasMultimeter ? '[MM]' : ''
-            ].filter(Boolean).join(' ');
-            const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${meterBadge ? `• ${meterBadge} ` : ''}${board.place ? `• 📍 ${safeText(board.place, 14)}` : ''}`;
+            const boardBadges = getNodeExportBadges(board.node);
+            const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA${board.place ? ` • 📍 ${safeText(board.place, 25)}` : ''}`;
+            const boardVisual = getComponentTypeExportVisual(board.node.type);
+            const boardNumStr = board.node.componentNumber ? ` #${board.node.componentNumber}` : '';
+            const boardTitle = `${safeText(getNodeFullName(board.node), 55)}${boardNumStr}`;
+            const boardTitleFontSize = boardTitle.length > 35 ? 11 : (boardTitle.length > 25 ? 12 : 13);
 
             if (isRTL) {
               // --- RTL Enclosure Header ---
-              // Circle icon on the RIGHT
-              ctx.beginPath();
-              ctx.arc(boxX + boxWidth - 22, currentY + 21, 12, 0, Math.PI * 2);
-              ctx.fillStyle = 'rgba(2, 132, 199, 0.2)';
+              // Feeder Tag on the LEFT
+              drawRoundRect(ctx, boxX + 14, currentY + 14, 180, 28, 6);
+              ctx.fillStyle = '#fef3c7';
               ctx.fill();
+              ctx.strokeStyle = '#fde68a';
+              ctx.lineWidth = 1;
+              ctx.stroke();
 
-              // Lightning glyph
-              ctx.fillStyle = '#38bdf8';
+              ctx.fillStyle = '#b45309';
+              ctx.font = fontSans(9.5, '600');
+              ctx.textAlign = 'center';
+              ctx.fillText(feederText, boxX + 14 + 90, currentY + 32);
+
+              // Component type visual icon box on the RIGHT
+              drawRoundRect(ctx, boxX + boxWidth - 38, currentY + 14, 26, 26, 6);
+              ctx.fillStyle = boardVisual.bg;
+              ctx.fill();
+              ctx.strokeStyle = boardVisual.border;
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.fillStyle = boardVisual.color;
               ctx.font = fontSans(12, 'bold');
               ctx.textAlign = 'center';
-              ctx.fillText('⚡', boxX + boxWidth - 22, currentY + 25);
+              ctx.fillText(boardVisual.symbol, boxX + boxWidth - 25, currentY + 31);
 
               // Board Name on the RIGHT
-              ctx.fillStyle = '#ffffff';
-              ctx.font = fontSans(13, 'bold');
+              ctx.fillStyle = '#0f172a';
+              ctx.font = fontSans(boardTitleFontSize, 'bold');
               ctx.textAlign = 'right';
-              ctx.fillText(safeText(board.node.name || 'Panel', 24), boxX + boxWidth - 42, currentY + 21);
+              ctx.fillText(boardTitle, boxX + boxWidth - 48, currentY + 25);
 
               // Board Meta Specs on the RIGHT
-              ctx.fillStyle = '#94a3b8';
+              ctx.fillStyle = '#64748b';
               ctx.font = fontSans(10, 'normal');
-              ctx.fillText(boardMeta, boxX + boxWidth - 42, currentY + 35);
+              ctx.textAlign = 'right';
+              ctx.fillText(boardMeta, boxX + boxWidth - 48, currentY + 44);
 
-              // Feeder Tag on the LEFT
-              drawRoundRect(ctx, boxX + 12, currentY + 10, 202, 22, 6);
-              ctx.fillStyle = '#1e293b';
-              ctx.fill();
-              ctx.strokeStyle = '#334155';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-
-              ctx.fillStyle = '#f59e0b';
-              ctx.font = fontSans(10, '600');
-              ctx.textAlign = 'center';
-              ctx.fillText(feederText, boxX + 12 + 101, currentY + 25);
+              // Board Badges on the RIGHT (wrapped, up to 2 rows)
+              if (boardBadges.length > 0) {
+                drawBadgePillsOnCanvas(ctx, boardBadges, boxX + boxWidth - 48, currentY + 54, boxWidth - 250, true, 2);
+              }
             } else {
               // --- LTR Enclosure Header ---
-              // Circle icon on the LEFT
-              ctx.beginPath();
-              ctx.arc(boxX + 22, currentY + 21, 12, 0, Math.PI * 2);
-              ctx.fillStyle = 'rgba(2, 132, 199, 0.2)';
+              // Component type visual icon box on the LEFT
+              drawRoundRect(ctx, boxX + 12, currentY + 14, 26, 26, 6);
+              ctx.fillStyle = boardVisual.bg;
               ctx.fill();
-
-              // Lightning glyph
-              ctx.fillStyle = '#38bdf8';
-              ctx.font = fontSans(12, 'bold');
-              ctx.textAlign = 'center';
-              ctx.fillText('⚡', boxX + 22, currentY + 25);
-
-              // Board Name & Details
-              ctx.fillStyle = '#ffffff';
-              ctx.font = fontSans(13, 'bold');
-              ctx.textAlign = 'left';
-              ctx.fillText(safeText(board.node.name || 'Panel', 24), boxX + 42, currentY + 21);
-
-              ctx.fillStyle = '#94a3b8';
-              ctx.font = fontSans(10, 'normal');
-              ctx.fillText(boardMeta, boxX + 42, currentY + 35);
-
-              // Feeder Tag on the RIGHT
-              drawRoundRect(ctx, boxX + boxWidth - 215, currentY + 10, 202, 22, 6);
-              ctx.fillStyle = '#1e293b';
-              ctx.fill();
-              ctx.strokeStyle = '#334155';
+              ctx.strokeStyle = boardVisual.border;
               ctx.lineWidth = 1;
               ctx.stroke();
 
-              ctx.fillStyle = '#f59e0b';
-              ctx.font = fontSans(10, '600');
+              ctx.fillStyle = boardVisual.color;
+              ctx.font = fontSans(12, 'bold');
               ctx.textAlign = 'center';
-              ctx.fillText(feederText, boxX + boxWidth - 114, currentY + 25);
+              ctx.fillText(boardVisual.symbol, boxX + 25, currentY + 31);
+
+              // Board Name & Details
+              ctx.fillStyle = '#0f172a';
+              ctx.font = fontSans(boardTitleFontSize, 'bold');
+              ctx.textAlign = 'left';
+              ctx.fillText(boardTitle, boxX + 46, currentY + 25);
+
+              // Board Meta Specs
+              ctx.fillStyle = '#64748b';
+              ctx.font = fontSans(10, 'normal');
+              ctx.textAlign = 'left';
+              ctx.fillText(boardMeta, boxX + 46, currentY + 44);
+
+              // Board Badges on the LEFT
+              if (boardBadges.length > 0) {
+                drawBadgePillsOnCanvas(ctx, boardBadges, boxX + 46, currentY + 54, boxWidth - 250, false, 2);
+              }
+
+              // Feeder Tag on the RIGHT
+              drawRoundRect(ctx, boxX + boxWidth - 194, currentY + 14, 180, 28, 6);
+              ctx.fillStyle = '#fef3c7';
+              ctx.fill();
+              ctx.strokeStyle = '#fde68a';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+
+              ctx.fillStyle = '#b45309';
+              ctx.font = fontSans(9.5, '600');
+              ctx.textAlign = 'center';
+              ctx.fillText(feederText, boxX + boxWidth - 194 + 90, currentY + 32);
             }
 
-            // Sons Grid
+            // Sons Grid (2 columns)
             if (sons.length > 0) {
               sons.forEach((sonItem, sIdx) => {
-                const sRow = Math.floor(sIdx / 3);
-                const sWidth = Math.floor((boxWidth - 32) / 3);
-                const sCol = isRTL ? (2 - (sIdx % 3)) : (sIdx % 3);
-                const sX = boxX + 12 + sCol * (sWidth + 6);
-                const sY = currentY + 50 + sRow * 44;
+                const sRow = Math.floor(sIdx / 2);
+                const sWidth = Math.floor((boxWidth - 28) / 2);
+                const sCol = isRTL ? (1 - (sIdx % 2)) : (sIdx % 2);
+                const sX = boxX + 10 + sCol * (sWidth + 8);
+                const sY = currentY + 86 + 10 + sRow * (sonCardHeight + 10);
+                const sonBadges = getNodeExportBadges(sonItem.node);
+                const sonVisual = getComponentTypeExportVisual(sonItem.node.type);
+                const sonNumStr = sonItem.node.componentNumber ? ` #${sonItem.node.componentNumber}` : '';
+                const sonTitle = `${safeText(getNodeFullName(sonItem.node), 45)}${sonNumStr}`;
+                const sonTitleFont = sonTitle.length > 28 ? fontSans(9.5, 'bold') : fontSans(10.5, 'bold');
+                const sonMeta = `${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA${sonItem.place ? ` • 📍 ${safeText(sonItem.place, 18)}` : ''}`;
 
-                drawRoundRect(ctx, sX, sY, sWidth, 38, 6);
-                ctx.fillStyle = '#111c33';
+                drawRoundRect(ctx, sX, sY, sWidth, sonCardHeight, 6);
+                ctx.fillStyle = '#f8fafc';
                 ctx.fill();
-                ctx.strokeStyle = '#1f2d47';
+                ctx.strokeStyle = '#e2e8f0';
                 ctx.lineWidth = 1;
                 ctx.stroke();
 
-                const sonMeterTag = [
-                  sonItem.node.hasMeter ? '[M]' : '',
-                  sonItem.node.hasMultimeter ? '[MM]' : ''
-                ].filter(Boolean).join(' ');
-
                 if (isRTL) {
                   // RTL Son Card
-                  ctx.fillStyle = '#f1f5f9';
-                  ctx.font = fontSans(11, 'bold');
+                  // Icon box on the RIGHT
+                  drawRoundRect(ctx, sX + sWidth - 30, sY + 8, 22, 22, 4);
+                  ctx.fillStyle = sonVisual.bg;
+                  ctx.fill();
+                  ctx.strokeStyle = sonVisual.border;
+                  ctx.lineWidth = 0.8;
+                  ctx.stroke();
+
+                  ctx.fillStyle = sonVisual.color;
+                  ctx.font = fontSans(10, 'bold');
+                  ctx.textAlign = 'center';
+                  ctx.fillText(sonVisual.symbol, sX + sWidth - 19, sY + 23);
+
+                  // Name & Component Number on the RIGHT
+                  ctx.fillStyle = '#0f172a';
+                  ctx.font = sonTitleFont;
                   ctx.textAlign = 'right';
-                  ctx.fillText(safeText(sonItem.node.name || 'Node', 16), sX + sWidth - 8, sY + 16);
+                  ctx.fillText(sonTitle, sX + sWidth - 38, sY + 23);
 
-                  ctx.fillStyle = '#38bdf8';
-                  ctx.font = fontSans(9, 'normal');
-                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonMeterTag}`, sX + sWidth - 8, sY + 30);
+                  // Specs & Location (Tier 2) on the RIGHT
+                  ctx.fillStyle = '#0284c7';
+                  ctx.font = fontSans(9, '600');
+                  ctx.textAlign = 'right';
+                  ctx.fillText(sonMeta, sX + sWidth - 10, sY + 42);
 
-                  ctx.fillStyle = '#64748b';
-                  ctx.font = fontSans(9, 'normal');
-                  ctx.textAlign = 'left';
-                  ctx.fillText(safeText(sonItem.place || sonItem.office || '', 10), sX + 8, sY + 30);
+                  // Badges Row (Tier 3, wrapped up to 2 rows)
+                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + sWidth - 10, sY + 50, sWidth - 20, true, 2);
                 } else {
                   // LTR Son Card
-                  ctx.fillStyle = '#f1f5f9';
-                  ctx.font = fontSans(11, 'bold');
+                  // Icon box on the LEFT
+                  drawRoundRect(ctx, sX + 8, sY + 8, 22, 22, 4);
+                  ctx.fillStyle = sonVisual.bg;
+                  ctx.fill();
+                  ctx.strokeStyle = sonVisual.border;
+                  ctx.lineWidth = 0.8;
+                  ctx.stroke();
+
+                  ctx.fillStyle = sonVisual.color;
+                  ctx.font = fontSans(10, 'bold');
+                  ctx.textAlign = 'center';
+                  ctx.fillText(sonVisual.symbol, sX + 19, sY + 23);
+
+                  // Name & Component Number on the LEFT
+                  ctx.fillStyle = '#0f172a';
+                  ctx.font = sonTitleFont;
                   ctx.textAlign = 'left';
-                  ctx.fillText(safeText(sonItem.node.name || 'Node', 16), sX + 8, sY + 16);
+                  ctx.fillText(sonTitle, sX + 38, sY + 23);
 
-                  ctx.fillStyle = '#38bdf8';
-                  ctx.font = fontSans(9, 'normal');
-                  ctx.fillText(`${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonMeterTag}`, sX + 8, sY + 30);
+                  // Specs & Location on the LEFT
+                  ctx.fillStyle = '#0284c7';
+                  ctx.font = fontSans(9, '600');
+                  ctx.textAlign = 'left';
+                  ctx.fillText(sonMeta, sX + 10, sY + 42);
 
-                  ctx.fillStyle = '#64748b';
-                  ctx.font = fontSans(9, 'normal');
-                  ctx.textAlign = 'right';
-                  ctx.fillText(safeText(sonItem.place || sonItem.office || '', 10), sX + sWidth - 8, sY + 30);
+                  // Badges Row
+                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + 10, sY + 50, sWidth - 20, false, 2);
                 }
               });
             } else {
-              ctx.fillStyle = '#64748b';
+              ctx.fillStyle = '#94a3b8';
               ctx.font = fontSans(11, 'italic');
               if (isRTL) {
                 ctx.textAlign = 'right';
-                ctx.fillText(bfT.noDownstreamBranches || 'לוח חלוקה — מעגלים משניים בלוחות משנה', boxX + boxWidth - 20, currentY + 65);
+                ctx.fillText(bfT.noDownstreamBranches || (language === 'ar' ? 'لوحة توزيع — الدوائر الفرعية في لوحات فرعية' : (language === 'he' ? 'לוח חלוקה — מעגלים משניים בלוחות משנה' : 'Distribution board — branch circuits in sub-panels')), boxX + boxWidth - 20, currentY + 110);
               } else {
                 ctx.textAlign = 'left';
-                ctx.fillText('Distribution board — branch circuits in sub-panels', boxX + 20, currentY + 65);
+                ctx.fillText(bfT.noDownstreamBranches || 'Distribution board — branch circuits in sub-panels', boxX + 20, currentY + 110);
               }
             }
           };
@@ -1081,13 +1659,13 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           if (enc2) {
             renderEnclosureOnCanvas(enc2, enc2X, colWidth);
           }
-          currentY += encHeight + 14;
+          currentY += encHeight + 16;
         }
       }
 
-      // Standalone Equipment & Loads
+      // Standalone Equipment & Loads (3 columns)
       if (floor.standaloneNodes.length > 0) {
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = '#475569';
         ctx.font = fontSans(11, 'bold');
         if (isRTL) {
           ctx.textAlign = 'right';
@@ -1098,103 +1676,147 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         }
         currentY += 24;
 
-        const devCols = 4;
-        const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 10) / devCols);
-        const devCardHeight = 44;
+        const devCols = 3;
+        const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 12) / devCols);
+        const devCardHeight = 88;
         const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
 
         floor.standaloneNodes.forEach((it, sIdx) => {
           const colInRow = sIdx % devCols;
           const sCol = isRTL ? (devCols - 1 - colInRow) : colInRow;
           const sRow = Math.floor(sIdx / devCols);
-          const cardX = 40 + sCol * (devCardWidth + 10);
-          const cardY = currentY + sRow * (devCardHeight + 8);
+          const cardX = 40 + sCol * (devCardWidth + 12);
+          const cardY = currentY + sRow * (devCardHeight + 12);
           const isDist = it.node.type === ComponentType.DISTRIBUTION_BOARD;
+          const devBadges = getNodeExportBadges(it.node);
+          const devVisual = getComponentTypeExportVisual(it.node.type);
+          const devNumStr = it.node.componentNumber ? ` #${it.node.componentNumber}` : '';
+          const devTitle = `${safeText(getNodeFullName(it.node), 55)}${devNumStr}`;
+          const devTitleFont = devTitle.length > 35 ? fontSans(10, 'bold') : fontSans(11.5, 'bold');
+          const devSubtitle = `${t.componentTypes[it.node.type] || it.node.type} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${safeText(it.place, 20)}` : (it.parent ? ` • ${bfT.parentFeeder || 'Feed'}: ${safeText(it.parent.name, 20)}` : '')}`;
 
           drawRoundRect(ctx, cardX, cardY, devCardWidth, devCardHeight, 6);
-          ctx.fillStyle = isDist ? '#1e293b' : '#0f172a';
+          ctx.fillStyle = isDist ? '#f0fdf4' : '#ffffff';
           ctx.fill();
-          ctx.strokeStyle = isDist ? '#38bdf8' : '#26334d';
+          ctx.strokeStyle = isDist ? '#86efac' : '#e2e8f0';
           ctx.lineWidth = 1;
           ctx.stroke();
 
           if (isRTL) {
             // RTL Standalone Equipment Card
-            // Name on the RIGHT
-            ctx.fillStyle = '#f8fafc';
+            // Visual Icon Box on the RIGHT
+            drawRoundRect(ctx, cardX + devCardWidth - 32, cardY + 8, 24, 24, 4);
+            ctx.fillStyle = devVisual.bg;
+            ctx.fill();
+            ctx.strokeStyle = devVisual.border;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            ctx.fillStyle = devVisual.color;
             ctx.font = fontSans(11, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText(devVisual.symbol, cardX + devCardWidth - 20, cardY + 24);
+
+            // Name on the RIGHT
+            ctx.fillStyle = '#0f172a';
+            ctx.font = devTitleFont;
             ctx.textAlign = 'right';
-            ctx.fillText(safeText(it.node.name || 'Component', 18), cardX + devCardWidth - 10, cardY + 18);
+            ctx.fillText(devTitle, cardX + devCardWidth - 40, cardY + 24);
 
-            // Specs (Amps/kVA) on the RIGHT
-            ctx.fillStyle = '#38bdf8';
-            ctx.font = fontSans(9, '600');
-            ctx.fillText(`${it.node.amps || 0}A • ${it.node.kva || 0}kVA`, cardX + devCardWidth - 10, cardY + 34);
+            // Subtitle (Type • Specs • Location/Feed) on the RIGHT
+            ctx.fillStyle = '#475569';
+            ctx.font = fontSans(9.5, 'normal');
+            ctx.textAlign = 'right';
+            ctx.fillText(devSubtitle, cardX + devCardWidth - 10, cardY + 43);
 
-            // Component Type on the LEFT
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = fontSans(9, 'normal');
-            ctx.textAlign = 'left';
-            ctx.fillText(safeText(t.componentTypes[it.node.type] || it.node.type, 14), cardX + 10, cardY + 18);
-
-            // Location on the LEFT
-            ctx.fillStyle = '#64748b';
-            ctx.font = fontSans(9, 'normal');
-            ctx.fillText(safeText(it.place || it.office || '', 14), cardX + 10, cardY + 34);
+            // Badges Row (wrapped up to 2 rows)
+            drawBadgePillsOnCanvas(ctx, devBadges, cardX + devCardWidth - 10, cardY + 51, devCardWidth - 20, true, 2);
           } else {
             // LTR Standalone Equipment Card
-            ctx.fillStyle = '#f8fafc';
+            // Visual Icon Box on the LEFT
+            drawRoundRect(ctx, cardX + 8, cardY + 8, 24, 24, 4);
+            ctx.fillStyle = devVisual.bg;
+            ctx.fill();
+            ctx.strokeStyle = devVisual.border;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            ctx.fillStyle = devVisual.color;
             ctx.font = fontSans(11, 'bold');
+            ctx.textAlign = 'center';
+            ctx.fillText(devVisual.symbol, cardX + 20, cardY + 24);
+
+            // Name on the LEFT
+            ctx.fillStyle = '#0f172a';
+            ctx.font = devTitleFont;
             ctx.textAlign = 'left';
-            ctx.fillText(safeText(it.node.name || 'Component', 18), cardX + 10, cardY + 18);
+            ctx.fillText(devTitle, cardX + 40, cardY + 24);
 
-            ctx.fillStyle = '#38bdf8';
-            ctx.font = fontSans(9, '600');
-            ctx.fillText(`${it.node.amps || 0}A • ${it.node.kva || 0}kVA`, cardX + 10, cardY + 34);
+            // Subtitle on the LEFT
+            ctx.fillStyle = '#475569';
+            ctx.font = fontSans(9.5, 'normal');
+            ctx.textAlign = 'left';
+            ctx.fillText(devSubtitle, cardX + 10, cardY + 43);
 
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = fontSans(9, 'normal');
-            ctx.textAlign = 'right';
-            ctx.fillText(safeText(t.componentTypes[it.node.type] || it.node.type, 14), cardX + devCardWidth - 10, cardY + 18);
-
-            ctx.fillStyle = '#64748b';
-            ctx.font = fontSans(9, 'normal');
-            ctx.fillText(safeText(it.place || it.office || '', 14), cardX + devCardWidth - 10, cardY + 34);
+            // Badges Row
+            drawBadgePillsOnCanvas(ctx, devBadges, cardX + 10, cardY + 51, devCardWidth - 20, false, 2);
           }
         });
-
-        currentY += devRows * (devCardHeight + 8) + 10;
+        currentY += devRows * (devCardHeight + 12) + 16;
       }
 
-      currentY += 22;
+      currentY += 24;
     });
+
+    // 3.5. Badges Legend Bar
+    drawRoundRect(ctx, 40, currentY, svgWidth - 80, 32, 6);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fill();
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const sampleBadges: ExportBadgeInfo[] = [
+      { key: 'm', label: t.legend?.meter || 'Meter', icon: '⚡M', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', icon: '📊', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
+      { key: 'gen', label: t.legend?.generator || 'Generator', icon: '⚡G', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', icon: '⇄', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+      { key: 'ess', label: t.legend?.essential || 'Emergency', icon: '★', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
+      { key: 'ac', label: t.legend?.ac || 'AC', icon: '❄', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
+      { key: 'acb', label: t.legend?.airBreaker || 'ACB', icon: '💨', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
+      { key: 'res', label: t.legend?.reserved || 'Reserved', icon: '🔒', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
+      { key: 'pub', label: t.legend?.publicBoard || 'Public', icon: '👥', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
+      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', icon: '⊘', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
+    ];
+    drawBadgePillsOnCanvas(ctx, sampleBadges, isRTL ? svgWidth - 50 : 50, currentY + 8, svgWidth - 100, isRTL);
+    currentY += 42;
 
     // 4. Final Sheet Footer
     drawRoundRect(ctx, 40, currentY, svgWidth - 80, 32, 6);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = '#f8fafc';
     ctx.fill();
-    ctx.strokeStyle = '#1f2937';
+    ctx.strokeStyle = '#e2e8f0';
     ctx.lineWidth = 1;
     ctx.stroke();
 
     if (isRTL) {
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.textAlign = 'right';
-      ctx.fillText('SmartSchema CAD System • Architectural Floor Elevation & Physical Distribution Drawing', svgWidth - 60, currentY + 20);
+      ctx.fillText(bfT.drawingFooterTitle || 'SmartSchema CAD System • Architectural Floor Elevation & Physical Distribution Drawing', svgWidth - 60, currentY + 20);
 
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#4b5563';
-      ctx.fillText('Clean Physical Layout (No Inter-Connecting Lines)', 60, currentY + 20);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(bfT.drawingFooterSubtitle || 'Clean Physical Layout (No Inter-Connecting Lines)', 60, currentY + 20);
     } else {
-      ctx.fillStyle = '#6b7280';
+      ctx.fillStyle = '#64748b';
       ctx.font = fontSans(10, 'normal');
       ctx.textAlign = 'left';
-      ctx.fillText('SmartSchema CAD System • Architectural Floor Elevation & Physical Distribution Drawing', 60, currentY + 20);
+      ctx.fillText(bfT.drawingFooterTitle || 'SmartSchema CAD System • Architectural Floor Elevation & Physical Distribution Drawing', 60, currentY + 20);
 
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#4b5563';
-      ctx.fillText('Clean Physical Layout (No Inter-Connecting Lines)', svgWidth - 60, currentY + 20);
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(bfT.drawingFooterSubtitle || 'Clean Physical Layout (No Inter-Connecting Lines)', svgWidth - 60, currentY + 20);
     }
 
     ctx.restore();
@@ -1223,60 +1845,60 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
       svgElements += `
   <g transform="translate(40, ${currentY})">
-    <rect width="${svgWidth - 80}" height="${headerHeight}" rx="12" fill="#111827" stroke="#374151" stroke-width="1.5" />
+    <rect width="${svgWidth - 80}" height="${headerHeight}" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
     
     <!-- Stats Card on Left -->
-    <rect x="${statsX - 40}" y="16" width="${statsWidth}" height="66" rx="8" fill="#1f2937" stroke="#374151" stroke-width="1" />
-    <text x="${statsX - 40 + statsWidth - 20}" y="38" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.nodes} items</text>
-    <text x="${statsX - 40 + statsWidth - 20}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
+    <rect x="${statsX - 40}" y="16" width="${statsWidth}" height="66" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+    <text x="${statsX - 40 + statsWidth - 20}" y="38" fill="#0284c7" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.nodes} ${escapeXml(bfT.components || 'items')}</text>
+    <text x="${statsX - 40 + statsWidth - 20}" y="56" fill="#64748b" font-size="10" text-anchor="end">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
     
-    <text x="${statsX - 40 + statsWidth - 130}" y="38" fill="#f59e0b" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.boards}</text>
-    <text x="${statsX - 40 + statsWidth - 130}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.boards || 'Panels')}</text>
+    <text x="${statsX - 40 + statsWidth - 130}" y="38" fill="#d97706" font-size="13" font-weight="bold" text-anchor="end">${buildingTotals.boards}</text>
+    <text x="${statsX - 40 + statsWidth - 130}" y="56" fill="#64748b" font-size="10" text-anchor="end">${escapeXml(bfT.boards || 'Panels')}</text>
     
-    <text x="${statsX - 40 + statsWidth - 235}" y="38" fill="#10b981" font-size="13" font-weight="bold" text-anchor="end">${floorGroups.length}</text>
-    <text x="${statsX - 40 + statsWidth - 235}" y="56" fill="#9ca3af" font-size="10" text-anchor="end">${escapeXml(bfT.levels || 'Levels')}</text>
+    <text x="${statsX - 40 + statsWidth - 235}" y="38" fill="#059669" font-size="13" font-weight="bold" text-anchor="end">${floorGroups.length}</text>
+    <text x="${statsX - 40 + statsWidth - 235}" y="56" fill="#64748b" font-size="10" text-anchor="end">${escapeXml(bfT.levels || 'Levels')}</text>
     
-    <text x="${statsX - 40 + statsWidth - 20}" y="74" fill="#6b7280" font-size="9" text-anchor="end">${escapeXml(pageDateStr)}</text>
+    <text x="${statsX - 40 + statsWidth - 20}" y="74" fill="#94a3b8" font-size="9" text-anchor="end">${escapeXml(pageDateStr)}</text>
 
     <!-- Icon & Title on Right -->
-    <circle cx="${iconCenterX - 40}" cy="38" r="18" fill="#f59e0b" opacity="0.18" />
-    <rect x="${iconCenterX - 40 - 9}" y="29" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="1.8" />
-    <rect x="${iconCenterX - 40 - 5}" y="33" width="3" height="3" fill="#f59e0b" />
-    <rect x="${iconCenterX - 40 + 2}" y="33" width="3" height="3" fill="#f59e0b" />
-    <rect x="${iconCenterX - 40 - 5}" y="39" width="3" height="3" fill="#f59e0b" />
-    <rect x="${iconCenterX - 40 + 2}" y="39" width="3" height="3" fill="#f59e0b" />
+    <circle cx="${iconCenterX - 40}" cy="38" r="18" fill="#f59e0b" opacity="0.15" />
+    <rect x="${iconCenterX - 40 - 9}" y="29" width="18" height="18" fill="none" stroke="#d97706" stroke-width="1.8" />
+    <rect x="${iconCenterX - 40 - 5}" y="33" width="3" height="3" fill="#d97706" />
+    <rect x="${iconCenterX - 40 + 2}" y="33" width="3" height="3" fill="#d97706" />
+    <rect x="${iconCenterX - 40 - 5}" y="39" width="3" height="3" fill="#d97706" />
+    <rect x="${iconCenterX - 40 + 2}" y="39" width="3" height="3" fill="#d97706" />
     
-    <text x="${svgWidth - 140}" y="38" fill="#f9fafb" font-size="20" font-weight="bold" text-anchor="end">${escapeXml(activeProject.name)} — ${escapeXml(bfT.title || 'Building & Floor Distribution')}</text>
-    <text x="${svgWidth - 140}" y="62" fill="#9ca3af" font-size="12" text-anchor="end">${escapeXml(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines')}</text>
-    <text x="${svgWidth - 140}" y="84" fill="#60a5fa" font-size="11" font-weight="600" text-anchor="end">${escapeXml(buildingStr)}</text>
+    <text x="${svgWidth - 140}" y="38" fill="#0f172a" font-size="20" font-weight="bold" text-anchor="end">${escapeXml(activeProject.name)} — ${escapeXml(bfT.title || 'Building & Floor Distribution')}</text>
+    <text x="${svgWidth - 140}" y="62" fill="#64748b" font-size="12" text-anchor="end">${escapeXml(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines')}</text>
+    <text x="${svgWidth - 140}" y="84" fill="#0284c7" font-size="11" font-weight="600" text-anchor="end">${escapeXml(buildingStr)}</text>
   </g>
 `;
     } else {
       svgElements += `
   <g transform="translate(40, ${currentY})">
-    <rect width="${svgWidth - 80}" height="${headerHeight}" rx="12" fill="#111827" stroke="#374151" stroke-width="1.5" />
-    <circle cx="36" cy="38" r="18" fill="#f59e0b" opacity="0.18" />
-    <rect x="27" y="29" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="1.8" />
-    <rect x="31" y="33" width="3" height="3" fill="#f59e0b" />
-    <rect x="38" y="33" width="3" height="3" fill="#f59e0b" />
-    <rect x="31" y="39" width="3" height="3" fill="#f59e0b" />
-    <rect x="38" y="39" width="3" height="3" fill="#f59e0b" />
+    <rect width="${svgWidth - 80}" height="${headerHeight}" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+    <circle cx="36" cy="38" r="18" fill="#f59e0b" opacity="0.15" />
+    <rect x="27" y="29" width="18" height="18" fill="none" stroke="#d97706" stroke-width="1.8" />
+    <rect x="31" y="33" width="3" height="3" fill="#d97706" />
+    <rect x="38" y="33" width="3" height="3" fill="#d97706" />
+    <rect x="31" y="39" width="3" height="3" fill="#d97706" />
+    <rect x="38" y="39" width="3" height="3" fill="#d97706" />
     
-    <text x="68" y="38" fill="#f9fafb" font-size="20" font-weight="bold">${escapeXml(activeProject.name)} — ${escapeXml(bfT.title || 'Building & Floor Distribution')}</text>
-    <text x="68" y="62" fill="#9ca3af" font-size="12">${escapeXml(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines')}</text>
-    <text x="68" y="84" fill="#60a5fa" font-size="11" font-weight="600">${escapeXml(buildingStr)}</text>
+    <text x="68" y="38" fill="#0f172a" font-size="20" font-weight="bold">${escapeXml(activeProject.name)} — ${escapeXml(bfT.title || 'Building & Floor Distribution')}</text>
+    <text x="68" y="62" fill="#64748b" font-size="12">${escapeXml(bfT.noLinesNote || 'Physical layout: Feeder connections grouped by panel bay without lines')}</text>
+    <text x="68" y="84" fill="#0284c7" font-size="11" font-weight="600">${escapeXml(buildingStr)}</text>
     
-    <rect x="${svgWidth - 460}" y="16" width="365" height="66" rx="8" fill="#1f2937" stroke="#374151" stroke-width="1" />
-    <text x="${svgWidth - 440}" y="38" fill="#38bdf8" font-size="13" font-weight="bold">${buildingTotals.nodes} items</text>
-    <text x="${svgWidth - 440}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
+    <rect x="${svgWidth - 460}" y="16" width="365" height="66" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+    <text x="${svgWidth - 440}" y="38" fill="#0284c7" font-size="13" font-weight="bold">${buildingTotals.nodes} ${escapeXml(bfT.components || 'items')}</text>
+    <text x="${svgWidth - 440}" y="56" fill="#64748b" font-size="10">${escapeXml(bfT.totalComponents || 'Equipment')}</text>
     
-    <text x="${svgWidth - 340}" y="38" fill="#f59e0b" font-size="13" font-weight="bold">${buildingTotals.boards}</text>
-    <text x="${svgWidth - 340}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.boards || 'Panels')}</text>
+    <text x="${svgWidth - 340}" y="38" fill="#d97706" font-size="13" font-weight="bold">${buildingTotals.boards}</text>
+    <text x="${svgWidth - 340}" y="56" fill="#64748b" font-size="10">${escapeXml(bfT.boards || 'Panels')}</text>
     
-    <text x="${svgWidth - 245}" y="38" fill="#10b981" font-size="13" font-weight="bold">${floorGroups.length}</text>
-    <text x="${svgWidth - 245}" y="56" fill="#9ca3af" font-size="10">${escapeXml(bfT.levels || 'Levels')}</text>
+    <text x="${svgWidth - 245}" y="38" fill="#059669" font-size="13" font-weight="bold">${floorGroups.length}</text>
+    <text x="${svgWidth - 245}" y="56" fill="#64748b" font-size="10">${escapeXml(bfT.levels || 'Levels')}</text>
     
-    <text x="${svgWidth - 440}" y="74" fill="#6b7280" font-size="9">${escapeXml(pageDateStr)}</text>
+    <text x="${svgWidth - 440}" y="74" fill="#94a3b8" font-size="9">${escapeXml(pageDateStr)}</text>
   </g>
 `;
     }
@@ -1284,26 +1906,21 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
     floorsToRender.forEach((floor) => {
       const isUnassigned = floor.isUnassigned;
-      const slabFill = isUnassigned ? '#451a03' : '#0284c7';
-      const slabStroke = isUnassigned ? '#b45309' : '#38bdf8';
+      const slabFill = isUnassigned ? '#c2410c' : '#0284c7';
+      const slabStroke = isUnassigned ? '#9a3412' : '#0369a1';
       const slabTitleColor = '#ffffff';
 
       if (isRTL) {
-        const badgeX = svgWidth - 127 - 40;
         svgElements += `
   <g transform="translate(40, ${currentY})">
     <rect width="${svgWidth - 80}" height="46" rx="8" fill="${slabFill}" stroke="${slabStroke}" stroke-width="1.2" />
     
-    <!-- Level Badge on Right -->
-    <rect x="${badgeX}" y="9" width="75" height="28" rx="6" fill="#0f172a" stroke="#334155" />
-    <text x="${badgeX + 37.5}" y="27" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle">${escapeXml(floor.elevation)}</text>
-    
-    <!-- Floor Name on Right -->
-    <text x="${badgeX - 15}" y="29" fill="${slabTitleColor}" font-size="16" font-weight="bold" text-anchor="end">${escapeXml(floor.displayName)}</text>
+    <!-- Floor Name on Right (No floor height) -->
+    <text x="${svgWidth - 95}" y="29" fill="${slabTitleColor}" font-size="16" font-weight="bold" text-anchor="end">${escapeXml(floor.displayName)}</text>
     
     ${floor.essentialCount > 0 ? `
-    <rect x="${Math.max(340, badgeX - 250)}" y="11" width="125" height="24" rx="12" fill="#7f1d1d" stroke="#ef4444" stroke-width="0.8" />
-    <text x="${Math.max(340, badgeX - 250) + 62.5}" y="27" fill="#fecaca" font-size="10" font-weight="bold" text-anchor="middle">⚡ ${floor.essentialCount} ${escapeXml(bfT.essential || 'Essential')}</text>
+    <rect x="250" y="11" width="125" height="24" rx="12" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8" />
+    <text x="312.5" y="27" fill="#b91c1c" font-size="10" font-weight="bold" text-anchor="middle">⚡ ${floor.essentialCount} ${escapeXml(bfT.essential || 'Essential')}</text>
     ` : ''}
 
     <!-- Totals on Left -->
@@ -1314,16 +1931,15 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         svgElements += `
   <g transform="translate(40, ${currentY})">
     <rect width="${svgWidth - 80}" height="46" rx="8" fill="${slabFill}" stroke="${slabStroke}" stroke-width="1.2" />
-    <rect x="12" y="9" width="75" height="28" rx="6" fill="#0f172a" stroke="#334155" />
-    <text x="49" y="27" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace" text-anchor="middle">${escapeXml(floor.elevation)}</text>
     
-    <text x="100" y="29" fill="${slabTitleColor}" font-size="16" font-weight="bold">${escapeXml(floor.displayName)}</text>
+    <!-- Floor Name on Left (No floor height) -->
+    <text x="25" y="29" fill="${slabTitleColor}" font-size="16" font-weight="bold">${escapeXml(floor.displayName)}</text>
     ${floor.essentialCount > 0 ? `
-    <rect x="360" y="11" width="125" height="24" rx="12" fill="#7f1d1d" stroke="#ef4444" stroke-width="0.8" />
-    <text x="422" y="27" fill="#fecaca" font-size="10" font-weight="bold" text-anchor="middle">⚡ ${floor.essentialCount} ${escapeXml(bfT.essential || 'Essential')}</text>
+    <rect x="360" y="11" width="125" height="24" rx="12" fill="#fee2e2" stroke="#ef4444" stroke-width="0.8" />
+    <text x="422" y="27" fill="#b91c1c" font-size="10" font-weight="bold" text-anchor="middle">⚡ ${floor.essentialCount} ${escapeXml(bfT.essential || 'Essential')}</text>
     ` : ''}
 
-    <text x="${svgWidth - 105}" y="28" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="end">${floor.nodes.length} items</text>
+    <text x="${svgWidth - 105}" y="28" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="end">${floor.nodes.length} ${escapeXml(bfT.components || 'items')}</text>
   </g>
 `;
       }
@@ -1333,15 +1949,15 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         if (isRTL) {
           svgElements += `
   <g transform="translate(44, ${currentY})">
-    <text x="${svgWidth - 88}" y="14" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="end">📦 ${escapeXml(bfT.enclosureBay || 'Panel Enclosure & Downstream Feed')} (${floor.enclosures.length})</text>
+    <text x="${svgWidth - 88}" y="14" fill="#475569" font-size="11" font-weight="bold" text-anchor="end">📦 ${escapeXml(bfT.enclosureBay || 'Panel Enclosure & Downstream Feed')} (${floor.enclosures.length})</text>
   </g>
 `;
         } else {
           svgElements += `
   <g transform="translate(44, ${currentY})">
-    <rect x="0" y="2" width="14" height="14" rx="2" fill="none" stroke="#94a3b8" stroke-width="1.4" />
-    <line x1="0" y1="6" x2="14" y2="6" stroke="#94a3b8" stroke-width="1" />
-    <text x="22" y="14" fill="#94a3b8" font-size="11" font-weight="bold">${escapeXml(bfT.enclosureBay || 'Panel Enclosure & Downstream Feed')} (${floor.enclosures.length})</text>
+    <rect x="0" y="2" width="14" height="14" rx="2" fill="none" stroke="#475569" stroke-width="1.4" />
+    <line x1="0" y1="6" x2="14" y2="6" stroke="#475569" stroke-width="1" />
+    <text x="22" y="14" fill="#475569" font-size="11" font-weight="bold">${escapeXml(bfT.enclosureBay || 'Panel Enclosure & Downstream Feed')} (${floor.enclosures.length})</text>
   </g>
 `;
         }
@@ -1355,8 +1971,10 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             enc1 ? enc1.localSons.length : 0,
             enc2 ? enc2.localSons.length : 0
           );
-          const sonsRows = Math.ceil(maxSons / 3);
-          const encHeight = 62 + (maxSons > 0 ? sonsRows * 44 + 14 : 14);
+          const sonCols = 2;
+          const sonsRows = Math.ceil(maxSons / sonCols);
+          const sonCardHeight = 88;
+          const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
 
           const renderEnclosureBox = (encItem: typeof enc1, boxX: number, boxWidth: number) => {
             if (!encItem) return '';
@@ -1365,75 +1983,85 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             const rawFeeder = board.parent
               ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}`
               : (bfT.independentSource || 'Main Grid Source');
-            const feederText = escapeXml(safeText(rawFeeder, 30));
+            const feederText = escapeXml(safeText(rawFeeder, 40));
+            const boardBadges = getNodeExportBadges(board.node);
+            const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA${board.place ? ` • 📍 ${escapeXml(safeText(board.place, 25))}` : ''}`;
+            const boardVisual = getComponentTypeExportVisual(board.node.type);
+            const boardNumStr = board.node.componentNumber ? ` #${board.node.componentNumber}` : '';
+            const boardTitle = `${escapeXml(safeText(getNodeFullName(board.node), 55))}${boardNumStr}`;
+            const boardTitleFontSize = boardTitle.length > 35 ? 11 : (boardTitle.length > 25 ? 12 : 13);
 
             let encSvg = `
     <g transform="translate(${boxX}, ${currentY})">
-      <rect width="${boxWidth}" height="${encHeight}" rx="10" fill="#0b1329" stroke="#1e293b" stroke-width="1.2" />
-      <rect width="${boxWidth}" height="42" rx="10" fill="#141e33" stroke="#24334d" stroke-width="1" />
+      <rect width="${boxWidth}" height="${encHeight}" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+      <rect width="${boxWidth}" height="86" rx="10" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1" />
 `;
-            const svgMeterTag = [
-              board.node.hasMeter ? `[M${board.node.meterNumber ? ` #${board.node.meterNumber}` : ''}]` : '',
-              board.node.hasMultimeter ? '[MM]' : ''
-            ].filter(Boolean).join(' ');
 
             if (isRTL) {
               encSvg += `
       <!-- RTL Enclosure Header -->
-      <circle cx="${boxWidth - 22}" cy="21" r="12" fill="#0284c7" opacity="0.2" />
-      <text x="${boxWidth - 22}" y="25" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">⚡</text>
+      <rect x="14" y="14" width="180" height="28" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
+      <text x="104" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${feederText}</text>
       
-      <text x="${boxWidth - 42}" y="21" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="end">${escapeXml(safeText(board.node.name || 'Panel', 24))}</text>
-      <text x="${boxWidth - 42}" y="35" fill="#94a3b8" font-size="10" text-anchor="end">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${svgMeterTag ? `• ${svgMeterTag} ` : ''}${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
+      <rect x="${boxWidth - 38}" y="14" width="26" height="26" rx="6" fill="${boardVisual.bg}" stroke="${boardVisual.border}" stroke-width="1" />
+      <text x="${boxWidth - 25}" y="31" fill="${boardVisual.color}" font-size="12" font-weight="bold" text-anchor="middle">${boardVisual.symbol}</text>
       
-      <rect x="12" y="10" width="202" height="22" rx="6" fill="#1e293b" stroke="#334155" />
-      <text x="113" y="25" fill="#f59e0b" font-size="10" font-weight="600" text-anchor="middle">${feederText}</text>
+      <text x="${boxWidth - 48}" y="25" fill="#0f172a" font-size="${boardTitleFontSize}" font-weight="bold" text-anchor="end">${boardTitle}</text>
+      <text x="${boxWidth - 48}" y="44" fill="#64748b" font-size="10" text-anchor="end">${boardMeta}</text>
+      ${boardBadges.length > 0 ? renderSvgBadgePills(boardBadges, boxWidth - 48, 54, boxWidth - 250, true, 2) : ''}
 `;
             } else {
               encSvg += `
       <!-- LTR Enclosure Header -->
-      <circle cx="22" cy="21" r="12" fill="#0284c7" opacity="0.2" />
-      <text x="22" y="25" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle">⚡</text>
+      <rect x="12" y="14" width="26" height="26" rx="6" fill="${boardVisual.bg}" stroke="${boardVisual.border}" stroke-width="1" />
+      <text x="25" y="31" fill="${boardVisual.color}" font-size="12" font-weight="bold" text-anchor="middle">${boardVisual.symbol}</text>
       
-      <text x="42" y="21" fill="#ffffff" font-size="13" font-weight="bold">${escapeXml(safeText(board.node.name || 'Panel', 24))}</text>
-      <text x="42" y="35" fill="#94a3b8" font-size="10">${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA ${svgMeterTag ? `• ${svgMeterTag} ` : ''}${board.place ? `• ${escapeXml(safeText(board.place, 14))}` : ''}</text>
+      <text x="46" y="25" fill="#0f172a" font-size="${boardTitleFontSize}" font-weight="bold">${boardTitle}</text>
+      <text x="46" y="44" fill="#64748b" font-size="10">${boardMeta}</text>
+      ${boardBadges.length > 0 ? renderSvgBadgePills(boardBadges, 46, 54, boxWidth - 250, false, 2) : ''}
       
-      <rect x="${boxWidth - 215}" y="10" width="202" height="22" rx="6" fill="#1e293b" stroke="#334155" />
-      <text x="${boxWidth - 114}" y="25" fill="#f59e0b" font-size="10" font-weight="600" text-anchor="middle">${feederText}</text>
+      <rect x="${boxWidth - 194}" y="14" width="180" height="28" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
+      <text x="${boxWidth - 104}" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${feederText}</text>
 `;
             }
 
             if (sons.length > 0) {
               sons.forEach((sonItem, sIdx) => {
-                const sRow = Math.floor(sIdx / 3);
-                const sWidth = Math.floor((boxWidth - 32) / 3);
-                const sCol = isRTL ? (2 - (sIdx % 3)) : (sIdx % 3);
-                const sX = 12 + sCol * (sWidth + 6);
-                const sY = 50 + sRow * 44;
-                const sonSvgMeterTag = [
-                  sonItem.node.hasMeter ? '[M]' : '',
-                  sonItem.node.hasMultimeter ? '[MM]' : ''
-                ].filter(Boolean).join(' ');
+                const sRow = Math.floor(sIdx / 2);
+                const sWidth = Math.floor((boxWidth - 28) / 2);
+                const sCol = isRTL ? (1 - (sIdx % 2)) : (sIdx % 2);
+                const sX = 10 + sCol * (sWidth + 8);
+                const sY = 86 + 10 + sRow * (sonCardHeight + 10);
+                const sonBadges = getNodeExportBadges(sonItem.node);
+                const sonVisual = getComponentTypeExportVisual(sonItem.node.type);
+                const sonNumStr = sonItem.node.componentNumber ? ` #${sonItem.node.componentNumber}` : '';
+                const sonTitle = `${escapeXml(safeText(getNodeFullName(sonItem.node), 45))}${sonNumStr}`;
+                const sonTitleFontSize = sonTitle.length > 28 ? 9.5 : 10.5;
+                const sonMeta = `${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA${sonItem.place ? ` • 📍 ${escapeXml(safeText(sonItem.place, 18))}` : ''}`;
 
                 if (isRTL) {
                   encSvg += `
-      <rect x="${sX}" y="${sY}" width="${sWidth}" height="38" rx="6" fill="#111c33" stroke="#1f2d47" stroke-width="1" />
-      <text x="${sX + sWidth - 8}" y="${sY + 16}" fill="#f1f5f9" font-size="11" font-weight="bold" text-anchor="end">${escapeXml(safeText(sonItem.node.name || 'Node', 16))}</text>
-      <text x="${sX + sWidth - 8}" y="${sY + 30}" fill="#38bdf8" font-size="9" text-anchor="end">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonSvgMeterTag}</text>
-      <text x="${sX + 8}" y="${sY + 30}" fill="#64748b" font-size="9" text-anchor="start">${escapeXml(safeText(sonItem.place || sonItem.office || '', 10))}</text>
+      <rect x="${sX}" y="${sY}" width="${sWidth}" height="${sonCardHeight}" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <rect x="${sX + sWidth - 30}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
+      <text x="${sX + sWidth - 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
+      <text x="${sX + sWidth - 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold" text-anchor="end">${sonTitle}</text>
+      <text x="${sX + sWidth - 10}" y="${sY + 42}" fill="#0284c7" font-size="9" font-weight="600" text-anchor="end">${sonMeta}</text>
+      ${renderSvgBadgePills(sonBadges, sX + sWidth - 10, sY + 50, sWidth - 20, true, 2)}
 `;
                 } else {
                   encSvg += `
-      <rect x="${sX}" y="${sY}" width="${sWidth}" height="38" rx="6" fill="#111c33" stroke="#1f2d47" stroke-width="1" />
-      <text x="${sX + 8}" y="${sY + 16}" fill="#f1f5f9" font-size="11" font-weight="bold">${escapeXml(safeText(sonItem.node.name || 'Node', 16))}</text>
-      <text x="${sX + 8}" y="${sY + 30}" fill="#38bdf8" font-size="9">${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA ${sonSvgMeterTag}</text>
-      <text x="${sX + sWidth - 8}" y="${sY + 30}" fill="#64748b" font-size="9" text-anchor="end">${escapeXml(safeText(sonItem.place || sonItem.office || '', 10))}</text>
+      <rect x="${sX}" y="${sY}" width="${sWidth}" height="${sonCardHeight}" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+      <rect x="${sX + 8}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
+      <text x="${sX + 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
+      <text x="${sX + 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold">${sonTitle}</text>
+      <text x="${sX + 10}" y="${sY + 42}" fill="#0284c7" font-size="9" font-weight="600">${sonMeta}</text>
+      ${renderSvgBadgePills(sonBadges, sX + 10, sY + 50, sWidth - 20, false, 2)}
 `;
                 }
               });
             } else {
               encSvg += `
-      <text x="${isRTL ? boxWidth - 20 : 20}" y="65" fill="#64748b" font-size="11" font-style="italic" text-anchor="${isRTL ? 'end' : 'start'}">${escapeXml(bfT.noDownstreamBranches || 'Distribution board — branch circuits in sub-panels')}</text>
+      <text x="${isRTL ? boxWidth - 20 : 20}" y="110" fill="#94a3b8" font-size="11" font-style="italic" text-anchor="${isRTL ? 'end' : 'start'}">${escapeXml(bfT.noDownstreamBranches || (language === 'ar' ? 'لوحة توزيع — الدوائر الفرعية في لوحات فرعية' : (language === 'he' ? 'לוח חלוקה — מעגלים משניים בלוחות משנה' : 'Distribution board — branch circuits in sub-panels')))}</text>
 `;
             }
 
@@ -1449,7 +2077,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           if (enc2) {
             svgElements += renderEnclosureBox(enc2, enc2X, colWidth);
           }
-          currentY += encHeight + 14;
+          currentY += encHeight + 16;
         }
       }
 
@@ -1457,67 +2085,96 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         if (isRTL) {
           svgElements += `
   <g transform="translate(44, ${currentY})">
-    <text x="${svgWidth - 88}" y="14" fill="#94a3b8" font-size="11" font-weight="bold" text-anchor="end">⚡ ${escapeXml(bfT.individualDevices || 'Equipment & Loads')} (${floor.standaloneNodes.length})</text>
+    <text x="${svgWidth - 88}" y="14" fill="#475569" font-size="11" font-weight="bold" text-anchor="end">⚡ ${escapeXml(bfT.individualDevices || 'Equipment & Loads')} (${floor.standaloneNodes.length})</text>
   </g>
 `;
         } else {
           svgElements += `
   <g transform="translate(44, ${currentY})">
-    <polygon points="6,2 2,8 5,8 4,14 10,7 7,7" fill="#94a3b8" />
-    <text x="18" y="14" fill="#94a3b8" font-size="11" font-weight="bold">${escapeXml(bfT.individualDevices || 'Equipment & Loads')} (${floor.standaloneNodes.length})</text>
+    <polygon points="6,2 2,8 5,8 4,14 10,7 7,7" fill="#475569" />
+    <text x="18" y="14" fill="#475569" font-size="11" font-weight="bold">${escapeXml(bfT.individualDevices || 'Equipment & Loads')} (${floor.standaloneNodes.length})</text>
   </g>
 `;
         }
         currentY += 24;
 
-        const devCols = 4;
-        const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 10) / devCols);
-        const devCardHeight = 44;
+        const devCols = 3;
+        const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 12) / devCols);
+        const devCardHeight = 88;
         const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
 
         floor.standaloneNodes.forEach((it, sIdx) => {
           const colInRow = sIdx % devCols;
           const sCol = isRTL ? (devCols - 1 - colInRow) : colInRow;
           const sRow = Math.floor(sIdx / devCols);
-          const cardX = 40 + sCol * (devCardWidth + 10);
-          const cardY = currentY + sRow * (devCardHeight + 8);
+          const cardX = 40 + sCol * (devCardWidth + 12);
+          const cardY = currentY + sRow * (devCardHeight + 12);
           const isDist = it.node.type === ComponentType.DISTRIBUTION_BOARD;
-          const cardBg = isDist ? '#1e293b' : '#0f172a';
-          const cardStroke = isDist ? '#38bdf8' : '#26334d';
+          const cardBg = isDist ? '#f0fdf4' : '#ffffff';
+          const cardStroke = isDist ? '#86efac' : '#e2e8f0';
+          const devBadges = getNodeExportBadges(it.node);
+          const devVisual = getComponentTypeExportVisual(it.node.type);
+          const devNumStr = it.node.componentNumber ? ` #${it.node.componentNumber}` : '';
+          const devTitle = `${escapeXml(safeText(getNodeFullName(it.node), 55))}${devNumStr}`;
+          const devTitleFontSize = devTitle.length > 35 ? 10 : 11.5;
+          const devSubtitle = `${escapeXml(t.componentTypes[it.node.type] || it.node.type)} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${escapeXml(safeText(it.place, 20))}` : (it.parent ? ` • ${escapeXml(bfT.parentFeeder || 'Feed')}: ${escapeXml(safeText(it.parent.name, 20))}` : '')}`;
 
           if (isRTL) {
             svgElements += `
   <g transform="translate(${cardX}, ${cardY})">
     <rect width="${devCardWidth}" height="${devCardHeight}" rx="6" fill="${cardBg}" stroke="${cardStroke}" stroke-width="1" />
-    <text x="${devCardWidth - 10}" y="18" fill="#f8fafc" font-size="11" font-weight="bold" text-anchor="end">${escapeXml(safeText(it.node.name || 'Component', 18))}</text>
-    <text x="${devCardWidth - 10}" y="34" fill="#38bdf8" font-size="9" font-weight="600" text-anchor="end">${it.node.amps || 0}A • ${it.node.kva || 0}kVA</text>
-    <text x="10" y="18" fill="#94a3b8" font-size="9" text-anchor="start">${escapeXml(safeText(t.componentTypes[it.node.type] || it.node.type, 14))}</text>
-    <text x="10" y="34" fill="#64748b" font-size="9" text-anchor="start">${escapeXml(safeText(it.place || it.office || '', 14))}</text>
+    <rect x="${devCardWidth - 32}" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
+    <text x="${devCardWidth - 20}" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
+    <text x="${devCardWidth - 40}" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold" text-anchor="end">${devTitle}</text>
+    <text x="${devCardWidth - 10}" y="43" fill="#475569" font-size="9.5" text-anchor="end">${devSubtitle}</text>
+    ${renderSvgBadgePills(devBadges, devCardWidth - 10, 51, devCardWidth - 20, true, 2)}
   </g>
 `;
           } else {
             svgElements += `
   <g transform="translate(${cardX}, ${cardY})">
     <rect width="${devCardWidth}" height="${devCardHeight}" rx="6" fill="${cardBg}" stroke="${cardStroke}" stroke-width="1" />
-    <text x="10" y="18" fill="#f8fafc" font-size="11" font-weight="bold">${escapeXml(safeText(it.node.name || 'Component', 18))}</text>
-    <text x="10" y="34" fill="#38bdf8" font-size="9" font-weight="600">${it.node.amps || 0}A • ${it.node.kva || 0}kVA</text>
-    <text x="${devCardWidth - 10}" y="18" fill="#94a3b8" font-size="9" text-anchor="end">${escapeXml(safeText(t.componentTypes[it.node.type] || it.node.type, 14))}</text>
-    <text x="${devCardWidth - 10}" y="34" fill="#64748b" font-size="9" text-anchor="end">${escapeXml(safeText(it.place || it.office || '', 14))}</text>
+    <rect x="8" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
+    <text x="20" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
+    <text x="40" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold">${devTitle}</text>
+    <text x="10" y="43" fill="#475569" font-size="9.5">${devSubtitle}</text>
+    ${renderSvgBadgePills(devBadges, 10, 51, devCardWidth - 20, false, 2)}
   </g>
 `;
           }
         });
-        currentY += devRows * (devCardHeight + 8) + 10;
+        currentY += devRows * (devCardHeight + 12) + 16;
       }
 
-      currentY += 22;
+      currentY += 24;
     });
+
+    const sampleBadges: ExportBadgeInfo[] = [
+      { key: 'm', label: t.legend?.meter || 'Meter', icon: '⚡M', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', icon: '📊', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
+      { key: 'gen', label: t.legend?.generator || 'Generator', icon: '⚡G', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', icon: '⇄', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+      { key: 'ess', label: t.legend?.essential || 'Emergency', icon: '★', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
+      { key: 'ac', label: t.legend?.ac || 'AC', icon: '❄', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
+      { key: 'acb', label: t.legend?.airBreaker || 'ACB', icon: '💨', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
+      { key: 'res', label: t.legend?.reserved || 'Reserved', icon: '🔒', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
+      { key: 'pub', label: t.legend?.publicBoard || 'Public', icon: '👥', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
+      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', icon: '⊘', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
+    ];
 
     svgElements += `
   <g transform="translate(40, ${currentY})">
-    <rect width="${svgWidth - 80}" height="32" rx="6" fill="#111827" stroke="#1f2937" stroke-width="1" />
-    <text x="${isRTL ? svgWidth - 100 : 20}" y="20" fill="#6b7280" font-size="10" text-anchor="${isRTL ? 'end' : 'start'}">SmartSchema CAD System • Architectural Floor Elevation &amp; Physical Distribution Drawing</text>
-    <text x="${isRTL ? 20 : svgWidth - 100}" y="20" fill="#4b5563" font-size="10" text-anchor="${isRTL ? 'start' : 'end'}">Clean Physical Layout (No Inter-Connecting Lines)</text>
+    <rect width="${svgWidth - 80}" height="32" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+    ${renderSvgBadgePills(sampleBadges, isRTL ? svgWidth - 90 : 10, 8, svgWidth - 100, isRTL)}
+  </g>
+`;
+    currentY += 42;
+
+    svgElements += `
+  <g transform="translate(40, ${currentY})">
+    <rect width="${svgWidth - 80}" height="32" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+    <text x="${isRTL ? svgWidth - 100 : 20}" y="20" fill="#64748b" font-size="10" text-anchor="${isRTL ? 'end' : 'start'}">${escapeXml(bfT.drawingFooterTitle || 'SmartSchema CAD System • Architectural Floor Elevation & Physical Distribution Drawing')}</text>
+    <text x="${isRTL ? 20 : svgWidth - 100}" y="20" fill="#94a3b8" font-size="10" text-anchor="${isRTL ? 'start' : 'end'}">${escapeXml(bfT.drawingFooterSubtitle || 'Clean Physical Layout (No Inter-Connecting Lines)')}</text>
   </g>
 `;
     currentY += 55;
@@ -1531,7 +2188,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       text { font-family: 'Cairo', 'Heebo', 'Rubik', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     </style>
   </defs>
-  <rect width="${svgWidth}" height="${totalHeight}" fill="#090d16" />
+  <rect width="${svgWidth}" height="${totalHeight}" fill="#ffffff" />
 ${svgElements}
 </svg>`;
 
@@ -1629,23 +2286,29 @@ ${svgElements}
   const handleExportExcel = () => {
     try {
       const wb = XLSX.utils.book_new();
-      const exportRows = filteredNodes.map((item, idx) => ({
-        '#': idx + 1,
-        'Component': item.node.name,
-        'Type': t.componentTypes[item.node.type] || item.node.type,
-        'Building': item.building || 'Main',
-        'Floor': item.floor || 'Unassigned',
-        'Room / Space': item.place || item.office || '-',
-        'Feeder / Father': item.parent ? item.parent.name : 'Independent / Root',
-        'Parent Floor': item.parent ? (item.parent.floor || 'Same') : '-',
-        'Downstream Sons Count': item.directSons.length,
-        'Amps (A)': item.node.amps || '',
-        'Voltage (V)': item.node.voltage || '',
-        'kVA': item.node.kva || '',
-        'Essential': item.node.isEssential ? 'YES' : 'NO',
-        'Source Page': item.pageName,
-        'Source Project': item.projectName
-      }));
+      const exportRows = filteredNodes.map((item, idx) => {
+        const badges = getNodeExportBadges(item.node).map(b => `${b.icon} ${b.label}`).join(', ');
+        return {
+          '#': idx + 1,
+          'Component': item.node.name,
+          'Type': t.componentTypes[item.node.type] || item.node.type,
+          'Building': item.building || 'Main',
+          'Floor': item.floor || 'Unassigned',
+          'Room / Space': item.place || item.office || '-',
+          'Feeder / Father': item.parent ? item.parent.name : 'Independent / Root',
+          'Parent Floor': item.parent ? (item.parent.floor || 'Same') : '-',
+          'Downstream Sons Count': item.directSons.length,
+          'Amps (A)': item.node.amps || '',
+          'Voltage (V)': item.node.voltage || '',
+          'kVA': item.node.kva || '',
+          'Meter': item.node.hasMeter ? (item.node.meterNumber || item.node.meterModel || 'YES') : 'NO',
+          'Multimeter': item.node.hasMultimeter ? (item.node.multimeterNumber || item.node.multimeterModel || 'YES') : 'NO',
+          'Badges & Icons': badges || '-',
+          'Essential': item.node.isEssential ? 'YES' : 'NO',
+          'Source Page': item.pageName,
+          'Source Project': item.projectName
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(exportRows);
       ws['!views'] = [{ rightToLeft: isRTL }];
@@ -1994,9 +2657,6 @@ ${svgElements}
                         }`} title={floor.displayName}>
                           {floor.displayName}
                         </div>
-                        <div className="text-[10px] font-mono text-slate-500">
-                          {floor.elevation}
-                        </div>
                       </div>
                     </div>
 
@@ -2058,9 +2718,9 @@ ${svgElements}
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {/* Floor Level Pill */}
+                      {/* Floor Icon Pill (no height) */}
                       <span
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold font-mono tracking-wider uppercase border flex items-center gap-1.5 ${
+                        className={`p-1.5 rounded-lg text-xs font-bold border flex items-center justify-center ${
                           floor.isUnassigned
                             ? theme === 'dark'
                               ? 'bg-amber-900/60 border-amber-600/70 text-amber-200'
@@ -2071,7 +2731,6 @@ ${svgElements}
                         <span className="material-icons-round text-sm">
                           {floor.levelRank >= 1000 ? 'roofing' : floor.levelRank < 0 ? 'foundation' : 'stairs'}
                         </span>
-                        <span>{floor.elevation}</span>
                       </span>
 
                       <div>
@@ -2136,82 +2795,74 @@ ${svgElements}
                                 {/* Enclosure Header: Distribution Board Specs (Blue Tinted Title Bar) */}
                                 <div
                                   onClick={() => handleInspect(board)}
-                                  className={`p-3.5 border-b cursor-pointer transition-colors flex items-center justify-between gap-3 ${
+                                  className={`p-3.5 border-b cursor-pointer transition-colors flex flex-col gap-2 ${
                                     theme === 'dark'
                                       ? 'bg-gradient-to-r from-blue-950/60 via-slate-900 to-sky-950/40 border-blue-900/40 hover:bg-blue-900/30'
                                       : 'bg-gradient-to-r from-blue-50 via-sky-50/60 to-indigo-50/40 border-blue-200 hover:from-blue-100/70 hover:to-indigo-100/70'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                                      theme === 'dark' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-blue-600 text-white shadow-xs'
-                                    }`}>
-                                      <span className="material-icons-round text-lg">
-                                        {board.node.type === ComponentType.SYSTEM_ROOT ? 'domain' : 'dns'}
-                                      </span>
-                                    </div>
-
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <h4 className={`text-sm font-bold tracking-tight transition-colors break-words leading-snug ${
-                                          theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
-                                        }`} title={board.node.name}>
-                                          {board.node.name}
-                                        </h4>
-                                        {board.node.componentNumber && (
-                                          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border shrink-0 ${
-                                            theme === 'dark' ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
-                                          }`}>
-                                            #{board.node.componentNumber}
-                                          </span>
-                                        )}
-                                        {/* Meter and Multimeter Badges */}
-                                        {board.node.hasMeter && (
-                                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1 font-semibold" title={board.node.meterNumber ? `Meter #${board.node.meterNumber}` : 'Energy Meter'}>
-                                            <span className="material-icons-round text-xs">speed</span>
-                                            <span>{board.node.meterNumber ? `M #${board.node.meterNumber}` : 'Meter'}</span>
-                                          </span>
-                                        )}
-                                        {board.node.hasMultimeter && (
-                                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center gap-1 font-semibold" title="Multimeter (V, A, Hz, PF)">
-                                            <span className="material-icons-round text-xs">multiline_chart</span>
-                                            <span>Multimeter</span>
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                                        <span className="text-sky-500 font-semibold font-mono">
-                                          {board.node.amps || 0}A • {board.node.voltage || 400}V • {board.node.kva || 0}kVA
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                                        theme === 'dark' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'bg-blue-600 text-white shadow-xs'
+                                      }`}>
+                                        <span className="material-icons-round text-lg">
+                                          {board.node.type === ComponentType.SYSTEM_ROOT ? 'domain' : 'dns'}
                                         </span>
-                                        {board.place && (
-                                          <span className="text-slate-500">• 📍 {board.place}</span>
-                                        )}
                                       </div>
+
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <h4 className={`text-sm font-bold tracking-tight transition-colors break-words leading-snug ${
+                                            theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
+                                          }`} title={getNodeFullName(board.node)}>
+                                            {getNodeFullName(board.node)}
+                                          </h4>
+                                          {board.node.componentNumber && (
+                                            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded border shrink-0 ${
+                                              theme === 'dark' ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+                                            }`}>
+                                              #{board.node.componentNumber}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                          <span className="text-sky-500 font-semibold font-mono">
+                                            {board.node.amps || 0}A • {board.node.voltage || 400}V • {board.node.kva || 0}kVA
+                                          </span>
+                                          {board.place && (
+                                            <span className="text-slate-500">• 📍 {board.place}</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Feeder / Parent badge (NO LINES!) */}
+                                    <div className="text-right shrink-0">
+                                      {board.parent ? (
+                                        <div className={`text-[10px] px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                                          theme === 'dark' ? 'bg-slate-800/80 border-slate-700 text-slate-300' : 'bg-white border-blue-200 text-slate-700 shadow-2xs'
+                                        }`} title="Feeding Source">
+                                          <span className="material-icons-round text-xs text-amber-500">arrow_upward</span>
+                                          <span>{bfT.parentFeeder || 'Feeder'}: <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{board.parent.name}</strong></span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-semibold">
+                                          {bfT.independentSource || 'Main Source'}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
 
-                                  {/* Feeder / Parent badge (NO LINES!) */}
-                                  <div className="text-right shrink-0">
-                                    {board.parent ? (
-                                      <div className={`text-[10px] px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                                        theme === 'dark' ? 'bg-slate-800/80 border-slate-700 text-slate-300' : 'bg-white border-blue-200 text-slate-700 shadow-2xs'
-                                      }`} title="Feeding Source">
-                                        <span className="material-icons-round text-xs text-amber-500">arrow_upward</span>
-                                        <span>{bfT.parentFeeder || 'Feeder'}: <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{board.parent.name}</strong></span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-semibold">
-                                        {bfT.independentSource || 'Main Source'}
-                                      </span>
-                                    )}
-                                  </div>
+                                  {/* Badges and icons at bottom of node */}
+                                  {renderNodeBadgesBottom(board.node, false)}
                                 </div>
 
                                 {/* Enclosure Interior: Modular Slots for Downstream Sons */}
                                 <div className={`p-3 ${theme === 'dark' ? 'bg-slate-950/40' : 'bg-gradient-to-b from-blue-50/20 via-slate-50/40 to-white'}`}>
                                   <div className="text-[10px] uppercase font-bold text-slate-500 mb-2 flex items-center justify-between">
                                     <span>{bfT.downstreamSons || 'Downstream Sons'} ({localSons.length + remoteSons.length})</span>
-                                    <span className="text-[9px] font-mono text-slate-400">ENCLOSURE SLOTS</span>
+                                    <span className="text-[9px] font-mono text-slate-400">{bfT.enclosureSlots || 'ENCLOSURE SLOTS'}</span>
                                   </div>
 
                                   {/* Local Sons (Living on this floor) */}
@@ -2224,7 +2875,7 @@ ${svgElements}
                                           <div
                                             key={son.node.id}
                                             onClick={() => handleInspect(son)}
-                                            className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-between group ${
+                                            className={`p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between group ${
                                               isSonSelected
                                                 ? 'bg-amber-500/10 border-amber-500/70 shadow-2xs'
                                                 : theme === 'dark'
@@ -2232,8 +2883,8 @@ ${svgElements}
                                                 : 'bg-white border-slate-200 hover:bg-blue-50/60 hover:border-blue-300 shadow-2xs'
                                             }`}
                                           >
-                                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                                              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${
+                                            <div className="flex items-start gap-2 min-w-0">
+                                              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5 ${
                                                 theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
                                               }`}>
                                                 <LegendIcon
@@ -2246,16 +2897,11 @@ ${svgElements}
                                                 <div className={`text-xs font-semibold transition-colors flex items-center gap-1.5 flex-wrap ${
                                                   theme === 'dark' ? 'text-slate-200 group-hover:text-amber-400' : 'text-slate-800 group-hover:text-blue-600'
                                                 }`}>
-                                                  <span className="break-words leading-tight" title={son.node.name}>{son.node.name}</span>
-                                                  {son.node.hasMeter && (
-                                                    <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-mono font-bold shrink-0" title="Meter">
-                                                      M
-                                                    </span>
-                                                  )}
-                                                  {son.node.hasMultimeter && (
-                                                    <span className="text-[9px] px-1 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 font-mono font-bold shrink-0" title="Multimeter">
-                                                      MM
-                                                    </span>
+                                                  <span className="break-words leading-tight" title={getNodeFullName(son.node)}>
+                                                    {getNodeFullName(son.node)}
+                                                  </span>
+                                                  {son.node.componentNumber && (
+                                                    <span className="text-[10px] font-mono text-slate-400">#{son.node.componentNumber}</span>
                                                   )}
                                                 </div>
                                                 <div className="text-[10px] font-mono text-slate-500 mt-0.5">
@@ -2264,9 +2910,8 @@ ${svgElements}
                                               </div>
                                             </div>
 
-                                            {son.node.isEssential && (
-                                              <span className="w-2 h-2 rounded-full bg-red-400 shrink-0" title="Essential Emergency Load"></span>
-                                            )}
+                                            {/* Badges and icons at the bottom of the node */}
+                                            {renderNodeBadgesBottom(son.node, true)}
                                           </div>
                                         );
                                       })}
@@ -2277,23 +2922,24 @@ ${svgElements}
                                   {remoteSons.length > 0 && (
                                     <div className={`mt-2 pt-2 border-t ${theme === 'dark' ? 'border-slate-800/60' : 'border-slate-200'}`}>
                                       <span className="text-[10px] text-slate-500 block mb-1.5">
-                                        ⚡ Feeds sub-panels on other floors (no crossing lines):
+                                        {bfT.feedsOtherFloors || '⚡ Feeds sub-panels on other floors (no crossing lines):'}
                                       </span>
                                       <div className="flex flex-wrap gap-1.5">
                                         {remoteSons.map(rSon => (
                                           <button
                                             key={rSon.node.id}
                                             onClick={() => handleInspect(rSon)}
-                                            className={`text-[10px] px-2 py-0.5 rounded border flex items-center gap-1 transition-colors ${
+                                            className={`text-[10px] p-2 rounded-lg border flex flex-col gap-1 transition-colors text-left ${
                                               theme === 'dark'
                                                 ? 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700/60'
                                                 : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
                                             }`}
                                           >
-                                            <span className="font-semibold break-words leading-tight" title={rSon.node.name}>{rSon.node.name}</span>
-                                            {rSon.node.hasMeter && <span className="text-[8px] text-emerald-500 font-mono shrink-0">[M]</span>}
-                                            {rSon.node.hasMultimeter && <span className="text-[8px] text-purple-500 font-mono shrink-0">[MM]</span>}
-                                            <span className="text-amber-500 font-mono shrink-0">({rSon.floor || 'No floor'})</span>
+                                            <span className="font-semibold break-words leading-tight" title={getNodeFullName(rSon.node)}>
+                                              {getNodeFullName(rSon.node)}
+                                            </span>
+                                            <span className="text-amber-500 font-mono text-[9px]">🏢 {rSon.floor || bfT.floorNames?.unassigned || 'No floor'}</span>
+                                            {renderNodeBadgesBottom(rSon.node, true)}
                                           </button>
                                         ))}
                                       </div>
@@ -2302,7 +2948,7 @@ ${svgElements}
 
                                   {localSons.length === 0 && remoteSons.length === 0 && (
                                     <div className="text-xs text-slate-500 py-1 italic">
-                                      No downstream circuits attached.
+                                      {bfT.noDownstreamCircuits || 'No downstream circuits attached.'}
                                     </div>
                                   )}
                                 </div>
@@ -2353,31 +2999,13 @@ ${svgElements}
                                       <div className="min-w-0 flex-1">
                                         <h5 className={`text-xs font-bold break-words leading-snug ${
                                           theme === 'dark' ? 'text-white' : 'text-slate-900'
-                                        }`} title={item.node.name}>
-                                          {item.node.name}
+                                        }`} title={getNodeFullName(item.node)}>
+                                          {getNodeFullName(item.node)}
                                         </h5>
                                         <span className="text-[10px] text-slate-500 block mt-0.5">
                                           {t.componentTypes[item.node.type] || item.node.type}
                                         </span>
                                       </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      {item.node.hasMeter && (
-                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-mono font-semibold" title={item.node.meterNumber ? `Meter #${item.node.meterNumber}` : 'Meter'}>
-                                          {item.node.meterNumber ? `M#${item.node.meterNumber}` : 'M'}
-                                        </span>
-                                      )}
-                                      {item.node.hasMultimeter && (
-                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 font-mono font-semibold" title="Multimeter">
-                                          MM
-                                        </span>
-                                      )}
-                                      {item.node.isEssential && (
-                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-semibold uppercase">
-                                          EMERGENCY
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
 
@@ -2392,33 +3020,36 @@ ${svgElements}
                                       <span className="text-slate-500 break-words">• {item.place}</span>
                                     )}
                                   </div>
-                                </div>
 
-                                {/* Feeder Reference Badge (NO LINES!) */}
-                                <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-[10px] ${
-                                  theme === 'dark' ? 'border-slate-800/60' : 'border-slate-100'
-                                }`}>
-                                  {item.parent ? (
-                                    <span className="text-slate-500 flex items-center gap-1 min-w-0 flex-1 mr-2" title={`Fed by ${item.parent.name}`}>
-                                      <span className="material-icons-round text-xs text-amber-500 shrink-0">bolt</span>
-                                      <span className="break-words leading-tight">Fed by: <strong className={theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}>{item.parent.name}</strong></span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-emerald-500 font-medium">Independent</span>
-                                  )}
+                                  {/* Feeder Reference Badge (NO LINES!) */}
+                                  <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-[10px] ${
+                                    theme === 'dark' ? 'border-slate-800/60' : 'border-slate-100'
+                                  }`}>
+                                    {item.parent ? (
+                                      <span className="text-slate-500 flex items-center gap-1 min-w-0 flex-1 mr-2" title={`Fed by ${item.parent.name}`}>
+                                        <span className="material-icons-round text-xs text-amber-500 shrink-0">bolt</span>
+                                        <span className="break-words leading-tight">Fed by: <strong className={theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}>{item.parent.name}</strong></span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-emerald-500 font-medium">Independent</span>
+                                    )}
 
-                                  {/* Quick assign button if unassigned */}
-                                  {floor.isUnassigned && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setQuickAssignTargetId(quickAssignTargetId === item.node.id ? null : item.node.id);
-                                      }}
-                                      className="px-2 py-0.5 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-500 border border-amber-500/40 text-[10px] font-semibold transition-colors"
-                                    >
-                                      {bfT.assignFloor || 'Assign Floor'}
-                                    </button>
-                                  )}
+                                    {/* Quick assign button if unassigned */}
+                                    {floor.isUnassigned && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setQuickAssignTargetId(quickAssignTargetId === item.node.id ? null : item.node.id);
+                                        }}
+                                        className="px-2 py-0.5 rounded bg-amber-600/30 hover:bg-amber-600/50 text-amber-500 border border-amber-500/40 text-[10px] font-semibold transition-colors"
+                                      >
+                                        {bfT.assignFloor || 'Assign Floor'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {/* Badges and icons at bottom of node */}
+                                  {renderNodeBadgesBottom(item.node, false)}
                                 </div>
 
                                 {/* Quick Floor Dropdown Popover */}
@@ -2433,7 +3064,15 @@ ${svgElements}
                                       {bfT.quickAssign || 'Quick Assign to Floor'}:
                                     </div>
                                     <div className="grid grid-cols-2 gap-1 text-[11px]">
-                                      {['Roof', 'Floor 3', 'Floor 2', 'Floor 1', 'Ground Floor', 'Basement 1', 'Basement 2'].map(flr => (
+                                      {[
+                                        bfT.floorNames?.roof || 'Roof',
+                                        bfT.floorNames?.floor3 || 'Floor 3',
+                                        bfT.floorNames?.floor2 || 'Floor 2',
+                                        bfT.floorNames?.floor1 || 'Floor 1',
+                                        bfT.floorNames?.ground || 'Ground Floor',
+                                        bfT.floorNames?.basement1 || 'Basement 1',
+                                        bfT.floorNames?.basement2 || 'Basement 2'
+                                      ].map(flr => (
                                         <button
                                           key={flr}
                                           onClick={() => handleQuickAssignFloor(item, flr)}
@@ -2458,7 +3097,7 @@ ${svgElements}
 
                     {floor.enclosures.length === 0 && floor.standaloneNodes.length === 0 && (
                       <div className="text-xs text-slate-500 py-3 text-center italic">
-                        No equipment placed on this floor slab yet.
+                        {language === 'ar' ? 'لا توجد أجهزة موضوعة في هذا الطابق بعد.' : (language === 'he' ? 'טרם הוצב ציוד במפלס קומה זה.' : 'No equipment placed on this floor slab yet.')}
                       </div>
                     )}
 
@@ -2510,7 +3149,7 @@ ${svgElements}
                     </div>
                     {inspectedItem.node.componentNumber && (
                       <span className="text-[10px] font-mono text-slate-400">
-                        Component #{inspectedItem.node.componentNumber}
+                        #{inspectedItem.node.componentNumber}
                       </span>
                     )}
                   </div>
@@ -2523,19 +3162,19 @@ ${svgElements}
                   <div className={`p-1.5 rounded-lg border ${
                     theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-blue-50/80 border-blue-200'
                   }`}>
-                    <span className="text-[9px] text-slate-500 block">Amps</span>
+                    <span className="text-[9px] text-slate-500 block">{t.amps || 'Amps'}</span>
                     <span className={`font-bold font-mono ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{inspectedItem.node.amps || 0}A</span>
                   </div>
                   <div className={`p-1.5 rounded-lg border ${
                     theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-sky-50/80 border-sky-200'
                   }`}>
-                    <span className="text-[9px] text-slate-500 block">Voltage</span>
+                    <span className="text-[9px] text-slate-500 block">{t.voltage || 'Voltage'}</span>
                     <span className={`font-bold font-mono ${theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}`}>{inspectedItem.node.voltage || 400}V</span>
                   </div>
                   <div className={`p-1.5 rounded-lg border ${
                     theme === 'dark' ? 'bg-slate-950/60 border-slate-800/80' : 'bg-amber-50/80 border-amber-200'
                   }`}>
-                    <span className="text-[9px] text-slate-500 block">Power</span>
+                    <span className="text-[9px] text-slate-500 block">{t.power || 'Power'}</span>
                     <span className="font-bold text-amber-500 font-mono">{inspectedItem.node.kva || 0}kVA</span>
                   </div>
                 </div>
@@ -2547,17 +3186,17 @@ ${svgElements}
                   }`}>
                     <div className="text-[10px] uppercase font-bold text-blue-500 flex items-center gap-1">
                       <span className="material-icons-round text-xs">speed</span>
-                      <span>Instrumentation & Metering</span>
+                      <span>{bfT.instrumentation || 'Instrumentation & Metering'}</span>
                     </div>
                     <div className="grid grid-cols-1 gap-1.5">
                       {inspectedItem.node.hasMeter && (
                         <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
                           <span className="text-emerald-500 font-medium flex items-center gap-1">
                             <span className="material-icons-round text-xs">electric_meter</span>
-                            <span>Energy Meter</span>
+                            <span>{inspectedItem.node.meterModel ? `${t.legend?.meter || 'Meter'} (${inspectedItem.node.meterModel})` : (t.legend?.meter || 'Energy Meter')}</span>
                           </span>
                           <span className="font-mono text-[11px] text-emerald-500 font-bold">
-                            {inspectedItem.node.meterNumber ? `#${inspectedItem.node.meterNumber}` : 'Active'}
+                            {inspectedItem.node.meterNumber ? `#${inspectedItem.node.meterNumber}` : (inspectedItem.node.meterSerial ? `#${inspectedItem.node.meterSerial}` : (bfT.active || 'Active'))}
                           </span>
                         </div>
                       )}
@@ -2565,10 +3204,10 @@ ${svgElements}
                         <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-between">
                           <span className="text-purple-500 font-medium flex items-center gap-1">
                             <span className="material-icons-round text-xs">multiline_chart</span>
-                            <span>Digital Multimeter</span>
+                            <span>{inspectedItem.node.multimeterModel ? `${t.legend?.multimeter || 'Multimeter'} (${inspectedItem.node.multimeterModel})` : (t.legend?.multimeter || 'Digital Multimeter')}</span>
                           </span>
-                          <span className="font-mono text-[10px] text-purple-500 font-semibold">
-                            V • A • Hz • PF
+                          <span className="font-mono text-[11px] text-purple-500 font-bold">
+                            {inspectedItem.node.multimeterNumber ? `#${inspectedItem.node.multimeterNumber}` : (inspectedItem.node.multimeterSerial ? `#${inspectedItem.node.multimeterSerial}` : (bfT.active || 'Active'))}
                           </span>
                         </div>
                       )}
@@ -2602,7 +3241,7 @@ ${svgElements}
                         {inspectedItem.parent.name}
                       </span>
                       <span className="text-[10px] text-amber-500 font-mono shrink-0">
-                        {inspectedItem.parent.floor || 'Floor ?'}
+                        {inspectedItem.parent.floor || bfT.floorNames?.unassigned || 'Floor ?'}
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-500 mt-0.5">
@@ -2656,14 +3295,14 @@ ${svgElements}
                           <span className="text-[10px] text-slate-500 shrink-0">{son.amps ? `${son.amps}A` : ''}</span>
                         </div>
                         <span className="text-[10px] text-amber-500 font-mono shrink-0">
-                          {son.floor || 'No floor'}
+                          {son.floor || bfT.floorNames?.unassigned || 'No floor'}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500 italic p-1">
-                    No downstream sons (Terminal load).
+                    {bfT.noDownstreamSonsTerminal || 'No downstream sons (Terminal load).'}
                   </div>
                 )}
               </div>
@@ -2683,7 +3322,7 @@ ${svgElements}
                     type="text"
                     value={editLocationForm.building}
                     onChange={(e) => setEditLocationForm({ ...editLocationForm, building: e.target.value })}
-                    placeholder="e.g. Main Building, Tower A"
+                    placeholder={bfT.buildingPlaceholder || 'e.g. Main Building, Tower A'}
                     className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-500 outline-none ${
                       theme === 'dark' ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}
@@ -2696,7 +3335,7 @@ ${svgElements}
                     type="text"
                     value={editLocationForm.floor}
                     onChange={(e) => setEditLocationForm({ ...editLocationForm, floor: e.target.value })}
-                    placeholder="e.g. Floor 2, Ground, Roof, B1"
+                    placeholder={bfT.floorPlaceholder || 'e.g. Floor 2, Ground, Roof, B1'}
                     className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-amber-500 outline-none ${
                       theme === 'dark' ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
                     }`}

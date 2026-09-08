@@ -77,6 +77,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     isReserved: false,
     isEssential: false,
     hasMultimeter: false,
+    multimeterNumber: '',
     multimeterModel: '',
     multimeterSerial: '',
     isPublicBoard: false,
@@ -147,8 +148,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             isReserved: selectedNode.isReserved || false,
             isEssential: selectedNode.isEssential || false,
             hasMultimeter: selectedNode.hasMultimeter || false,
+            multimeterNumber: selectedNode.multimeterNumber || selectedNode.multimeterSerial || '',
             multimeterModel: selectedNode.multimeterModel || '',
-            multimeterSerial: selectedNode.multimeterSerial || '',
+            multimeterSerial: selectedNode.multimeterSerial || selectedNode.multimeterNumber || '',
             isPublicBoard: selectedNode.isPublicBoard || false,
             hasTransferSwitch: selectedNode.hasTransferSwitch || false,
             secondBreakerName: selectedNode.secondBreakerName || '',
@@ -185,6 +187,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             isReserved: false,
             isEssential: false,
             hasMultimeter: false,
+            multimeterNumber: '',
             multimeterModel: '',
             multimeterSerial: '',
             isPublicBoard: false,
@@ -286,6 +289,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
             isReserved: false,
             isEssential: false,
             hasMultimeter: false,
+            multimeterNumber: '',
             multimeterModel: '',
             multimeterSerial: '',
             isPublicBoard: false,
@@ -1250,13 +1254,20 @@ export const InputPanel: React.FC<InputPanelProps> = ({
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-slate-400 mb-1">{t.inputPanel.multimeterSerial || "Multimeter Serial Number"}</label>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">{t.inputPanel.multimeterSerial || "Multimeter Number / Serial"}</label>
                         <input
                             type="text"
                             name="multimeterSerial"
-                            value={formData.multimeterSerial || ''}
-                            onChange={handleChange}
-                            placeholder="e.g. SN-883492"
+                            value={formData.multimeterNumber || formData.multimeterSerial || ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    multimeterSerial: val,
+                                    multimeterNumber: val
+                                }));
+                            }}
+                            placeholder="e.g. SN-883492 / MM-001"
                             className="w-full bg-slate-900 border border-slate-700 text-white rounded px-3 py-1.5 focus:outline-none focus:border-emerald-500 text-sm"
                         />
                     </div>
