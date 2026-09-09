@@ -554,7 +554,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           );
           const sonCols = 2;
           const sonsRows = Math.ceil(maxSons / sonCols);
-          const sonCardHeight = 88;
+          const sonCardHeight = 96;
           const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
           height += encHeight + 16;
         }
@@ -562,7 +562,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       if (floor.standaloneNodes.length > 0) {
         height += 24; // section label
         const devCols = 3;
-        const devCardHeight = 88;
+        const devCardHeight = 96;
         const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
         height += devRows * (devCardHeight + 12) + 16;
       }
@@ -1431,17 +1431,19 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           );
           const sonCols = 2;
           const sonsRows = Math.ceil(maxSons / sonCols);
-          const sonCardHeight = 88;
+          const sonCardHeight = 96;
           const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
 
           const renderEnclosureOnCanvas = (encItem: typeof enc1, boxX: number, boxWidth: number) => {
             if (!encItem) return;
             const board = encItem.board;
             const sons = encItem.localSons;
-            const rawFeeder = board.parent
-              ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}`
+            const boardParentNumStr = board.parent?.componentNumber ? ` #${board.parent.componentNumber}` : '';
+            const boardParentLoc = board.parent ? [board.parent.floor, board.parent.place || board.parent.office].filter(Boolean).join(', ') : '';
+            const feederLine1 = board.parent
+              ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}${boardParentNumStr}`
               : (bfT.independentSource || 'Main Grid Source');
-            const feederText = safeText(rawFeeder, 40);
+            const feederLine2 = boardParentLoc ? `📍 ${boardParentLoc}` : '';
 
             // Enclosure main container
             drawRoundRect(ctx, boxX, currentY, boxWidth, encHeight, 10);
@@ -1469,17 +1471,36 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             if (isRTL) {
               // --- RTL Enclosure Header ---
               // Feeder Tag on the LEFT
-              drawRoundRect(ctx, boxX + 14, currentY + 14, 180, 28, 6);
-              ctx.fillStyle = '#fef3c7';
-              ctx.fill();
-              ctx.strokeStyle = '#fde68a';
-              ctx.lineWidth = 1;
-              ctx.stroke();
+              if (feederLine2) {
+                drawRoundRect(ctx, boxX + 14, currentY + 12, 195, 34, 6);
+                ctx.fillStyle = '#fef3c7';
+                ctx.fill();
+                ctx.strokeStyle = '#fde68a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
 
-              ctx.fillStyle = '#b45309';
-              ctx.font = fontSans(9.5, '600');
-              ctx.textAlign = 'center';
-              ctx.fillText(feederText, boxX + 14 + 90, currentY + 32);
+                ctx.fillStyle = '#b45309';
+                ctx.font = fontSans(9, '600');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine1, 26), boxX + 14 + 97.5, currentY + 24);
+
+                ctx.fillStyle = '#92400e';
+                ctx.font = fontSans(8.5, '500');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine2, 28), boxX + 14 + 97.5, currentY + 39);
+              } else {
+                drawRoundRect(ctx, boxX + 14, currentY + 14, 180, 28, 6);
+                ctx.fillStyle = '#fef3c7';
+                ctx.fill();
+                ctx.strokeStyle = '#fde68a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#b45309';
+                ctx.font = fontSans(9.5, '600');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine1, 30), boxX + 14 + 90, currentY + 32);
+              }
 
               // Component type visual icon box on the RIGHT
               drawRoundRect(ctx, boxX + boxWidth - 38, currentY + 14, 26, 26, 6);
@@ -1543,17 +1564,36 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
               }
 
               // Feeder Tag on the RIGHT
-              drawRoundRect(ctx, boxX + boxWidth - 194, currentY + 14, 180, 28, 6);
-              ctx.fillStyle = '#fef3c7';
-              ctx.fill();
-              ctx.strokeStyle = '#fde68a';
-              ctx.lineWidth = 1;
-              ctx.stroke();
+              if (feederLine2) {
+                drawRoundRect(ctx, boxX + boxWidth - 209, currentY + 12, 195, 34, 6);
+                ctx.fillStyle = '#fef3c7';
+                ctx.fill();
+                ctx.strokeStyle = '#fde68a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
 
-              ctx.fillStyle = '#b45309';
-              ctx.font = fontSans(9.5, '600');
-              ctx.textAlign = 'center';
-              ctx.fillText(feederText, boxX + boxWidth - 194 + 90, currentY + 32);
+                ctx.fillStyle = '#b45309';
+                ctx.font = fontSans(9, '600');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine1, 26), boxX + boxWidth - 209 + 97.5, currentY + 24);
+
+                ctx.fillStyle = '#92400e';
+                ctx.font = fontSans(8.5, '500');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine2, 28), boxX + boxWidth - 209 + 97.5, currentY + 39);
+              } else {
+                drawRoundRect(ctx, boxX + boxWidth - 194, currentY + 14, 180, 28, 6);
+                ctx.fillStyle = '#fef3c7';
+                ctx.fill();
+                ctx.strokeStyle = '#fde68a';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#b45309';
+                ctx.font = fontSans(9.5, '600');
+                ctx.textAlign = 'center';
+                ctx.fillText(safeText(feederLine1, 30), boxX + boxWidth - 194 + 90, currentY + 32);
+              }
             }
 
             // Sons Grid (2 columns)
@@ -1570,6 +1610,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                 const sonTitle = `${safeText(getNodeFullName(sonItem.node), 45)}${sonNumStr}`;
                 const sonTitleFont = sonTitle.length > 28 ? fontSans(9.5, 'bold') : fontSans(10.5, 'bold');
                 const sonMeta = `${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA${sonItem.place ? ` • 📍 ${safeText(sonItem.place, 18)}` : ''}`;
+                const sonParentNumStr = sonItem.parent?.componentNumber ? ` #${sonItem.parent.componentNumber}` : '';
+                const sonParentLoc = sonItem.parent ? [sonItem.parent.floor, sonItem.parent.place || sonItem.parent.office].filter(Boolean).join(', ') : '';
+                const sonParentText = sonItem.parent
+                  ? `⚡ ${bfT.parentFeeder || 'Feed'}: ${safeText(sonItem.parent.name, 18)}${sonParentNumStr}${sonParentLoc ? ` • 📍${safeText(sonParentLoc, 14)}` : ''}`
+                  : `⚡ ${bfT.independentSource || 'Main Grid'}`;
 
                 drawRoundRect(ctx, sX, sY, sWidth, sonCardHeight, 6);
                 ctx.fillStyle = '#f8fafc';
@@ -1603,10 +1648,16 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   ctx.fillStyle = '#0284c7';
                   ctx.font = fontSans(9, '600');
                   ctx.textAlign = 'right';
-                  ctx.fillText(sonMeta, sX + sWidth - 10, sY + 42);
+                  ctx.fillText(sonMeta, sX + sWidth - 10, sY + 37);
+
+                  // Power Source / Father on the RIGHT
+                  ctx.fillStyle = '#b45309';
+                  ctx.font = fontSans(8.5, '600');
+                  ctx.textAlign = 'right';
+                  ctx.fillText(safeText(sonParentText, 40), sX + sWidth - 10, sY + 51);
 
                   // Badges Row (Tier 3, wrapped up to 2 rows)
-                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + sWidth - 10, sY + 50, sWidth - 20, true, 2);
+                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + sWidth - 10, sY + 60, sWidth - 20, true, 2);
                 } else {
                   // LTR Son Card
                   // Icon box on the LEFT
@@ -1632,10 +1683,16 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   ctx.fillStyle = '#0284c7';
                   ctx.font = fontSans(9, '600');
                   ctx.textAlign = 'left';
-                  ctx.fillText(sonMeta, sX + 10, sY + 42);
+                  ctx.fillText(sonMeta, sX + 10, sY + 37);
+
+                  // Power Source / Father on the LEFT
+                  ctx.fillStyle = '#b45309';
+                  ctx.font = fontSans(8.5, '600');
+                  ctx.textAlign = 'left';
+                  ctx.fillText(safeText(sonParentText, 40), sX + 10, sY + 51);
 
                   // Badges Row
-                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + 10, sY + 50, sWidth - 20, false, 2);
+                  drawBadgePillsOnCanvas(ctx, sonBadges, sX + 10, sY + 60, sWidth - 20, false, 2);
                 }
               });
             } else {
@@ -1678,7 +1735,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
         const devCols = 3;
         const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 12) / devCols);
-        const devCardHeight = 88;
+        const devCardHeight = 96;
         const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
 
         floor.standaloneNodes.forEach((it, sIdx) => {
@@ -1693,7 +1750,12 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           const devNumStr = it.node.componentNumber ? ` #${it.node.componentNumber}` : '';
           const devTitle = `${safeText(getNodeFullName(it.node), 55)}${devNumStr}`;
           const devTitleFont = devTitle.length > 35 ? fontSans(10, 'bold') : fontSans(11.5, 'bold');
-          const devSubtitle = `${t.componentTypes[it.node.type] || it.node.type} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${safeText(it.place, 20)}` : (it.parent ? ` • ${bfT.parentFeeder || 'Feed'}: ${safeText(it.parent.name, 20)}` : '')}`;
+          const devParentNumStr = it.parent?.componentNumber ? ` #${it.parent.componentNumber}` : '';
+          const devParentLoc = it.parent ? [it.parent.floor, it.parent.place || it.parent.office].filter(Boolean).join(', ') : '';
+          const devParentText = it.parent
+            ? `⚡ ${bfT.parentFeeder || 'Feed'}: ${safeText(it.parent.name, 22)}${devParentNumStr}${devParentLoc ? ` • 📍${safeText(devParentLoc, 18)}` : ''}`
+            : `⚡ ${bfT.independentSource || 'Main Grid'}`;
+          const devSpecs = `${t.componentTypes[it.node.type] || it.node.type} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${safeText(it.place, 18)}` : ''}`;
 
           drawRoundRect(ctx, cardX, cardY, devCardWidth, devCardHeight, 6);
           ctx.fillStyle = isDist ? '#f0fdf4' : '#ffffff';
@@ -1723,14 +1785,20 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             ctx.textAlign = 'right';
             ctx.fillText(devTitle, cardX + devCardWidth - 40, cardY + 24);
 
-            // Subtitle (Type • Specs • Location/Feed) on the RIGHT
+            // Subtitle 1 (Type • Specs • Location) on the RIGHT
             ctx.fillStyle = '#475569';
             ctx.font = fontSans(9.5, 'normal');
             ctx.textAlign = 'right';
-            ctx.fillText(devSubtitle, cardX + devCardWidth - 10, cardY + 43);
+            ctx.fillText(devSpecs, cardX + devCardWidth - 10, cardY + 39);
+
+            // Subtitle 2: Power Source (the father) on the RIGHT
+            ctx.fillStyle = '#b45309';
+            ctx.font = fontSans(8.5, '600');
+            ctx.textAlign = 'right';
+            ctx.fillText(safeText(devParentText, 45), cardX + devCardWidth - 10, cardY + 53);
 
             // Badges Row (wrapped up to 2 rows)
-            drawBadgePillsOnCanvas(ctx, devBadges, cardX + devCardWidth - 10, cardY + 51, devCardWidth - 20, true, 2);
+            drawBadgePillsOnCanvas(ctx, devBadges, cardX + devCardWidth - 10, cardY + 62, devCardWidth - 20, true, 2);
           } else {
             // LTR Standalone Equipment Card
             // Visual Icon Box on the LEFT
@@ -1752,14 +1820,20 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             ctx.textAlign = 'left';
             ctx.fillText(devTitle, cardX + 40, cardY + 24);
 
-            // Subtitle on the LEFT
+            // Subtitle 1 (Type • Specs • Location) on the LEFT
             ctx.fillStyle = '#475569';
             ctx.font = fontSans(9.5, 'normal');
             ctx.textAlign = 'left';
-            ctx.fillText(devSubtitle, cardX + 10, cardY + 43);
+            ctx.fillText(devSpecs, cardX + 10, cardY + 39);
+
+            // Subtitle 2: Power Source (the father) on the LEFT
+            ctx.fillStyle = '#b45309';
+            ctx.font = fontSans(8.5, '600');
+            ctx.textAlign = 'left';
+            ctx.fillText(safeText(devParentText, 45), cardX + 10, cardY + 53);
 
             // Badges Row
-            drawBadgePillsOnCanvas(ctx, devBadges, cardX + 10, cardY + 51, devCardWidth - 20, false, 2);
+            drawBadgePillsOnCanvas(ctx, devBadges, cardX + 10, cardY + 62, devCardWidth - 20, false, 2);
           }
         });
         currentY += devRows * (devCardHeight + 12) + 16;
@@ -1973,17 +2047,19 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           );
           const sonCols = 2;
           const sonsRows = Math.ceil(maxSons / sonCols);
-          const sonCardHeight = 88;
+          const sonCardHeight = 96;
           const encHeight = 86 + (maxSons > 0 ? sonsRows * (sonCardHeight + 10) + 16 : 36);
 
           const renderEnclosureBox = (encItem: typeof enc1, boxX: number, boxWidth: number) => {
             if (!encItem) return '';
             const board = encItem.board;
             const sons = encItem.localSons;
-            const rawFeeder = board.parent
-              ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}`
+            const boardParentNumStr = board.parent?.componentNumber ? ` #${board.parent.componentNumber}` : '';
+            const boardParentLoc = board.parent ? [board.parent.floor, board.parent.place || board.parent.office].filter(Boolean).join(', ') : '';
+            const feederLine1 = board.parent
+              ? `${bfT.parentFeeder || 'Feeder'}: ${board.parent.name}${boardParentNumStr}`
               : (bfT.independentSource || 'Main Grid Source');
-            const feederText = escapeXml(safeText(rawFeeder, 40));
+            const feederLine2 = boardParentLoc ? `📍 ${boardParentLoc}` : '';
             const boardBadges = getNodeExportBadges(board.node);
             const boardMeta = `${board.node.amps || 0}A • ${board.node.voltage || 400}V • ${board.node.kva || 0}kVA${board.place ? ` • 📍 ${escapeXml(safeText(board.place, 25))}` : ''}`;
             const boardVisual = getComponentTypeExportVisual(board.node.type);
@@ -2000,8 +2076,14 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             if (isRTL) {
               encSvg += `
       <!-- RTL Enclosure Header -->
+      ${feederLine2 ? `
+      <rect x="14" y="12" width="195" height="34" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
+      <text x="111.5" y="24" fill="#b45309" font-size="9" font-weight="600" text-anchor="middle">${escapeXml(safeText(feederLine1, 26))}</text>
+      <text x="111.5" y="39" fill="#92400e" font-size="8.5" font-weight="500" text-anchor="middle">${escapeXml(safeText(feederLine2, 28))}</text>
+      ` : `
       <rect x="14" y="14" width="180" height="28" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
-      <text x="104" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${feederText}</text>
+      <text x="104" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${escapeXml(safeText(feederLine1, 30))}</text>
+      `}
       
       <rect x="${boxWidth - 38}" y="14" width="26" height="26" rx="6" fill="${boardVisual.bg}" stroke="${boardVisual.border}" stroke-width="1" />
       <text x="${boxWidth - 25}" y="31" fill="${boardVisual.color}" font-size="12" font-weight="bold" text-anchor="middle">${boardVisual.symbol}</text>
@@ -2020,8 +2102,14 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <text x="46" y="44" fill="#64748b" font-size="10">${boardMeta}</text>
       ${boardBadges.length > 0 ? renderSvgBadgePills(boardBadges, 46, 54, boxWidth - 250, false, 2) : ''}
       
+      ${feederLine2 ? `
+      <rect x="${boxWidth - 209}" y="12" width="195" height="34" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
+      <text x="${boxWidth - 111.5}" y="24" fill="#b45309" font-size="9" font-weight="600" text-anchor="middle">${escapeXml(safeText(feederLine1, 26))}</text>
+      <text x="${boxWidth - 111.5}" y="39" fill="#92400e" font-size="8.5" font-weight="500" text-anchor="middle">${escapeXml(safeText(feederLine2, 28))}</text>
+      ` : `
       <rect x="${boxWidth - 194}" y="14" width="180" height="28" rx="6" fill="#fef3c7" stroke="#fde68a" stroke-width="1" />
-      <text x="${boxWidth - 104}" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${feederText}</text>
+      <text x="${boxWidth - 104}" y="32" fill="#b45309" font-size="9.5" font-weight="600" text-anchor="middle">${escapeXml(safeText(feederLine1, 30))}</text>
+      `}
 `;
             }
 
@@ -2038,6 +2126,11 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                 const sonTitle = `${escapeXml(safeText(getNodeFullName(sonItem.node), 45))}${sonNumStr}`;
                 const sonTitleFontSize = sonTitle.length > 28 ? 9.5 : 10.5;
                 const sonMeta = `${sonItem.node.amps || 0}A • ${sonItem.node.kva || 0}kVA${sonItem.place ? ` • 📍 ${escapeXml(safeText(sonItem.place, 18))}` : ''}`;
+                const sonParentNumStr = sonItem.parent?.componentNumber ? ` #${sonItem.parent.componentNumber}` : '';
+                const sonParentLoc = sonItem.parent ? [sonItem.parent.floor, sonItem.parent.place || sonItem.parent.office].filter(Boolean).join(', ') : '';
+                const sonParentText = sonItem.parent
+                  ? `⚡ ${bfT.parentFeeder || 'Feed'}: ${safeText(sonItem.parent.name, 18)}${sonParentNumStr}${sonParentLoc ? ` • 📍${safeText(sonParentLoc, 14)}` : ''}`
+                  : `⚡ ${bfT.independentSource || 'Main Grid'}`;
 
                 if (isRTL) {
                   encSvg += `
@@ -2045,8 +2138,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <rect x="${sX + sWidth - 30}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
       <text x="${sX + sWidth - 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
       <text x="${sX + sWidth - 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold" text-anchor="end">${sonTitle}</text>
-      <text x="${sX + sWidth - 10}" y="${sY + 42}" fill="#0284c7" font-size="9" font-weight="600" text-anchor="end">${sonMeta}</text>
-      ${renderSvgBadgePills(sonBadges, sX + sWidth - 10, sY + 50, sWidth - 20, true, 2)}
+      <text x="${sX + sWidth - 10}" y="${sY + 37}" fill="#0284c7" font-size="9" font-weight="600" text-anchor="end">${sonMeta}</text>
+      <text x="${sX + sWidth - 10}" y="${sY + 51}" fill="#b45309" font-size="8.5" font-weight="600" text-anchor="end">${escapeXml(safeText(sonParentText, 40))}</text>
+      ${renderSvgBadgePills(sonBadges, sX + sWidth - 10, sY + 60, sWidth - 20, true, 2)}
 `;
                 } else {
                   encSvg += `
@@ -2054,8 +2148,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       <rect x="${sX + 8}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
       <text x="${sX + 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
       <text x="${sX + 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold">${sonTitle}</text>
-      <text x="${sX + 10}" y="${sY + 42}" fill="#0284c7" font-size="9" font-weight="600">${sonMeta}</text>
-      ${renderSvgBadgePills(sonBadges, sX + 10, sY + 50, sWidth - 20, false, 2)}
+      <text x="${sX + 10}" y="${sY + 37}" fill="#0284c7" font-size="9" font-weight="600">${sonMeta}</text>
+      <text x="${sX + 10}" y="${sY + 51}" fill="#b45309" font-size="8.5" font-weight="600">${escapeXml(safeText(sonParentText, 40))}</text>
+      ${renderSvgBadgePills(sonBadges, sX + 10, sY + 60, sWidth - 20, false, 2)}
 `;
                 }
               });
@@ -2100,7 +2195,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
         const devCols = 3;
         const devCardWidth = Math.floor((svgWidth - 80 - (devCols - 1) * 12) / devCols);
-        const devCardHeight = 88;
+        const devCardHeight = 96;
         const devRows = Math.ceil(floor.standaloneNodes.length / devCols);
 
         floor.standaloneNodes.forEach((it, sIdx) => {
@@ -2117,7 +2212,12 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           const devNumStr = it.node.componentNumber ? ` #${it.node.componentNumber}` : '';
           const devTitle = `${escapeXml(safeText(getNodeFullName(it.node), 55))}${devNumStr}`;
           const devTitleFontSize = devTitle.length > 35 ? 10 : 11.5;
-          const devSubtitle = `${escapeXml(t.componentTypes[it.node.type] || it.node.type)} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${escapeXml(safeText(it.place, 20))}` : (it.parent ? ` • ${escapeXml(bfT.parentFeeder || 'Feed')}: ${escapeXml(safeText(it.parent.name, 20))}` : '')}`;
+          const devParentNumStr = it.parent?.componentNumber ? ` #${it.parent.componentNumber}` : '';
+          const devParentLoc = it.parent ? [it.parent.floor, it.parent.place || it.parent.office].filter(Boolean).join(', ') : '';
+          const devParentText = it.parent
+            ? `⚡ ${bfT.parentFeeder || 'Feed'}: ${safeText(it.parent.name, 22)}${devParentNumStr}${devParentLoc ? ` • 📍${safeText(devParentLoc, 18)}` : ''}`
+            : `⚡ ${bfT.independentSource || 'Main Grid'}`;
+          const devSpecs = `${escapeXml(t.componentTypes[it.node.type] || it.node.type)} • ${it.node.amps || 0}A • ${it.node.kva || 0}kVA${it.place ? ` • 📍 ${escapeXml(safeText(it.place, 18))}` : ''}`;
 
           if (isRTL) {
             svgElements += `
@@ -2126,8 +2226,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     <rect x="${devCardWidth - 32}" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
     <text x="${devCardWidth - 20}" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
     <text x="${devCardWidth - 40}" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold" text-anchor="end">${devTitle}</text>
-    <text x="${devCardWidth - 10}" y="43" fill="#475569" font-size="9.5" text-anchor="end">${devSubtitle}</text>
-    ${renderSvgBadgePills(devBadges, devCardWidth - 10, 51, devCardWidth - 20, true, 2)}
+    <text x="${devCardWidth - 10}" y="39" fill="#475569" font-size="9.5" text-anchor="end">${devSpecs}</text>
+    <text x="${devCardWidth - 10}" y="53" fill="#b45309" font-size="8.5" font-weight="600" text-anchor="end">${escapeXml(safeText(devParentText, 45))}</text>
+    ${renderSvgBadgePills(devBadges, devCardWidth - 10, 62, devCardWidth - 20, true, 2)}
   </g>
 `;
           } else {
@@ -2137,8 +2238,9 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     <rect x="8" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
     <text x="20" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
     <text x="40" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold">${devTitle}</text>
-    <text x="10" y="43" fill="#475569" font-size="9.5">${devSubtitle}</text>
-    ${renderSvgBadgePills(devBadges, 10, 51, devCardWidth - 20, false, 2)}
+    <text x="10" y="39" fill="#475569" font-size="9.5">${devSpecs}</text>
+    <text x="10" y="53" fill="#b45309" font-size="8.5" font-weight="600">${escapeXml(safeText(devParentText, 45))}</text>
+    ${renderSvgBadgePills(devBadges, 10, 62, devCardWidth - 20, false, 2)}
   </g>
 `;
           }
@@ -2840,11 +2942,21 @@ ${svgElements}
                                     {/* Feeder / Parent badge (NO LINES!) */}
                                     <div className="text-right shrink-0">
                                       {board.parent ? (
-                                        <div className={`text-[10px] px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+                                        <div className={`text-[10px] px-2 py-0.5 rounded-md border flex flex-col items-end gap-0.5 ${
                                           theme === 'dark' ? 'bg-slate-800/80 border-slate-700 text-slate-300' : 'bg-white border-blue-200 text-slate-700 shadow-2xs'
                                         }`} title="Feeding Source">
-                                          <span className="material-icons-round text-xs text-amber-500">arrow_upward</span>
-                                          <span>{bfT.parentFeeder || 'Feeder'}: <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{board.parent.name}</strong></span>
+                                          <div className="flex items-center gap-1">
+                                            <span className="material-icons-round text-xs text-amber-500">arrow_upward</span>
+                                            <span>{bfT.parentFeeder || 'Feeder'}: <strong className={theme === 'dark' ? 'text-white' : 'text-slate-900'}>{board.parent.name}</strong></span>
+                                            {board.parent.componentNumber && (
+                                              <span className="text-[9px] font-mono text-amber-500 font-bold">#{board.parent.componentNumber}</span>
+                                            )}
+                                          </div>
+                                          {[board.parent.floor, board.parent.place || board.parent.office].filter(Boolean).length > 0 && (
+                                            <span className="text-[9px] text-slate-400 font-normal">
+                                              📍 {[board.parent.floor, board.parent.place || board.parent.office].filter(Boolean).join(', ')}
+                                            </span>
+                                          )}
                                         </div>
                                       ) : (
                                         <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-semibold">
@@ -2906,7 +3018,22 @@ ${svgElements}
                                                 </div>
                                                 <div className="text-[10px] font-mono text-slate-500 mt-0.5">
                                                   {son.node.amps ? `${son.node.amps}A` : ''} {son.node.kva ? `• ${son.node.kva}kVA` : ''}
+                                                  {son.place && <span className="text-slate-400 font-sans"> • 📍 {son.place}</span>}
                                                 </div>
+                                                {son.parent && (
+                                                  <div className="text-[9.5px] text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1 flex-wrap leading-tight" title={`Power Source: ${son.parent.name}`}>
+                                                    <span className="material-icons-round text-[11px] text-amber-500 shrink-0">bolt</span>
+                                                    <span>{bfT.parentFeeder || 'Feed'}: <strong>{son.parent.name}</strong></span>
+                                                    {son.parent.componentNumber && (
+                                                      <span className="font-mono text-[9px] font-bold">#{son.parent.componentNumber}</span>
+                                                    )}
+                                                    {[son.parent.floor, son.parent.place || son.parent.office].filter(Boolean).length > 0 && (
+                                                      <span className="text-slate-400 text-[9px]">
+                                                        • 📍{[son.parent.floor, son.parent.place || son.parent.office].filter(Boolean).join(', ')}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                )}
                                               </div>
                                             </div>
 
@@ -2935,10 +3062,24 @@ ${svgElements}
                                                 : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-2xs'
                                             }`}
                                           >
-                                            <span className="font-semibold break-words leading-tight" title={getNodeFullName(rSon.node)}>
-                                              {getNodeFullName(rSon.node)}
-                                            </span>
+                                            <div className="flex items-center gap-1 flex-wrap">
+                                              <span className="font-semibold break-words leading-tight" title={getNodeFullName(rSon.node)}>
+                                                {getNodeFullName(rSon.node)}
+                                              </span>
+                                              {rSon.node.componentNumber && (
+                                                <span className="font-mono text-slate-400 text-[9px]">#{rSon.node.componentNumber}</span>
+                                              )}
+                                            </div>
                                             <span className="text-amber-500 font-mono text-[9px]">🏢 {rSon.floor || bfT.floorNames?.unassigned || 'No floor'}</span>
+                                            {rSon.parent && (
+                                              <span className="text-[9px] text-slate-400 flex items-center gap-0.5 flex-wrap">
+                                                <span>⚡ {bfT.parentFeeder || 'Feed'}: {rSon.parent.name}</span>
+                                                {rSon.parent.componentNumber && <span className="font-mono font-bold">#{rSon.parent.componentNumber}</span>}
+                                                {[rSon.parent.floor, rSon.parent.place || rSon.parent.office].filter(Boolean).length > 0 && (
+                                                  <span> • 📍{[rSon.parent.floor, rSon.parent.place || rSon.parent.office].filter(Boolean).join(', ')}</span>
+                                                )}
+                                              </span>
+                                            )}
                                             {renderNodeBadgesBottom(rSon.node, true)}
                                           </button>
                                         ))}
@@ -3026,12 +3167,22 @@ ${svgElements}
                                     theme === 'dark' ? 'border-slate-800/60' : 'border-slate-100'
                                   }`}>
                                     {item.parent ? (
-                                      <span className="text-slate-500 flex items-center gap-1 min-w-0 flex-1 mr-2" title={`Fed by ${item.parent.name}`}>
-                                        <span className="material-icons-round text-xs text-amber-500 shrink-0">bolt</span>
-                                        <span className="break-words leading-tight">Fed by: <strong className={theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}>{item.parent.name}</strong></span>
-                                      </span>
+                                      <div className="text-slate-500 flex flex-col gap-0.5 min-w-0 flex-1 mr-2" title={`Fed by ${item.parent.name}`}>
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                          <span className="material-icons-round text-xs text-amber-500 shrink-0">bolt</span>
+                                          <span className="break-words leading-tight">{bfT.parentFeeder || 'Feed'}: <strong className={theme === 'dark' ? 'text-slate-200' : 'text-slate-800'}>{item.parent.name}</strong></span>
+                                          {item.parent.componentNumber && (
+                                            <span className="text-[9px] font-mono text-amber-500 font-bold">#{item.parent.componentNumber}</span>
+                                          )}
+                                        </div>
+                                        {[item.parent.floor, item.parent.place || item.parent.office].filter(Boolean).length > 0 && (
+                                          <span className="text-[9px] text-slate-400">
+                                            📍 {[item.parent.floor, item.parent.place || item.parent.office].filter(Boolean).join(', ')}
+                                          </span>
+                                        )}
+                                      </div>
                                     ) : (
-                                      <span className="text-emerald-500 font-medium">Independent</span>
+                                      <span className="text-emerald-500 font-medium">{bfT.independentSource || 'Independent'}</span>
                                     )}
 
                                     {/* Quick assign button if unassigned */}
@@ -3235,17 +3386,27 @@ ${svgElements}
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`text-xs font-bold transition-colors break-words leading-snug ${
-                        theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
-                      }`} title={inspectedItem.parent.name}>
-                        {inspectedItem.parent.name}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        <span className={`text-xs font-bold transition-colors break-words leading-snug ${
+                          theme === 'dark' ? 'text-white hover:text-amber-400' : 'text-slate-900 hover:text-blue-600'
+                        }`} title={inspectedItem.parent.name}>
+                          {inspectedItem.parent.name}
+                        </span>
+                        {inspectedItem.parent.componentNumber && (
+                          <span className="text-[10px] font-mono font-bold text-amber-500">
+                            #{inspectedItem.parent.componentNumber}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-amber-500 font-mono shrink-0">
                         {inspectedItem.parent.floor || bfT.floorNames?.unassigned || 'Floor ?'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      {t.componentTypes[inspectedItem.parent.type]} • {inspectedItem.parent.amps || 0}A
+                    <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>{t.componentTypes[inspectedItem.parent.type]} • {inspectedItem.parent.amps || 0}A</span>
+                      {[inspectedItem.parent.place || inspectedItem.parent.office].filter(Boolean).length > 0 && (
+                        <span>• 📍 {[inspectedItem.parent.place || inspectedItem.parent.office].filter(Boolean).join(', ')}</span>
+                      )}
                     </div>
                     {inspectedItem.feederCable && (
                       <div className="text-[10px] font-mono text-sky-500 mt-1 flex items-center gap-1">
