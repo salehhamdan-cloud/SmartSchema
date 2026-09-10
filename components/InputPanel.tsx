@@ -92,9 +92,48 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
   const [parentSearchQuery, setParentSearchQuery] = useState('');
   const [parentTypeFilter, setParentTypeFilter] = useState<string>('ALL');
+  const [copiedLocation, setCopiedLocation] = useState(false);
+  const [noLocationFeedback, setNoLocationFeedback] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const parentDropdownRef = useRef<HTMLDivElement>(null);
+
+  const fatherNode = activeTab === 'edit'
+    ? (selectedParentId !== '__root__'
+        ? (availableParents.find(p => p.id === selectedParentId) || (currentParentId && currentParentId !== '__root__' ? availableParents.find(p => p.id === currentParentId) : null))
+        : null)
+    : selectedNode;
+
+  const fatherHasLocation = Boolean(
+    fatherNode && (
+      (fatherNode.building && fatherNode.building.trim()) ||
+      (fatherNode.floor && fatherNode.floor.trim()) ||
+      (fatherNode.office && fatherNode.office.trim()) ||
+      (fatherNode.place && fatherNode.place.trim())
+    )
+  );
+
+  const fatherLocationSummary = fatherNode
+    ? [fatherNode.building, fatherNode.floor, fatherNode.place || fatherNode.office].filter(Boolean).join(', ')
+    : '';
+
+  const handleCopyFatherLocation = () => {
+    if (!fatherNode) return;
+    if (!fatherHasLocation) {
+      setNoLocationFeedback(true);
+      setTimeout(() => setNoLocationFeedback(false), 2200);
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      building: fatherNode.building || '',
+      floor: fatherNode.floor || '',
+      office: fatherNode.office || '',
+      place: fatherNode.place || '',
+    }));
+    setCopiedLocation(true);
+    setTimeout(() => setCopiedLocation(false), 2000);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1412,7 +1451,62 @@ export const InputPanel: React.FC<InputPanelProps> = ({
         )}
 
         <div className="bg-slate-900/50 p-3 rounded border border-slate-700/50 space-y-3">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{t.inputPanel.location}</h4>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-icons-round text-sm text-slate-400">place</span>
+                    {t.inputPanel.location}
+                </h4>
+
+                <button
+                    type="button"
+                    onClick={handleCopyFatherLocation}
+                    disabled={!fatherNode}
+                    title={
+                        !fatherNode
+                            ? (t.inputPanel.noFatherAvailable || "No father component available")
+                            : fatherHasLocation
+                                ? `${t.inputPanel.copyFatherLocation || "Copy Father's Location"}: ${fatherNode.name} (${fatherLocationSummary})`
+                                : `${t.inputPanel.noFatherLocation || "Father has no location set"} (${fatherNode.name})`
+                    }
+                    className={`text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5 font-medium transition-all ${
+                        !fatherNode
+                            ? 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed'
+                            : copiedLocation
+                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-xs'
+                                : noLocationFeedback
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs animate-pulse'
+                                    : fatherHasLocation
+                                        ? 'bg-blue-950/70 hover:bg-blue-900 text-blue-300 hover:text-white border-blue-700/60 hover:border-blue-500 shadow-2xs active:scale-95 cursor-pointer'
+                                        : 'bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-slate-300 border-slate-700 cursor-pointer'
+                    }`}
+                >
+                    <span className={`material-icons-round text-xs ${
+                        !fatherNode
+                            ? 'text-slate-600'
+                            : copiedLocation
+                                ? 'text-emerald-400'
+                                : noLocationFeedback
+                                    ? 'text-amber-400'
+                                    : fatherHasLocation
+                                        ? 'text-blue-400'
+                                        : 'text-slate-400'
+                    }`}>
+                        {copiedLocation ? 'check' : noLocationFeedback ? 'warning_amber' : 'content_copy'}
+                    </span>
+                    <span>
+                        {copiedLocation 
+                            ? (t.inputPanel.copiedLocation || 'Location Copied!')
+                            : noLocationFeedback
+                                ? (t.inputPanel.noFatherLocation || 'No Father Location!')
+                                : (t.inputPanel.copyFatherLocation || "Copy Father's Location")}
+                    </span>
+                    {fatherNode && !copiedLocation && !noLocationFeedback && (
+                        <span className="text-[10px] text-blue-400/80 font-mono hidden sm:inline max-w-[110px] truncate" title={fatherNode.name}>
+                            ({fatherNode.name})
+                        </span>
+                    )}
+                </button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">{t.inputPanel.building}</label>
