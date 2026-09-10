@@ -4415,6 +4415,7 @@ export default function App() {
                                         multiSelectionCount={multiSelection.size}
                                         availableParents={availableParents}
                                         currentParentId={currentParentId}
+                                        parentNode={selectedParent}
                                         onAdd={handleAddNode}
                                         onAddIndependent={handleAddIndependentNode}
                                         onEdit={handleEditNode}

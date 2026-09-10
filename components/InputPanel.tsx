@@ -10,6 +10,7 @@ interface InputPanelProps {
   multiSelectionCount?: number;
   availableParents?: ElectricalNode[];
   currentParentId?: string | null;
+  parentNode?: ElectricalNode | null;
   onAdd: (data: NewNodeData) => void;
   onAddIndependent: (type: ComponentType) => void;
   onEdit: (data: NewNodeData, newParentId?: string | null) => void;
@@ -31,6 +32,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({
     multiSelectionCount = 0,
     availableParents = [],
     currentParentId = '__root__',
+    parentNode = null,
     onAdd, 
     onAddIndependent,
     onEdit, 
@@ -99,10 +101,10 @@ export const InputPanel: React.FC<InputPanelProps> = ({
   const parentDropdownRef = useRef<HTMLDivElement>(null);
 
   const fatherNode = activeTab === 'edit'
-    ? (selectedParentId !== '__root__'
-        ? (availableParents.find(p => p.id === selectedParentId) || (currentParentId && currentParentId !== '__root__' ? availableParents.find(p => p.id === currentParentId) : null))
-        : null)
-    : selectedNode;
+    ? (selectedParentId && selectedParentId !== '__root__'
+        ? (availableParents.find(p => p.id === selectedParentId) || (currentParentId && currentParentId !== '__root__' ? availableParents.find(p => p.id === currentParentId) : null) || parentNode || null)
+        : (currentParentId && currentParentId !== '__root__' ? (availableParents.find(p => p.id === currentParentId) || parentNode || null) : (parentNode || null)))
+    : (selectedNode || parentNode || null);
 
   const fatherHasLocation = Boolean(
     fatherNode && (
