@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { ElectricalNode, ComponentType, Page, Project, Language, Theme } from '../types';
-import { COMPONENT_CONFIG } from '../constants';
+import { COMPONENT_CONFIG, ICON_PATHS } from '../constants';
 import { LegendIcon } from './LegendIcon';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -410,10 +410,92 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     });
 
     // Structure each floor into Enclosure Bays (Boards + their sons) and Standalone Nodes
+    // Breaker grouping requirement:
+    // "the father and his sons and grandsons breakers ( just breakers ) to be in the same cube if they have the same location info and they are from the same panel"
+    const hasSameLocationInfo = (
+      a: { building?: string; floor?: string; place?: string; office?: string },
+      b: { building?: string; floor?: string; place?: string; office?: string }
+    ): boolean => {
+      const bldgA = (a.building || '').trim().toLowerCase();
+      const bldgB = (b.building || '').trim().toLowerCase();
+      if (bldgA !== bldgB) return false;
+
+      const floorA = (a.floor || '').trim().toLowerCase();
+      const floorB = (b.floor || '').trim().toLowerCase();
+      if (floorA !== floorB) {
+        const keyA = parseFloorLevel(a.floor, floorNamesT, language, isRTL).key;
+        const keyB = parseFloorLevel(b.floor, floorNamesT, language, isRTL).key;
+        if (keyA !== keyB) return false;
+      }
+
+      const roomA = (a.place || a.office || '').trim().toLowerCase();
+      const roomB = (b.place || b.office || '').trim().toLowerCase();
+      return roomA === roomB;
+    };
+
+    const findRootPanelId = (nodeId: string): string => {
+      let curr = extractedMap.get(nodeId);
+      const visited = new Set<string>();
+      while (curr && curr.parent && !visited.has(curr.node.id)) {
+        visited.add(curr.node.id);
+        const parentItem = extractedMap.get(curr.parent.id);
+        const parentType = parentItem ? parentItem.node.type : curr.parent.type;
+        const isHost =
+          parentType === ComponentType.DISTRIBUTION_BOARD ||
+          parentType === ComponentType.SYSTEM_ROOT ||
+          parentType === ComponentType.TRANSFORMER ||
+          parentType === ComponentType.GENERATOR ||
+          parentType === ComponentType.BUSBAR;
+        if (isHost) {
+          return curr.parent.id;
+        }
+        if (!parentItem) break;
+        curr = parentItem;
+      }
+      return '';
+    };
+
     map.forEach(group => {
       const boardSet = new Set<string>();
+      const enclosedLocalSonIds = new Set<string>();
 
-      // Identify boards/enclosures residing on this floor
+      // Recursive helper: collect breaker descendants (sons, grandsons, etc. - just breakers)
+      // that share the same location info and belong to the same upstream panel
+      const appendBreakerDescendants = (
+        parentBreaker: FlattenedBuildingNode,
+        expectedPanelId: string,
+        dest: FlattenedBuildingNode[],
+        visited: Set<string>
+      ) => {
+        (parentBreaker.directSons || []).forEach(child => {
+          if (visited.has(child.id)) return;
+          const childExtracted = extractedMap.get(child.id);
+          if (!childExtracted) return;
+
+          // Must be just breakers
+          if (childExtracted.node.type !== ComponentType.BREAKER) return;
+
+          // Must have same location info as the father breaker
+          if (!hasSameLocationInfo(childExtracted, parentBreaker)) return;
+
+          // Must be from the same panel
+          const childPanelId = findRootPanelId(childExtracted.node.id);
+          if (expectedPanelId && childPanelId && childPanelId !== expectedPanelId) return;
+
+          // Must be physically on this floor
+          const childParsedFloor = parseFloorLevel(childExtracted.floor, floorNamesT, language, isRTL);
+          if (childParsedFloor.key !== group.key && (childExtracted.floor || !group.isUnassigned)) return;
+
+          visited.add(childExtracted.node.id);
+          dest.push(childExtracted);
+          enclosedLocalSonIds.add(childExtracted.node.id);
+
+          // Recursively check sons of this son (grandsons of parentBreaker)
+          appendBreakerDescendants(childExtracted, expectedPanelId, dest, visited);
+        });
+      };
+
+      // 1. Identify boards/enclosures residing on this floor
       group.nodes.forEach(item => {
         const isEnclosureHost = item.node.type === ComponentType.DISTRIBUTION_BOARD ||
           item.node.type === ComponentType.SYSTEM_ROOT ||
@@ -427,6 +509,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           // Find sons that are physically on this floor vs on other floors
           const localSons: FlattenedBuildingNode[] = [];
           const remoteSons: FlattenedBuildingNode[] = [];
+          const localVisited = new Set<string>();
 
           item.directSons.forEach(son => {
             const sonExtracted = extractedMap.get(son.id);
@@ -434,6 +517,13 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
               const sonParsedFloor = parseFloorLevel(sonExtracted.floor, floorNamesT, language, isRTL);
               if (sonParsedFloor.key === group.key || (!sonExtracted.floor && group.isUnassigned)) {
                 localSons.push(sonExtracted);
+                localVisited.add(sonExtracted.node.id);
+                enclosedLocalSonIds.add(sonExtracted.node.id);
+
+                // If this son is a breaker, group its son and grandson breakers into the same cube!
+                if (sonExtracted.node.type === ComponentType.BREAKER) {
+                  appendBreakerDescendants(sonExtracted, item.node.id, localSons, localVisited);
+                }
               } else {
                 remoteSons.push(sonExtracted);
               }
@@ -464,13 +554,30 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         }
       });
 
-      // All sons that are already inside a local enclosure bay don't need to be duplicated as standalone
-      const enclosedLocalSonIds = new Set<string>();
-      group.enclosures.forEach(enc => {
-        enc.localSons.forEach(s => enclosedLocalSonIds.add(s.node.id));
+      // 2. Identify father breakers on this floor with breaker descendants (sons/grandsons)
+      // who share the same location info and are from the same panel, but whose panel is on another floor or separate
+      group.nodes.forEach(item => {
+        if (item.node.type === ComponentType.BREAKER && !boardSet.has(item.node.id) && !enclosedLocalSonIds.has(item.node.id)) {
+          const panelId = findRootPanelId(item.node.id);
+          const breakerSons: FlattenedBuildingNode[] = [];
+          const localVisited = new Set<string>([item.node.id]);
+
+          appendBreakerDescendants(item, panelId, breakerSons, localVisited);
+
+          if (breakerSons.length > 0) {
+            // The father breaker and his sons & grandsons breakers are grouped into the same cube!
+            boardSet.add(item.node.id);
+            enclosedLocalSonIds.add(item.node.id);
+            group.enclosures.push({
+              board: item,
+              localSons: breakerSons,
+              remoteSons: []
+            });
+          }
+        }
       });
 
-      // Standalone components on this floor
+      // 3. Standalone components on this floor (only items not in any cube)
       group.nodes.forEach(item => {
         if (!boardSet.has(item.node.id) && !enclosedLocalSonIds.has(item.node.id)) {
           group.standaloneNodes.push(item);
@@ -747,7 +854,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
   interface ExportBadgeInfo {
     key: string;
     label: string;
-    icon: string;
+    appIcon: string;
     bg: string;
     text: string;
     border: string;
@@ -765,29 +872,111 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
 
   // Helper: Visual icons, colors and background styling for component types in Canvas & SVG exports
   const getComponentTypeExportVisual = (type: ComponentType) => {
+    const cfg = COMPONENT_CONFIG[type] || { icon: 'domain', color: '#64748b' };
     switch (type) {
       case ComponentType.SYSTEM_ROOT:
-        return { symbol: '🏢', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#f0f9ff', border: '#bae6fd' };
       case ComponentType.DISTRIBUTION_BOARD:
-        return { symbol: '⚡', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#f0f9ff', border: '#bae6fd' };
       case ComponentType.TRANSFORMER:
-        return { symbol: '⎎', color: '#d97706', bg: '#fffbeb', border: '#fde68a' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#fffbeb', border: '#fde68a' };
       case ComponentType.METER:
-        return { symbol: '⏱', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#eff6ff', border: '#bfdbfe' };
       case ComponentType.BREAKER:
-        return { symbol: '⏻', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#fef2f2', border: '#fecaca' };
       case ComponentType.SWITCH:
-        return { symbol: '⏼', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#f0fdf4', border: '#bbf7d0' };
       case ComponentType.LOAD:
-        return { symbol: '💡', color: '#9333ea', bg: '#faf5ff', border: '#e9d5ff' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#faf5ff', border: '#e9d5ff' };
       case ComponentType.GENERATOR:
-        return { symbol: '⚙', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#fef2f2', border: '#fecaca' };
       case ComponentType.UPS:
-        return { symbol: '🔋', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#ecfeff', border: '#a5f3fc' };
       case ComponentType.BUSBAR:
-        return { symbol: '═', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#f0f9ff', border: '#bae6fd' };
       default:
-        return { symbol: '⚡', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
+        return { icon: cfg.icon, color: cfg.color, bg: '#f8fafc', border: '#e2e8f0' };
+    }
+  };
+
+  // Helper: Draw complex SVG path icons (from ICON_PATHS) onto HTML5 Canvas
+  const drawAppIconOnCanvas = (
+    ctx: CanvasRenderingContext2D,
+    iconName: string,
+    centerX: number,
+    centerY: number,
+    size: number,
+    color: string
+  ) => {
+    const iconData = (ICON_PATHS as any)[iconName] || ICON_PATHS.help;
+    if (!iconData) return;
+
+    ctx.save();
+    ctx.translate(centerX - size / 2, centerY - size / 2);
+    const scale = size / 24;
+    ctx.scale(scale, scale);
+
+    if (Array.isArray(iconData)) {
+      const normScale = 24 / 512;
+      ctx.scale(normScale, normScale);
+      iconData.forEach((pathItem: any) => {
+        ctx.save();
+        if (pathItem.transform) {
+          const m = pathItem.transform.match(/translate\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)\s*scale\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/);
+          if (m) {
+            ctx.translate(parseFloat(m[1]), parseFloat(m[2]));
+            ctx.scale(parseFloat(m[3]), parseFloat(m[4]));
+          }
+        }
+        ctx.fillStyle = pathItem.fill || color;
+        if (typeof Path2D !== 'undefined') {
+          try {
+            ctx.fill(new Path2D(pathItem.d));
+          } catch {
+            // fallback
+          }
+        }
+        ctx.restore();
+      });
+    } else {
+      ctx.fillStyle = color;
+      if (typeof Path2D !== 'undefined') {
+        try {
+          ctx.fill(new Path2D(iconData));
+        } catch {
+          // fallback
+        }
+      }
+    }
+    ctx.restore();
+  };
+
+  // Helper: Render complex SVG path icons (from ICON_PATHS) as inline SVG vector group
+  const renderAppIconSvg = (
+    iconName: string,
+    centerX: number,
+    centerY: number,
+    size: number,
+    color: string
+  ): string => {
+    const iconData = (ICON_PATHS as any)[iconName] || ICON_PATHS.help;
+    if (!iconData) return '';
+
+    const x = centerX - size / 2;
+    const y = centerY - size / 2;
+    const scale = size / 24;
+
+    if (Array.isArray(iconData)) {
+      const normScale = 24 / 512;
+      const paths = iconData.map((item: any) => {
+        const fill = item.fill || color;
+        const trans = item.transform ? ` transform="${item.transform}"` : '';
+        return `<path d="${item.d}" fill="${fill}"${trans} />`;
+      }).join('');
+
+      return `<g transform="translate(${x}, ${y}) scale(${scale})"><g transform="scale(${normScale})">${paths}</g></g>`;
+    } else {
+      return `<g transform="translate(${x}, ${y}) scale(${scale})"><path d="${iconData || ICON_PATHS.help}" fill="${color}" /></g>`;
     }
   };
 
@@ -801,7 +990,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'meter',
         label,
-        icon: '⚡M',
+        appIcon: 'speed',
         bg: '#ecfdf5',
         text: '#059669',
         border: '#a7f3d0'
@@ -814,7 +1003,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'multimeter',
         label,
-        icon: '📊',
+        appIcon: 'multimeter',
         bg: '#faf5ff',
         text: '#7c3aed',
         border: '#ddd6fe'
@@ -828,7 +1017,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'generator',
         label: genName,
-        icon: '⚡G',
+        appIcon: 'letter_g',
         bg: '#fef2f2',
         text: '#dc2626',
         border: '#fecaca'
@@ -842,7 +1031,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'ats',
         label: atsName,
-        icon: '⇄',
+        appIcon: 'transfer_switch',
         bg: '#fffbeb',
         text: '#d97706',
         border: '#fde68a'
@@ -854,7 +1043,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'essential',
         label: t.legend?.essential || 'Emergency',
-        icon: '★',
+        appIcon: 'star',
         bg: '#fef2f2',
         text: '#e11d48',
         border: '#fecdd3'
@@ -866,7 +1055,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'ac',
         label: t.legend?.ac || 'AC',
-        icon: '❄',
+        appIcon: 'ac_unit',
         bg: '#ecfeff',
         text: '#0891b2',
         border: '#a5f3fc'
@@ -878,7 +1067,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'acb',
         label: t.legend?.airBreaker || 'ACB',
-        icon: '💨',
+        appIcon: 'air_breaker',
         bg: '#f0f9ff',
         text: '#0284c7',
         border: '#bae6fd'
@@ -890,7 +1079,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'reserved',
         label: t.legend?.reserved || 'Reserved',
-        icon: '🔒',
+        appIcon: 'lock',
         bg: '#fefce8',
         text: '#ca8a04',
         border: '#fef08a'
@@ -902,7 +1091,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'public',
         label: t.legend?.publicBoard || 'Public',
-        icon: '👥',
+        appIcon: 'public_board',
         bg: '#f0fdfa',
         text: '#0d9488',
         border: '#99f6e4'
@@ -914,7 +1103,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       list.push({
         key: 'unmetered',
         label: t.legend?.noMeter || 'Unmetered',
-        icon: '⊘',
+        appIcon: 'power_off',
         bg: '#f8fafc',
         text: '#64748b',
         border: '#cbd5e1'
@@ -924,7 +1113,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     return list;
   };
 
-  // Helper: Draw badge pills onto HTML Canvas 2D with multi-line wrapping
+  // Helper: Draw badge pills onto HTML Canvas 2D with multi-line wrapping and app icons
   const drawBadgePillsOnCanvas = (
     ctx: CanvasRenderingContext2D,
     badges: ExportBadgeInfo[],
@@ -935,16 +1124,16 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     maxRows: number = 2
   ) => {
     if (!badges || badges.length === 0) return;
-    const pillHeight = 15;
+    const pillHeight = 16;
     const badgeGap = 5;
     const rowGap = 3;
+    const iconSize = 10;
     ctx.font = fontSans(7.5, '600');
 
     const measured = badges.map(b => {
-      const text = `${b.icon}  ${b.label}`;
-      const textMetrics = ctx.measureText(text);
-      const w = Math.min(maxWidth, Math.max(34, Math.ceil(textMetrics.width) + 12));
-      return { ...b, fullText: text, w };
+      const textMetrics = ctx.measureText(b.label);
+      const w = Math.min(maxWidth, Math.max(36, Math.ceil(textMetrics.width) + 24));
+      return { ...b, w };
     });
 
     const rows: (typeof measured)[] = [];
@@ -983,9 +1172,10 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           ctx.lineWidth = 0.8;
           ctx.stroke();
 
+          drawAppIconOnCanvas(ctx, p.appIcon, px + p.w - 10, y + pillHeight / 2, iconSize, p.text);
           ctx.fillStyle = p.text;
-          ctx.textAlign = 'center';
-          ctx.fillText(p.fullText, px + p.w / 2, y + 10.5);
+          ctx.textAlign = 'right';
+          ctx.fillText(p.label, px + p.w - 18, y + 11);
           rightEdge -= (p.w + badgeGap);
         });
       } else {
@@ -998,16 +1188,17 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
           ctx.lineWidth = 0.8;
           ctx.stroke();
 
+          drawAppIconOnCanvas(ctx, p.appIcon, leftEdge + 10, y + pillHeight / 2, iconSize, p.text);
           ctx.fillStyle = p.text;
-          ctx.textAlign = 'center';
-          ctx.fillText(p.fullText, leftEdge + p.w / 2, y + 10.5);
+          ctx.textAlign = 'left';
+          ctx.fillText(p.label, leftEdge + 18, y + 11);
           leftEdge += (p.w + badgeGap);
         });
       }
     });
   };
 
-  // Helper: Render badge pills as SVG vector string with multi-line wrapping
+  // Helper: Render badge pills as SVG vector string with multi-line wrapping and app icons
   const renderSvgBadgePills = (
     badges: ExportBadgeInfo[],
     anchorX: number,
@@ -1017,19 +1208,19 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     maxRows: number = 2
   ): string => {
     if (!badges || badges.length === 0) return '';
-    const pillHeight = 15;
+    const pillHeight = 16;
     const badgeGap = 5;
     const rowGap = 3;
+    const iconSize = 10;
 
     const measured = badges.map(b => {
-      const text = `${b.icon}  ${b.label}`;
       let charW = 0;
-      for (let i = 0; i < text.length; i++) {
-        const code = text.charCodeAt(i);
+      for (let i = 0; i < b.label.length; i++) {
+        const code = b.label.charCodeAt(i);
         charW += (code > 255) ? 6.5 : 4.6;
       }
-      const w = Math.min(maxWidth, Math.max(34, Math.ceil(charW) + 12));
-      return { ...b, fullText: text, w };
+      const w = Math.min(maxWidth, Math.max(36, Math.ceil(charW) + 24));
+      return { ...b, w };
     });
 
     const rows: (typeof measured)[] = [];
@@ -1062,17 +1253,21 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
         let rightEdge = anchorX;
         rowPills.forEach(p => {
           const px = rightEdge - p.w;
+          const iconSvg = renderAppIconSvg(p.appIcon, px + p.w - 10, y + pillHeight / 2, iconSize, p.text);
           out += `
           <rect x="${px}" y="${y}" width="${p.w}" height="${pillHeight}" rx="4" fill="${p.bg}" stroke="${p.border}" stroke-width="0.8" />
-          <text x="${px + p.w / 2}" y="${y + 10.5}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="middle">${escapeXml(p.fullText)}</text>`;
+          ${iconSvg}
+          <text x="${px + p.w - 18}" y="${y + 11}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="end">${escapeXml(p.label)}</text>`;
           rightEdge -= (p.w + badgeGap);
         });
       } else {
         let leftEdge = anchorX;
         rowPills.forEach(p => {
+          const iconSvg = renderAppIconSvg(p.appIcon, leftEdge + 10, y + pillHeight / 2, iconSize, p.text);
           out += `
           <rect x="${leftEdge}" y="${y}" width="${p.w}" height="${pillHeight}" rx="4" fill="${p.bg}" stroke="${p.border}" stroke-width="0.8" />
-          <text x="${leftEdge + p.w / 2}" y="${y + 10.5}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="middle">${escapeXml(p.fullText)}</text>`;
+          ${iconSvg}
+          <text x="${leftEdge + 18}" y="${y + 11}" fill="${p.text}" font-size="7.5" font-weight="600" text-anchor="start">${escapeXml(p.label)}</text>`;
           leftEdge += (p.w + badgeGap);
         });
       }
@@ -1583,10 +1778,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
               ctx.lineWidth = 1;
               ctx.stroke();
 
-              ctx.fillStyle = boardVisual.color;
-              ctx.font = fontSans(12, 'bold');
-              ctx.textAlign = 'center';
-              ctx.fillText(boardVisual.symbol, boxX + boxWidth - 25, currentY + 31);
+              drawAppIconOnCanvas(ctx, boardVisual.icon, boxX + boxWidth - 25, currentY + 27, 16, board.node.customColor || boardVisual.color);
 
               // Board Name on the RIGHT
               ctx.fillStyle = '#0f172a';
@@ -1614,10 +1806,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
               ctx.lineWidth = 1;
               ctx.stroke();
 
-              ctx.fillStyle = boardVisual.color;
-              ctx.font = fontSans(12, 'bold');
-              ctx.textAlign = 'center';
-              ctx.fillText(boardVisual.symbol, boxX + 25, currentY + 31);
+              drawAppIconOnCanvas(ctx, boardVisual.icon, boxX + 25, currentY + 27, 16, board.node.customColor || boardVisual.color);
 
               // Board Name & Details
               ctx.fillStyle = '#0f172a';
@@ -1696,10 +1885,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   ctx.lineWidth = 0.8;
                   ctx.stroke();
 
-                  ctx.fillStyle = sonVisual.color;
-                  ctx.font = fontSans(10, 'bold');
-                  ctx.textAlign = 'center';
-                  ctx.fillText(sonVisual.symbol, sX + sWidth - 19, sY + 23);
+                  drawAppIconOnCanvas(ctx, sonVisual.icon, sX + sWidth - 19, sY + 19, 14, sonItem.node.customColor || sonVisual.color);
 
                   // Name & Component Number on the RIGHT
                   ctx.fillStyle = '#0f172a';
@@ -1731,10 +1917,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   ctx.lineWidth = 0.8;
                   ctx.stroke();
 
-                  ctx.fillStyle = sonVisual.color;
-                  ctx.font = fontSans(10, 'bold');
-                  ctx.textAlign = 'center';
-                  ctx.fillText(sonVisual.symbol, sX + 19, sY + 23);
+                  drawAppIconOnCanvas(ctx, sonVisual.icon, sX + 19, sY + 19, 14, sonItem.node.customColor || sonVisual.color);
 
                   // Name & Component Number on the LEFT
                   ctx.fillStyle = '#0f172a';
@@ -1841,10 +2024,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             ctx.lineWidth = 0.8;
             ctx.stroke();
 
-            ctx.fillStyle = devVisual.color;
-            ctx.font = fontSans(11, 'bold');
-            ctx.textAlign = 'center';
-            ctx.fillText(devVisual.symbol, cardX + devCardWidth - 20, cardY + 24);
+            drawAppIconOnCanvas(ctx, devVisual.icon, cardX + devCardWidth - 20, cardY + 20, 15, it.node.customColor || devVisual.color);
 
             // Name on the RIGHT
             ctx.fillStyle = '#0f172a';
@@ -1876,10 +2056,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
             ctx.lineWidth = 0.8;
             ctx.stroke();
 
-            ctx.fillStyle = devVisual.color;
-            ctx.font = fontSans(11, 'bold');
-            ctx.textAlign = 'center';
-            ctx.fillText(devVisual.symbol, cardX + 20, cardY + 24);
+            drawAppIconOnCanvas(ctx, devVisual.icon, cardX + 20, cardY + 20, 15, it.node.customColor || devVisual.color);
 
             // Name on the LEFT
             ctx.fillStyle = '#0f172a';
@@ -1918,16 +2095,16 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     ctx.stroke();
 
     const sampleBadges: ExportBadgeInfo[] = [
-      { key: 'm', label: t.legend?.meter || 'Meter', icon: '⚡M', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
-      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', icon: '📊', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
-      { key: 'gen', label: t.legend?.generator || 'Generator', icon: '⚡G', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', icon: '⇄', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-      { key: 'ess', label: t.legend?.essential || 'Emergency', icon: '★', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
-      { key: 'ac', label: t.legend?.ac || 'AC', icon: '❄', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
-      { key: 'acb', label: t.legend?.airBreaker || 'ACB', icon: '💨', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
-      { key: 'res', label: t.legend?.reserved || 'Reserved', icon: '🔒', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
-      { key: 'pub', label: t.legend?.publicBoard || 'Public', icon: '👥', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
-      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', icon: '⊘', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
+      { key: 'm', label: t.legend?.meter || 'Meter', appIcon: 'speed', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', appIcon: 'multimeter', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
+      { key: 'gen', label: t.legend?.generator || 'Generator', appIcon: 'letter_g', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', appIcon: 'transfer_switch', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+      { key: 'ess', label: t.legend?.essential || 'Emergency', appIcon: 'star', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
+      { key: 'ac', label: t.legend?.ac || 'AC', appIcon: 'ac_unit', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
+      { key: 'acb', label: t.legend?.airBreaker || 'ACB', appIcon: 'air_breaker', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
+      { key: 'res', label: t.legend?.reserved || 'Reserved', appIcon: 'lock', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
+      { key: 'pub', label: t.legend?.publicBoard || 'Public', appIcon: 'public_board', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
+      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', appIcon: 'power_off', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
     ];
     drawBadgePillsOnCanvas(ctx, sampleBadges, isRTL ? svgWidth - 50 : 50, currentY + 8, svgWidth - 100, isRTL);
     currentY += 42;
@@ -2153,7 +2330,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
       ${feederLine2 ? `<text x="${14 + feederBoxWidth / 2}" y="39" fill="#92400e" font-size="8.5" font-weight="500" text-anchor="middle">${escapeXml(safeText(feederLine2, 60))}</text>` : ''}
       
       <rect x="${boxWidth - 38}" y="14" width="26" height="26" rx="6" fill="${boardVisual.bg}" stroke="${boardVisual.border}" stroke-width="1" />
-      <text x="${boxWidth - 25}" y="31" fill="${boardVisual.color}" font-size="12" font-weight="bold" text-anchor="middle">${boardVisual.symbol}</text>
+      ${renderAppIconSvg(boardVisual.icon, boxWidth - 25, 27, 16, board.node.customColor || boardVisual.color)}
       
       <text x="${boxWidth - 48}" y="25" fill="#0f172a" font-size="${boardTitleFontSize}" font-weight="bold" text-anchor="end">${boardTitle}</text>
       <text x="${boxWidth - 48}" y="44" fill="#64748b" font-size="10" text-anchor="end">${boardMeta}</text>
@@ -2163,7 +2340,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
               encSvg += `
       <!-- LTR Enclosure Header -->
       <rect x="12" y="14" width="26" height="26" rx="6" fill="${boardVisual.bg}" stroke="${boardVisual.border}" stroke-width="1" />
-      <text x="25" y="31" fill="${boardVisual.color}" font-size="12" font-weight="bold" text-anchor="middle">${boardVisual.symbol}</text>
+      ${renderAppIconSvg(boardVisual.icon, 25, 27, 16, board.node.customColor || boardVisual.color)}
       
       <text x="46" y="25" fill="#0f172a" font-size="${boardTitleFontSize}" font-weight="bold">${boardTitle}</text>
       <text x="46" y="44" fill="#64748b" font-size="10">${boardMeta}</text>
@@ -2201,7 +2378,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   encSvg += `
       <rect x="${sX}" y="${sY}" width="${sWidth}" height="${sonCardHeight}" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
       <rect x="${sX + sWidth - 30}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
-      <text x="${sX + sWidth - 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
+      ${renderAppIconSvg(sonVisual.icon, sX + sWidth - 19, sY + 19, 14, sonItem.node.customColor || sonVisual.color)}
       <text x="${sX + sWidth - 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold" text-anchor="end">${sonTitle}</text>
       <text x="${sX + sWidth - 10}" y="${sY + 39}" fill="#0284c7" font-size="9" font-weight="600" text-anchor="end">${sonMeta}</text>
       <text x="${sX + sWidth - 10}" y="${sY + 54}" fill="#b45309" font-size="8.5" font-weight="600" text-anchor="end">${escapeXml(safeText(sonParentText, 90))}</text>
@@ -2211,7 +2388,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
                   encSvg += `
       <rect x="${sX}" y="${sY}" width="${sWidth}" height="${sonCardHeight}" rx="6" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
       <rect x="${sX + 8}" y="${sY + 8}" width="22" height="22" rx="4" fill="${sonVisual.bg}" stroke="${sonVisual.border}" stroke-width="0.8" />
-      <text x="${sX + 19}" y="${sY + 23}" fill="${sonVisual.color}" font-size="10" font-weight="bold" text-anchor="middle">${sonVisual.symbol}</text>
+      ${renderAppIconSvg(sonVisual.icon, sX + 19, sY + 19, 14, sonItem.node.customColor || sonVisual.color)}
       <text x="${sX + 38}" y="${sY + 23}" fill="#0f172a" font-size="${sonTitleFontSize}" font-weight="bold">${sonTitle}</text>
       <text x="${sX + 10}" y="${sY + 39}" fill="#0284c7" font-size="9" font-weight="600">${sonMeta}</text>
       <text x="${sX + 10}" y="${sY + 54}" fill="#b45309" font-size="8.5" font-weight="600">${escapeXml(safeText(sonParentText, 90))}</text>
@@ -2292,7 +2469,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
   <g transform="translate(${cardX}, ${cardY})">
     <rect width="${devCardWidth}" height="${devCardHeight}" rx="6" fill="${cardBg}" stroke="${cardStroke}" stroke-width="1" />
     <rect x="${devCardWidth - 32}" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
-    <text x="${devCardWidth - 20}" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
+    ${renderAppIconSvg(devVisual.icon, devCardWidth - 20, 20, 15, it.node.customColor || devVisual.color)}
     <text x="${devCardWidth - 40}" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold" text-anchor="end">${devTitle}</text>
     <text x="${devCardWidth - 10}" y="41" fill="#475569" font-size="9.5" text-anchor="end">${devSpecs}</text>
     <text x="${devCardWidth - 10}" y="57" fill="#b45309" font-size="8.5" font-weight="600" text-anchor="end">${escapeXml(safeText(devParentText, 100))}</text>
@@ -2304,7 +2481,7 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
   <g transform="translate(${cardX}, ${cardY})">
     <rect width="${devCardWidth}" height="${devCardHeight}" rx="6" fill="${cardBg}" stroke="${cardStroke}" stroke-width="1" />
     <rect x="8" y="8" width="24" height="24" rx="4" fill="${devVisual.bg}" stroke="${devVisual.border}" stroke-width="0.8" />
-    <text x="20" y="24" fill="${devVisual.color}" font-size="11" font-weight="bold" text-anchor="middle">${devVisual.symbol}</text>
+    ${renderAppIconSvg(devVisual.icon, 20, 20, 15, it.node.customColor || devVisual.color)}
     <text x="40" y="24" fill="#0f172a" font-size="${devTitleFontSize}" font-weight="bold">${devTitle}</text>
     <text x="10" y="41" fill="#475569" font-size="9.5">${devSpecs}</text>
     <text x="10" y="57" fill="#b45309" font-size="8.5" font-weight="600">${escapeXml(safeText(devParentText, 100))}</text>
@@ -2320,16 +2497,16 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
     });
 
     const sampleBadges: ExportBadgeInfo[] = [
-      { key: 'm', label: t.legend?.meter || 'Meter', icon: '⚡M', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
-      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', icon: '📊', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
-      { key: 'gen', label: t.legend?.generator || 'Generator', icon: '⚡G', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', icon: '⇄', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-      { key: 'ess', label: t.legend?.essential || 'Emergency', icon: '★', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
-      { key: 'ac', label: t.legend?.ac || 'AC', icon: '❄', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
-      { key: 'acb', label: t.legend?.airBreaker || 'ACB', icon: '💨', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
-      { key: 'res', label: t.legend?.reserved || 'Reserved', icon: '🔒', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
-      { key: 'pub', label: t.legend?.publicBoard || 'Public', icon: '👥', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
-      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', icon: '⊘', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
+      { key: 'm', label: t.legend?.meter || 'Meter', appIcon: 'speed', bg: '#ecfdf5', text: '#059669', border: '#a7f3d0' },
+      { key: 'mm', label: t.legend?.multimeter || 'Multimeter', appIcon: 'multimeter', bg: '#faf5ff', text: '#7c3aed', border: '#ddd6fe' },
+      { key: 'gen', label: t.legend?.generator || 'Generator', appIcon: 'letter_g', bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+      { key: 'ats', label: t.legend?.transferSwitch || 'ATS', appIcon: 'transfer_switch', bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+      { key: 'ess', label: t.legend?.essential || 'Emergency', appIcon: 'star', bg: '#fef2f2', text: '#e11d48', border: '#fecdd3' },
+      { key: 'ac', label: t.legend?.ac || 'AC', appIcon: 'ac_unit', bg: '#ecfeff', text: '#0891b2', border: '#a5f3fc' },
+      { key: 'acb', label: t.legend?.airBreaker || 'ACB', appIcon: 'air_breaker', bg: '#f0f9ff', text: '#0284c7', border: '#bae6fd' },
+      { key: 'res', label: t.legend?.reserved || 'Reserved', appIcon: 'lock', bg: '#fefce8', text: '#ca8a04', border: '#fef08a' },
+      { key: 'pub', label: t.legend?.publicBoard || 'Public', appIcon: 'public_board', bg: '#f0fdfa', text: '#0d9488', border: '#99f6e4' },
+      { key: 'unm', label: t.legend?.noMeter || 'Unmetered', appIcon: 'power_off', bg: '#f8fafc', text: '#64748b', border: '#cbd5e1' }
     ];
 
     svgElements += `
@@ -2457,7 +2634,7 @@ ${svgElements}
     try {
       const wb = XLSX.utils.book_new();
       const exportRows = filteredNodes.map((item, idx) => {
-        const badges = getNodeExportBadges(item.node).map(b => `${b.icon} ${b.label}`).join(', ');
+        const badges = getNodeExportBadges(item.node).map(b => b.label).join(', ');
         const compFullName = getNodeFullName(item.node) + (item.node.componentNumber ? ` #${item.node.componentNumber}` : '');
         const parentFullName = item.parent ? `${item.parent.name}${item.parent.componentNumber ? ` #${item.parent.componentNumber}` : ''}` : 'Independent / Root';
         const parentBuilding = item.parent ? (item.parent.building || item.building || 'Main') : '-';
