@@ -1566,11 +1566,13 @@ export const Diagram: React.FC<DiagramProps> = ({
         
         if (Array.isArray(iconData)) {
              const normScale = 24 / 512; 
+             const iconG = parent.append('g')
+                .attr('transform', `${defaultTransform} scale(${normScale})`);
              iconData.forEach((path: any) => {
-                 parent.append('path')
+                 iconG.append('path')
                     .attr('d', path.d)
                     .attr('fill', path.fill || color)
-                    .attr('transform', `${defaultTransform} scale(${normScale}) ${path.transform || ''}`);
+                    .attr('transform', path.transform || null);
              });
         } else {
             parent.append('path')

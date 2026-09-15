@@ -1952,34 +1952,6 @@ export default function App() {
           }
       });
 
-      // 4c. Verify and ensure badge rect widths dynamically enclose badge text with adequate padding
-      clone.querySelectorAll('.component-badge').forEach(badge => {
-          const rect = badge.querySelector('rect');
-          const texts = badge.querySelectorAll('text');
-          if (rect && texts.length > 0) {
-              const currentRectWidth = parseFloat(rect.getAttribute('width') || '20');
-              let maxTextWidth = 0;
-              texts.forEach(t => {
-                  const content = t.textContent || '';
-                  const estLen = rtlRegex.test(content) ? content.length * 8.0 : content.length * 6.5;
-                  if (estLen > maxTextWidth) maxTextWidth = estLen;
-                  t.setAttribute('text-anchor', 'middle');
-                  t.setAttribute('dominant-baseline', 'central');
-                  t.removeAttribute('dy');
-                  (t as SVGElement).style.textAnchor = 'middle';
-                  (t as SVGElement).style.dominantBaseline = 'central';
-              });
-              const requiredWidth = 20 + Math.ceil(maxTextWidth) + 14;
-              if (requiredWidth > currentRectWidth) {
-                  rect.setAttribute('width', requiredWidth.toString());
-                  const newCenterX = 20 + (requiredWidth - 20) / 2;
-                  texts.forEach(t => {
-                      t.setAttribute('x', newCenterX.toString());
-                  });
-              }
-          }
-      });
-
       // Strip style attribute from SVG clone to remove any patterns or touch-action that break canvas rasterization
       clone.removeAttribute('style');
       clone.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
@@ -2050,15 +2022,25 @@ export default function App() {
       }
       return new Promise((resolve, reject) => {
           const maxDim = Math.max(width, height);
-          let scale = customScale || 3.0;
-          
-          if (maxDim * scale > 6144) {
-              scale = 6144 / maxDim;
-          }
-          scale = Math.max(1.5, Math.min(4.0, scale));
+          const totalArea = width * height;
 
-          const canvasWidth = Math.max(100, Math.round(width * scale));
-          const canvasHeight = Math.max(100, Math.round(height * scale));
+          // Safe maximum dimension: 4096px prevents browser canvas GPU memory crash and texture overflow
+          const MAX_CANVAS_DIM = 4096;
+          // Safe maximum total pixel area (16 Megapixels)
+          const MAX_CANVAS_PIXELS = 16777216;
+
+          let targetScale = customScale || 2.5;
+          if (maxDim * targetScale > MAX_CANVAS_DIM) {
+              targetScale = MAX_CANVAS_DIM / maxDim;
+          }
+          if (totalArea * targetScale * targetScale > MAX_CANVAS_PIXELS) {
+              targetScale = Math.sqrt(MAX_CANVAS_PIXELS / totalArea);
+          }
+          // Safe clamp for scale: allows down to 0.2 for massive schemas and up to 3.0 for small diagrams
+          const scale = Math.max(0.2, Math.min(3.0, targetScale));
+
+          const canvasWidth = Math.max(100, Math.min(MAX_CANVAS_DIM, Math.round(width * scale)));
+          const canvasHeight = Math.max(100, Math.min(MAX_CANVAS_DIM, Math.round(height * scale)));
 
           const exportSvg = svgElement.cloneNode(true) as SVGSVGElement;
           exportSvg.removeAttribute('style');
@@ -2088,10 +2070,16 @@ export default function App() {
               return;
           }
 
-          const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+          // Use Blob URL as primary loading mechanism (bypasses URL length limits on large diagrams)
+          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+          const blobUrl = URL.createObjectURL(blob);
           const img = new Image();
 
           let resolved = false;
+          const cleanup = () => {
+              try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+          };
+
           const renderToCanvas = () => {
               if (resolved) return;
               resolved = true;
@@ -2101,8 +2089,10 @@ export default function App() {
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = 'high';
                   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  cleanup();
                   resolve(canvas);
               } catch (drawErr) {
+                  cleanup();
                   reject(drawErr);
               }
           };
@@ -2117,37 +2107,67 @@ export default function App() {
           };
 
           img.onerror = () => {
-              try {
-                  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-                  const blobUrl = URL.createObjectURL(blob);
-                  const fallbackImg = new Image();
-                  fallbackImg.onload = async () => {
-                      try {
-                          if ('decode' in fallbackImg) {
-                              try { await fallbackImg.decode(); } catch (_) {}
-                          }
-                          ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
-                          ctx.fillRect(0, 0, canvas.width, canvas.height);
-                          ctx.drawImage(fallbackImg, 0, 0, canvas.width, canvas.height);
-                          URL.revokeObjectURL(blobUrl);
-                          resolve(canvas);
-                      } catch (err) {
-                          URL.revokeObjectURL(blobUrl);
-                          reject(err);
+              cleanup();
+              // Fallback to data URI if Blob URL fails in specific container contexts
+              const fallbackImg = new Image();
+              const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+              fallbackImg.onload = async () => {
+                  try {
+                      if ('decode' in fallbackImg) {
+                          try { await fallbackImg.decode(); } catch (_) {}
                       }
-                  };
-                  fallbackImg.onerror = () => {
-                      URL.revokeObjectURL(blobUrl);
-                      reject(new Error('Failed to render SVG diagram to canvas image'));
-                  };
-                  fallbackImg.src = blobUrl;
-              } catch (blobErr) {
+                      ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+                      ctx.fillRect(0, 0, canvas.width, canvas.height);
+                      ctx.imageSmoothingEnabled = true;
+                      ctx.imageSmoothingQuality = 'high';
+                      ctx.drawImage(fallbackImg, 0, 0, canvas.width, canvas.height);
+                      resolve(canvas);
+                  } catch (err) {
+                      reject(err);
+                  }
+              };
+              fallbackImg.onerror = () => {
                   reject(new Error('Failed to render SVG diagram to canvas image'));
-              }
+              };
+              fallbackImg.src = dataUri;
           };
 
-          img.src = dataUri;
+          img.src = blobUrl;
       });
+  };
+
+  const addCanvasToPdf = (pdf: jsPDF, canvas: HTMLCanvasElement, pageWidth: number, pageHeight: number) => {
+      let imageData = '';
+      let imageFormat: 'PNG' | 'JPEG' = 'PNG';
+
+      try {
+          const data = canvas.toDataURL('image/png');
+          // Validate base64 PNG data to prevent "wrong PNG signature" error from fast-png
+          if (data && data.startsWith('data:image/png;base64,') && data.length > 100) {
+              imageData = data;
+              imageFormat = 'PNG';
+          }
+      } catch (e) {
+          console.warn("PNG toDataURL failed:", e);
+      }
+
+      if (!imageData) {
+          try {
+              const data = canvas.toDataURL('image/jpeg', 0.95);
+              if (data && data.startsWith('data:image/jpeg;base64,') && data.length > 100) {
+                  imageData = data;
+                  imageFormat = 'JPEG';
+              }
+          } catch (e) {
+              console.warn("JPEG toDataURL fallback failed:", e);
+          }
+      }
+
+      if (!imageData) {
+          throw new Error('Canvas could not produce valid image raster data');
+      }
+
+      pdf.addImage(imageData, imageFormat, 0, 0, pageWidth, pageHeight, undefined, 'FAST');
   };
 
   const triggerDownload = (href: string, name: string) => {
@@ -2537,8 +2557,12 @@ export default function App() {
       const { clone, svgString, width, height, minX, minY } = svgData;
 
       if (format === 'svg') {
-          const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgString);
+          const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
           triggerDownload(url, `${baseFileName}.svg`);
+          setTimeout(() => {
+              try { URL.revokeObjectURL(url); } catch (_) {}
+          }, 2000);
           setShowExportModal(false);
           return;
       }
@@ -2554,7 +2578,7 @@ export default function App() {
               // It renders flawless Arabic cursive connections (initial, medial, final glyphs), correct RTL direction,
               // Hebrew Nikud and letterforms, and bidirectional layout at ultra-crisp 300+ DPI print quality.
               try {
-                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.0);
                   const pdf = new jsPDF({
                       orientation: isLandscape ? 'landscape' : 'portrait',
                       unit: 'pt',
@@ -2563,12 +2587,11 @@ export default function App() {
                   });
                   const actualPageWidth = pdf.internal.pageSize.getWidth();
                   const actualPageHeight = pdf.internal.pageSize.getHeight();
-                  const pngData = canvas.toDataURL('image/png');
-                  pdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+                  addCanvasToPdf(pdf, canvas, actualPageWidth, actualPageHeight);
                   pdf.save(`${baseFileName}.pdf`);
-              } catch (rtlPdfErr) {
+              } catch (rtlPdfErr: any) {
                   console.error("Hebrew/Arabic PDF generation error:", rtlPdfErr);
-                  alert("Failed to generate PDF document.");
+                  alert(`Export failed: ${rtlPdfErr?.message || 'Failed to generate PDF document.'}`);
               }
           } else {
               // Pure Latin/English diagrams: Direct vector parsing via svg2pdf with automated fallback
@@ -2612,7 +2635,7 @@ export default function App() {
                   pdf.save(`${baseFileName}.pdf`);
               } catch (vectorErr) {
                   console.warn("Direct vector svg2pdf encountered an issue, falling back to ultra-high DPI print PDF:", vectorErr);
-                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+                  const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.0);
                   const fallbackPdf = new jsPDF({
                       orientation: isLandscape ? 'landscape' : 'portrait',
                       unit: 'pt',
@@ -2621,8 +2644,7 @@ export default function App() {
                   });
                   const actualPageWidth = fallbackPdf.internal.pageSize.getWidth();
                   const actualPageHeight = fallbackPdf.internal.pageSize.getHeight();
-                  const pngData = canvas.toDataURL('image/png');
-                  fallbackPdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+                  addCanvasToPdf(fallbackPdf, canvas, actualPageWidth, actualPageHeight);
                   fallbackPdf.save(`${baseFileName}.pdf`);
               } finally {
                   if (clone.parentNode) {
@@ -2638,7 +2660,7 @@ export default function App() {
       if (format === 'raster-pdf') {
           // 2. Dedicated Print PDF: 300+ DPI Lossless rasterization for commercial plotters & printing
           try {
-              const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.5);
+              const canvas = await svgToCanvas(clone, minX, minY, width, height, 3.0);
               const isLandscape = width >= height;
               const pdf = new jsPDF({
                   orientation: isLandscape ? 'landscape' : 'portrait',
@@ -2649,8 +2671,7 @@ export default function App() {
 
               const actualPageWidth = pdf.internal.pageSize.getWidth();
               const actualPageHeight = pdf.internal.pageSize.getHeight();
-              const pngData = canvas.toDataURL('image/png');
-              pdf.addImage(pngData, 'PNG', 0, 0, actualPageWidth, actualPageHeight, undefined, 'FAST');
+              addCanvasToPdf(pdf, canvas, actualPageWidth, actualPageHeight);
               pdf.save(`${baseFileName}_print_300dpi.pdf`);
           } catch (err: any) {
               console.error("Print PDF export error:", err);
