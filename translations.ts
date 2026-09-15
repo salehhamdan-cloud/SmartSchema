@@ -17,6 +17,7 @@ export const translations = {
     exportLabel: "Export",
     exportSVG: "Export SVG",
     toggleOrientation: "Toggle Orientation",
+    autoArrange: "Auto Arrange Layout",
     orientations: {
       horizontal: "Horizontal Tree",
       vertical: "Vertical Tree",
@@ -756,6 +757,7 @@ export const translations = {
     exportLabel: "ייצוא",
     exportSVG: "ייצא SVG",
     toggleOrientation: "שנה כיוון",
+    autoArrange: "סידור אוטומטי של התרשים",
     orientations: {
       horizontal: "עץ אופקי",
       vertical: "עץ אנכי",
@@ -1495,6 +1497,7 @@ export const translations = {
     exportLabel: "تصدير",
     exportSVG: "تصدير SVG",
     toggleOrientation: "تبديل الاتجاه",
+    autoArrange: "ترتيب المخطط تلقائياً",
     orientations: {
       horizontal: "مخطط شجري أفقي",
       vertical: "مخطط شجري رأسي",

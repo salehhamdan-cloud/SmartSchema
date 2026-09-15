@@ -608,11 +608,35 @@ export default function App() {
     };
   }, []);
 
+  const handleAutoArrange = () => {
+    saveToHistory();
+    updatePage((page) => {
+      const resetOffsets = (node: ElectricalNode): ElectricalNode => ({
+        ...node,
+        manualX: 0,
+        manualY: 0,
+        children: node.children ? node.children.map(resetOffsets) : []
+      });
+      return { ...page, items: page.items.map(resetOffsets) };
+    });
+  };
+
   const cycleOrientation = () => {
+    saveToHistory();
     setOrientation(prev => {
       if (prev === 'horizontal') return 'vertical';
       if (prev === 'vertical') return 'orthogonal_vertical';
       return 'horizontal';
+    });
+    // Reset manual drag offsets when toggling orientation so old coordinates don't distort the new tree layout
+    updatePage((page) => {
+      const resetOffsets = (node: ElectricalNode): ElectricalNode => ({
+        ...node,
+        manualX: 0,
+        manualY: 0,
+        children: node.children ? node.children.map(resetOffsets) : []
+      });
+      return { ...page, items: page.items.map(resetOffsets) };
     });
   };
 
@@ -3618,6 +3642,15 @@ export default function App() {
                   90°
                 </span>
               )}
+            </button>
+
+            {/* Auto Arrange Layout */}
+            <button 
+              onClick={handleAutoArrange}
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/80 rounded-lg transition-colors"
+              title={t.autoArrange || "Auto Arrange Layout"}
+            >
+              <span className="material-icons-round text-base">auto_fix_high</span>
             </button>
 
             {/* Lock Layout */}

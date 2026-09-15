@@ -933,31 +933,74 @@ export const Diagram: React.FC<DiagramProps> = ({
     let treeLayout: d3.TreeLayout<ElectricalNode>;
 
     if (orientation === 'horizontal') {
-      const depthSpacing = 300;
-      const siblingBase = 150;
+      const siblingBase = 160;
       treeLayout = d3
         .tree<ElectricalNode>()
-        .nodeSize([siblingBase, depthSpacing])
+        .nodeSize([siblingBase, 1])
         .separation((a, b) => {
           const aH = (a as any).height || 100;
           const bH = (b as any).height || 100;
-          const totalHeight = (aH + bH) / 2 + 32;
-          return (totalHeight / siblingBase) * (a.parent === b.parent ? 1 : 1.25);
+          const gap = a.parent === b.parent ? 36 : 64;
+          const totalHeight = (aH + bH) / 2 + gap;
+          return totalHeight / siblingBase;
         });
       treeLayout(root);
+
+      // Dynamically compute depth X positions based on maximum node widths per depth tier
+      const maxDepth = Math.max(1, ...root.descendants().map((d) => d.depth));
+      const depthX: number[] = [0];
+      let currentX = 60;
+      const minHorizontalGap = 90;
+
+      for (let d = 1; d <= maxDepth; d++) {
+        depthX[d] = currentX;
+        const nodesAtThisDepth = root.descendants().filter((n) => n.depth === d && n.data.id !== 'virtual-root');
+        if (nodesAtThisDepth.length > 0) {
+          const maxWidth = Math.max(...nodesAtThisDepth.map((n: any) => n.width || 140));
+          currentX += maxWidth + minHorizontalGap;
+        } else {
+          currentX += 180 + minHorizontalGap;
+        }
+      }
+
+      root.descendants().forEach((d: any) => {
+        d.y = depthX[d.depth] || 0;
+      });
     } else if (orientation === 'vertical') {
-      const depthSpacing = 280;
       const siblingBase = 180;
       treeLayout = d3
         .tree<ElectricalNode>()
-        .nodeSize([siblingBase, depthSpacing])
+        .nodeSize([siblingBase, 1])
         .separation((a, b) => {
           const aW = (a as any).width || 120;
           const bW = (b as any).width || 120;
-          const totalWidth = (aW + bW) / 2 + 32;
-          return (totalWidth / siblingBase) * (a.parent === b.parent ? 1 : 1.25);
+          const gap = a.parent === b.parent ? 44 : 80;
+          const totalWidth = (aW + bW) / 2 + gap;
+          return totalWidth / siblingBase;
         });
       treeLayout(root);
+
+      // Dynamically compute depth Y positions based on maximum node heights per depth tier
+      // This guarantees a clean, uncompromised clearance between any father bottom and son top!
+      const maxDepth = Math.max(1, ...root.descendants().map((d) => d.depth));
+      const depthY: number[] = [0];
+      let currentY = 50;
+      const minVerticalGap = 100;
+
+      for (let d = 1; d <= maxDepth; d++) {
+        depthY[d] = currentY;
+        const nodesAtThisDepth = root.descendants().filter((n) => n.depth === d && n.data.id !== 'virtual-root');
+        if (nodesAtThisDepth.length > 0) {
+          const maxHeight = Math.max(...nodesAtThisDepth.map((n: any) => n.height || 100));
+          currentY += maxHeight + minVerticalGap;
+        } else {
+          currentY += 160 + minVerticalGap;
+        }
+      }
+
+      root.descendants().forEach((d: any) => {
+        d.y = depthY[d.depth] || 0;
+      });
     } else {
       // 90-degree Vertical Cascade (Indented step hierarchy where nodes are arranged sequentially one below the other)
       let currentY = 40;
@@ -1012,27 +1055,32 @@ export const Diagram: React.FC<DiagramProps> = ({
       const tYOffset = target.data.manualY || 0;
       const lineType = target.data.connectionStyle?.lineType || 'orthogonal';
 
+      const isSrcCircleOrSquare = source.data.shape === 'circle' || source.data.shape === 'square';
+      const isTgtCircleOrSquare = target.data.shape === 'circle' || target.data.shape === 'square';
+
       if (orientation === 'horizontal') {
-        const srcX = source.y + source.width + sXOffset;
+        const srcX = (isSrcCircleOrSquare ? source.y + 40 : source.y + source.width) + sXOffset;
         const srcY = source.x + sYOffset;
-        const tgtX = target.y + tXOffset;
+        const tgtX = (isTgtCircleOrSquare ? target.y - 40 : target.y) + tXOffset;
         const tgtY = target.x + tYOffset;
 
-        if (lineType === 'straight') {
+        if (lineType === 'straight' || Math.abs(srcY - tgtY) < 1) {
             return `M${srcX},${srcY} L${tgtX},${tgtY}`;
         } else {
-            return `M${srcX},${srcY} H${(srcX + tgtX) / 2} V${tgtY} H${tgtX}`;
+            const midX = (srcX + tgtX) / 2;
+            return `M${srcX},${srcY} H${midX} V${tgtY} H${tgtX}`;
         }
       } else if (orientation === 'vertical') {
         const srcX = source.x + sXOffset;
-        const srcY = source.y + source.height + sYOffset;
+        const srcY = (isSrcCircleOrSquare ? source.y + 40 : source.y + source.height) + sYOffset;
         const tgtX = target.x + tXOffset;
-        const tgtY = target.y + tYOffset;
+        const tgtY = (isTgtCircleOrSquare ? target.y - 40 : target.y) + tYOffset;
 
-        if (lineType === 'straight') {
+        if (lineType === 'straight' || Math.abs(srcX - tgtX) < 1) {
             return `M${srcX},${srcY} L${tgtX},${tgtY}`;
         } else {
-            return `M${srcX},${srcY} V${(srcY + tgtY) / 2} H${tgtX} V${tgtY}`;
+            const midY = (srcY + tgtY) / 2;
+            return `M${srcX},${srcY} V${midY} H${tgtX} V${tgtY}`;
         }
       } else {
         // 90-degree Vertical Cascade: Out from parent bottom trunk -> down vertically to target Y -> 90° right turn into target X
@@ -1356,19 +1404,22 @@ export const Diagram: React.FC<DiagramProps> = ({
            
            const lineType = lk.target.data.connectionStyle?.lineType || 'orthogonal';
 
+           const isSrcCircleOrSquare = lk.source.data.shape === 'circle' || lk.source.data.shape === 'square';
+           const isTgtCircleOrSquare = lk.target.data.shape === 'circle' || lk.target.data.shape === 'square';
+
            if (orientation === 'horizontal') {
-             const srcX = lk.source.y + lk.source.width + sX;
+             const srcX = (isSrcCircleOrSquare ? lk.source.y + 40 : lk.source.y + lk.source.width) + sX;
              const srcY = lk.source.x + sY;
-             const tgtX = lk.target.y + tX;
+             const tgtX = (isTgtCircleOrSquare ? lk.target.y - 40 : lk.target.y) + tX;
              const tgtY = lk.target.x + tY;
-             if (lineType === 'straight') return `M${srcX},${srcY} L${tgtX},${tgtY}`;
+             if (lineType === 'straight' || Math.abs(srcY - tgtY) < 1) return `M${srcX},${srcY} L${tgtX},${tgtY}`;
              return `M${srcX},${srcY} H${(srcX + tgtX) / 2} V${tgtY} H${tgtX}`;
            } else if (orientation === 'vertical') {
              const srcX = lk.source.x + sX;
-             const srcY = lk.source.y + lk.source.height + sY;
+             const srcY = (isSrcCircleOrSquare ? lk.source.y + 40 : lk.source.y + lk.source.height) + sY;
              const tgtX = lk.target.x + tX;
-             const tgtY = lk.target.y + tY;
-             if (lineType === 'straight') return `M${srcX},${srcY} L${tgtX},${tgtY}`;
+             const tgtY = (isTgtCircleOrSquare ? lk.target.y - 40 : lk.target.y) + tY;
+             if (lineType === 'straight' || Math.abs(srcX - tgtX) < 1) return `M${srcX},${srcY} L${tgtX},${tgtY}`;
              return `M${srcX},${srcY} V${(srcY + tgtY) / 2} H${tgtX} V${tgtY}`;
            } else {
              const srcX = lk.source.x + sX + 24;
