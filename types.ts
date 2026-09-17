@@ -152,12 +152,24 @@ export interface Page {
   annotations?: AnnotationItem[]; // Saved annotations for this page
 }
 
+export interface PrintRevision {
+  id: string;
+  revision: string;
+  date: string;
+  description?: string;
+}
+
 export interface PrintMetadata {
   engineer: string;
+  editorProfession?: string;
   approvedBy: string;
   date: string;
   revision: string;
   organization: string;
+  email?: string;
+  phone?: string;
+  logo?: string;
+  revisions?: PrintRevision[];
 }
 
 export interface ProjectShareConfig {

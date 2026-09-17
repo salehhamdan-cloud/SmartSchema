@@ -1824,15 +1824,22 @@ export default function App() {
       const printBlock = liveGroup.querySelector('g.print-title-block');
       if (printBlock) {
           try {
+              const bbox = (printBlock as SVGGraphicsElement).getBBox?.();
               const transform = printBlock.getAttribute('transform') || '';
               const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
-              if (match) {
-                  const px = parseFloat(match[1]) || 0;
-                  const py = parseFloat(match[2]) || 0;
+              const px = match ? (parseFloat(match[1]) || 0) : 0;
+              const py = match ? (parseFloat(match[2]) || 0) : 0;
+
+              if (bbox && isFinite(bbox.x) && isFinite(bbox.width) && bbox.width > 0) {
+                  minX = Math.min(minX, px + bbox.x);
+                  maxX = Math.max(maxX, px + bbox.x + bbox.width);
+                  minY = Math.min(minY, py + bbox.y);
+                  maxY = Math.max(maxY, py + bbox.y + bbox.height);
+              } else {
                   minX = Math.min(minX, px);
-                  maxX = Math.max(maxX, px + 500);
-                  minY = Math.min(minY, py);
-                  maxY = Math.max(maxY, py + 100);
+                  maxX = Math.max(maxX, px + 540);
+                  minY = Math.min(minY, py - 180);
+                  maxY = Math.max(maxY, py + 118);
               }
           } catch (e) {}
       }

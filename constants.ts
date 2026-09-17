@@ -308,10 +308,15 @@ export const DEFAULT_CONNECTION_STYLE: ConnectionStyle = {
 
 export const DEFAULT_PRINT_METADATA: PrintMetadata = {
   engineer: '',
+  editorProfession: '',
   approvedBy: '',
   date: '',
   revision: '',
-  organization: ''
+  organization: '',
+  email: '',
+  phone: '',
+  logo: '',
+  revisions: []
 };
 
 export const SNAP_GRID_SIZE = 20;

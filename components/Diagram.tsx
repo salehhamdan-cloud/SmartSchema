@@ -2346,19 +2346,167 @@ export const Diagram: React.FC<DiagramProps> = ({
     let legY = minY;
 
     if (isPrintMode && activeProject && activeProject.printMetadata) {
-        const blockW = 500;
-        const blockH = 100;
+        const pm = activeProject.printMetadata || { 
+            organization: '', 
+            engineer: '', 
+            date: '', 
+            revision: '', 
+            approvedBy: '',
+            email: '',
+            phone: '',
+            logo: '',
+            revisions: []
+        };
+
+        const blockW = 540;
+        const blockH = 118;
         const safeY = maxY + 60; 
         legX = Math.max(minX, maxX - legendW);
         legY = safeY;
+
+        // Revisions history table calculation
+        const hasRevs = Array.isArray(pm.revisions) && pm.revisions.length > 0;
+        const revCount = hasRevs ? pm.revisions!.length : 0;
+        const revRowH = 20;
+        const revHeaderH = 20;
+        const revTableH = hasRevs ? (revHeaderH + revCount * revRowH) : 0;
+
+        const hasLogo = Boolean(pm.logo);
+        const logoMaxH = 46;
+        const logoMaxW = 160;
+        const logoMargin = 16;
+        const logoTotalH = hasLogo ? (logoMaxH + logoMargin) : 0;
+
         const titleX = Math.max(minX, maxX - blockW);
-        const titleY = legY + legendH + 20;
+        const titleY = legY + legendH + 20 + revTableH + logoTotalH;
 
         const titleBlockG = g.append('g')
             .attr('transform', `translate(${titleX}, ${titleY})`)
             .attr('class', 'print-title-block')
             .style('cursor', 'pointer');
 
+        // Optional Revisions History Table placed directly on top of the main title block
+        if (hasRevs) {
+            const revTableG = titleBlockG.append('g')
+                .attr('class', 'print-rev-table')
+                .on('click', (event) => {
+                    if (event.defaultPrevented) return;
+                    event.stopPropagation();
+                    if (onEditPrintSettings) onEditPrintSettings('revisions');
+                });
+
+            // Outer border
+            revTableG.append('rect')
+                .attr('x', 0)
+                .attr('y', -revTableH)
+                .attr('width', blockW)
+                .attr('height', revTableH)
+                .attr('fill', 'white')
+                .attr('stroke', 'black')
+                .attr('stroke-width', 2);
+
+            // Header background
+            revTableG.append('rect')
+                .attr('x', 0)
+                .attr('y', -revTableH)
+                .attr('width', blockW)
+                .attr('height', revHeaderH)
+                .attr('fill', '#f1f5f9')
+                .attr('stroke', 'black')
+                .attr('stroke-width', 1);
+
+            // Column split points
+            const revColW = 60;
+            const dateColW = 100;
+            const col1X = isRTL ? (blockW - revColW) : revColW;
+            const col2X = isRTL ? (blockW - revColW - dateColW) : (revColW + dateColW);
+
+            revTableG.append('line')
+                .attr('x1', col1X).attr('y1', -revTableH)
+                .attr('x2', col1X).attr('y2', 0)
+                .attr('stroke', 'black').attr('stroke-width', 1);
+
+            revTableG.append('line')
+                .attr('x1', col2X).attr('y1', -revTableH)
+                .attr('x2', col2X).attr('y2', 0)
+                .attr('stroke', 'black').attr('stroke-width', 1);
+
+            // Header labels
+            const colRevLabel = t.printLayout?.revColRev || "REV";
+            const colDateLabel = t.printLayout?.revColDate || "DATE";
+            const colDescLabel = t.printLayout?.revColDesc || "DESCRIPTION";
+
+            const revHeaderCenter = isRTL ? (blockW - revColW / 2) : (revColW / 2);
+            const dateHeaderCenter = isRTL ? (blockW - revColW - dateColW / 2) : (revColW + dateColW / 2);
+            const descHeaderX = isRTL ? (col2X - 8) : (col2X + 8);
+            const headerY = -revTableH + 13;
+
+            revTableG.append('text')
+                .attr('x', revHeaderCenter).attr('y', headerY)
+                .attr('text-anchor', 'middle')
+                .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                .style('font-size', '8px').style('font-weight', 'bold').style('fill', '#334155')
+                .text(colRevLabel);
+
+            revTableG.append('text')
+                .attr('x', dateHeaderCenter).attr('y', headerY)
+                .attr('text-anchor', 'middle')
+                .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                .style('font-size', '8px').style('font-weight', 'bold').style('fill', '#334155')
+                .text(colDateLabel);
+
+            revTableG.append('text')
+                .attr('x', descHeaderX).attr('y', headerY)
+                .attr('text-anchor', 'start')
+                .style('text-anchor', 'start')
+                .attr('direction', isRTL ? 'rtl' : 'ltr')
+                .style('direction', isRTL ? 'rtl' : 'ltr')
+                .style('unicode-bidi', 'embed')
+                .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                .style('font-size', '8px').style('font-weight', 'bold').style('fill', '#334155')
+                .text(colDescLabel);
+
+            // Render rows
+            pm.revisions!.forEach((rev, idx) => {
+                const rowTop = -revTableH + revHeaderH + idx * revRowH;
+                const rowCenterY = rowTop + 13;
+
+                // Horizontal row divider line
+                if (idx > 0) {
+                    revTableG.append('line')
+                        .attr('x1', 0).attr('y1', rowTop)
+                        .attr('x2', blockW).attr('y2', rowTop)
+                        .attr('stroke', '#cbd5e1').attr('stroke-width', 1);
+                }
+
+                revTableG.append('text')
+                    .attr('x', revHeaderCenter).attr('y', rowCenterY)
+                    .attr('text-anchor', 'middle')
+                    .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                    .style('font-size', '9px').style('font-weight', 'bold').style('fill', 'black')
+                    .text(rev.revision || '-');
+
+                revTableG.append('text')
+                    .attr('x', dateHeaderCenter).attr('y', rowCenterY)
+                    .attr('text-anchor', 'middle')
+                    .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                    .style('font-size', '8.5px').style('fill', '#1e293b')
+                    .text(rev.date || '-');
+
+                revTableG.append('text')
+                    .attr('x', descHeaderX).attr('y', rowCenterY)
+                    .attr('text-anchor', 'start')
+                    .style('text-anchor', 'start')
+                    .attr('direction', isRTL ? 'rtl' : 'ltr')
+                    .style('direction', isRTL ? 'rtl' : 'ltr')
+                    .style('unicode-bidi', 'embed')
+                    .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+                    .style('font-size', '8.5px').style('fill', '#1e293b')
+                    .text(rev.description || '-');
+            });
+        }
+
+        // Main Title Block outer box
         titleBlockG.append('rect')
             .attr('width', blockW)
             .attr('height', blockH)
@@ -2367,47 +2515,166 @@ export const Diagram: React.FC<DiagramProps> = ({
             .attr('stroke-width', 2)
             .style('pointer-events', 'all')
             .on('click', (event) => {
-                if(event.defaultPrevented) return;
+                if (event.defaultPrevented) return;
                 event.stopPropagation();
-                if(onEditPrintSettings) onEditPrintSettings();
+                if (onEditPrintSettings) onEditPrintSettings();
             });
 
-        titleBlockG.append('line').attr('x1', 0).attr('y1', 33).attr('x2', blockW).attr('y2', 33).attr('stroke', 'black').attr('stroke-width', 1);
-        titleBlockG.append('line').attr('x1', 0).attr('y1', 66).attr('x2', blockW).attr('y2', 66).attr('stroke', 'black').attr('stroke-width', 1);
+        // Horizontal partition lines
+        titleBlockG.append('line').attr('x1', 0).attr('y1', 38).attr('x2', blockW).attr('y2', 38).attr('stroke', 'black').attr('stroke-width', 1);
+        titleBlockG.append('line').attr('x1', 0).attr('y1', 78).attr('x2', blockW).attr('y2', 78).attr('stroke', 'black').attr('stroke-width', 1);
 
-        const dividerX = isRTL ? 150 : 350;
-        titleBlockG.append('line').attr('x1', dividerX).attr('y1', 0).attr('x2', dividerX).attr('y2', 100).attr('stroke', 'black').attr('stroke-width', 1);
+        // Vertical divider between wide info (Project/Company/Engineer) and narrow info (Date/Rev/Approved)
+        const dividerX = isRTL ? 150 : (blockW - 150);
+        titleBlockG.append('line').attr('x1', dividerX).attr('y1', 0).attr('x2', dividerX).attr('y2', blockH).attr('stroke', 'black').attr('stroke-width', 1);
 
-        const pm = activeProject.printMetadata || { organization: '', engineer: '', date: '', revision: '', approvedBy: '' };
+        const wideCenter = isRTL ? (dividerX + blockW) / 2 : (dividerX / 2);
+        const narrowCenter = isRTL ? (dividerX / 2) : ((dividerX + blockW) / 2);
+        const wideWidth = blockW - 150;
+
+        // Company logo outside the line, horizontally aligned with the table text (wideCenter)
+        if (hasLogo) {
+            const logoG = titleBlockG.append('g')
+                .attr('class', 'print-company-logo')
+                .style('cursor', 'pointer')
+                .on('click', (event) => {
+                    if (event.defaultPrevented) return;
+                    event.stopPropagation();
+                    if (onEditPrintSettings) onEditPrintSettings('organization');
+                });
+
+            const logoY = -revTableH - logoMaxH - 8;
+            const logoX = wideCenter - (logoMaxW / 2);
+
+            logoG.append('image')
+                .attr('href', pm.logo!)
+                .attr('x', logoX)
+                .attr('y', logoY)
+                .attr('width', logoMaxW)
+                .attr('height', logoMaxH)
+                .attr('preserveAspectRatio', 'xMidYMid meet')
+                .style('pointer-events', 'none');
+        }
 
         const renderField = (label: string, value: string, x: number, y: number, w: number, fieldKey: string) => {
             const cell = titleBlockG.append('g').on('click', (e) => {
-                if(e.defaultPrevented) return;
+                if (e.defaultPrevented) return;
                 e.stopPropagation();
-                if(onEditPrintSettings) onEditPrintSettings(fieldKey);
+                if (onEditPrintSettings) onEditPrintSettings(fieldKey);
             });
-            cell.append('rect').attr('x', x - w/2).attr('y', y - 15).attr('width', w).attr('height', 30).attr('fill', 'transparent').style('pointer-events', 'all');
+            cell.append('rect').attr('x', x - w/2).attr('y', y - 16).attr('width', w).attr('height', 34).attr('fill', 'transparent').style('pointer-events', 'all');
             cell.append('text').attr('x', x).attr('y', y - 8).attr('text-anchor', 'middle').style('font-size', '8px').style('fill', '#666').style('pointer-events', 'none').text(label || '');
-            cell.append('text').attr('x', x).attr('y', y + 8).attr('text-anchor', 'middle').style('font-size', '12px').style('font-weight', 'bold').style('fill', 'black').style('pointer-events', 'none').text(value || '-');
+            cell.append('text').attr('x', x).attr('y', y + 8).attr('text-anchor', 'middle').style('font-size', '11.5px').style('font-weight', 'bold').style('fill', 'black').style('pointer-events', 'none').text(value || '-');
         };
-
-        const wideCenter = isRTL ? (150 + blockW) / 2 : 350 / 2;
-        const narrowCenter = isRTL ? 150 / 2 : (350 + blockW) / 2;
 
         const projLabel = t.printLayout?.project || t.printSettings?.project || t.projects || 'Project';
         const orgLabel = t.printLayout?.org || t.printSettings?.organization || 'Organization';
-        const engLabel = t.printLayout?.engineer || t.printSettings?.engineer || 'Engineer';
         const dateLabel = t.printLayout?.date || t.printSettings?.date || 'Date';
         const revLabel = t.printLayout?.rev || t.printSettings?.revision || 'Revision';
         const appLabel = t.printLayout?.approved || t.printSettings?.approvedBy || 'Approved';
 
-        renderField(projLabel, activeProject.name || '', wideCenter, 16, 300, 'projectName');
-        renderField(orgLabel, pm.organization || '', wideCenter, 50, 300, 'organization');
-        renderField(engLabel, pm.engineer || '', wideCenter, 84, 300, 'engineer');
+        // Row 1: Project Name
+        renderField(projLabel, activeProject.name || '', wideCenter, 19, wideWidth - 20, 'projectName');
 
-        renderField(dateLabel, pm.date || '', narrowCenter, 16, 140, 'date');
-        renderField(revLabel, pm.revision || '', narrowCenter, 50, 140, 'revision');
-        renderField(appLabel, pm.approvedBy || '', narrowCenter, 84, 140, 'approvedBy');
+        // Row 2: Organization / Company (cleanly centered at wideCenter)
+        const orgCellG = titleBlockG.append('g').on('click', (e) => {
+            if (e.defaultPrevented) return;
+            e.stopPropagation();
+            if (onEditPrintSettings) onEditPrintSettings('organization');
+        });
+        const wideLeft = isRTL ? dividerX : 0;
+
+        orgCellG.append('rect')
+            .attr('x', wideLeft)
+            .attr('y', 38)
+            .attr('width', wideWidth)
+            .attr('height', 40)
+            .attr('fill', 'transparent')
+            .style('pointer-events', 'all');
+
+        orgCellG.append('text')
+            .attr('x', wideCenter)
+            .attr('y', 51)
+            .attr('text-anchor', 'middle')
+            .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+            .style('font-size', '8px')
+            .style('fill', '#666')
+            .style('pointer-events', 'none')
+            .text(orgLabel);
+
+        const companyName = pm.organization?.trim() || '';
+        orgCellG.append('text')
+            .attr('x', wideCenter)
+            .attr('y', 68)
+            .attr('text-anchor', 'middle')
+            .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+            .style('font-size', '12px')
+            .style('font-weight', 'bold')
+            .style('fill', 'black')
+            .style('pointer-events', 'none')
+            .text(companyName || '-');
+
+        // Row 3: Profession of Editor + Editor Name + Contact (Email & Telephone)
+        const engCellG = titleBlockG.append('g').on('click', (e) => {
+            if (e.defaultPrevented) return;
+            e.stopPropagation();
+            if (onEditPrintSettings) onEditPrintSettings('editorProfession');
+        });
+
+        engCellG.append('rect')
+            .attr('x', wideLeft)
+            .attr('y', 78)
+            .attr('width', wideWidth)
+            .attr('height', 40)
+            .attr('fill', 'transparent')
+            .style('pointer-events', 'all');
+
+        const engContactParts: string[] = [];
+        if (pm.phone) engContactParts.push(`${t.printLayout?.phone || 'TEL'}: ${pm.phone}`);
+        if (pm.email) engContactParts.push(`${t.printLayout?.email || 'MAIL'}: ${pm.email}`);
+        const engContactText = engContactParts.join('   |   ');
+
+        const professionTitle = (pm.editorProfession?.trim()) || t.printLayout?.editorProfession || t.printSettings?.editorProfession || 'The Profession of Editor';
+        const professionFontSize = professionTitle.length > 35 ? '7px' : (engContactText ? '7.5px' : '8px');
+
+        engCellG.append('text')
+            .attr('x', wideCenter)
+            .attr('y', engContactText ? 88 : 91)
+            .attr('text-anchor', 'middle')
+            .style('font-family', isRTL ? MULTILINGUAL_FONT_FAMILY : 'inherit')
+            .style('font-size', professionFontSize)
+            .style('fill', '#666')
+            .style('pointer-events', 'none')
+            .text(professionTitle);
+
+        engCellG.append('text')
+            .attr('x', wideCenter)
+            .attr('y', engContactText ? 100 : 105)
+            .attr('text-anchor', 'middle')
+            .style('font-size', engContactText ? '11.5px' : '12px')
+            .style('font-weight', 'bold')
+            .style('fill', 'black')
+            .style('pointer-events', 'none')
+            .text(pm.engineer?.trim() || '-');
+
+        if (engContactText) {
+            engCellG.append('text')
+                .attr('x', wideCenter)
+                .attr('y', 111)
+                .attr('text-anchor', 'middle')
+                .style('font-size', '8px')
+                .style('fill', '#475569')
+                .style('pointer-events', 'none')
+                .text(engContactText);
+        }
+
+        // Narrow columns: Date, Revision, Approved By
+        const displayDate = (hasRevs ? pm.revisions![pm.revisions!.length - 1].date : pm.date) || '-';
+        const displayRev = (hasRevs ? pm.revisions![pm.revisions!.length - 1].revision : pm.revision) || '-';
+
+        renderField(dateLabel, displayDate, narrowCenter, 19, 130, 'date');
+        renderField(revLabel, displayRev, narrowCenter, 58, 130, 'revision');
+        renderField(appLabel, pm.approvedBy || '', narrowCenter, 98, 130, 'approvedBy');
     }
 
     const legendG = g
