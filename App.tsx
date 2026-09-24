@@ -3043,55 +3043,206 @@ export default function App() {
       }
   };
 
-  const searchMatches = useMemo(() => {
-    if (!searchTerm.trim()) return null;
-    const matches = new Set<string>();
-    const term = searchTerm.toLowerCase();
-    const traverse = (node: ElectricalNode) => {
-      if (
-        (node.name && node.name.toLowerCase().includes(term)) || 
-        (node.model && node.model.toLowerCase().includes(term)) ||
-        (node.componentNumber && node.componentNumber.toLowerCase().includes(term)) ||
-        (node.meterNumber && node.meterNumber.toLowerCase().includes(term)) ||
-        (node.place && node.place.toLowerCase().includes(term)) ||
-        (node.building && node.building.toLowerCase().includes(term)) ||
-        (node.floor && node.floor.toLowerCase().includes(term)) ||
-        (node.office && node.office.toLowerCase().includes(term)) ||
-        (node.description && node.description.toLowerCase().includes(term)) ||
-        node.type.toLowerCase().includes(term)
-      ) {
-        matches.add(node.id);
+  // Helper to determine if a node is or represents a transformer
+  const isTransformerNode = (node: ElectricalNode): boolean => {
+    if (node.type === ComponentType.TRANSFORMER) return true;
+    const n = (node.name || '').toLowerCase();
+    const m = (node.model || '').toLowerCase();
+    const d = (node.description || '').toLowerCase();
+    return (
+      n.includes('transformer') ||
+      n.includes('שנאי') ||
+      n.includes('محול') ||
+      n.startsWith('tr-') ||
+      n.startsWith('tr ') ||
+      m.includes('transformer') ||
+      d.includes('transformer') ||
+      d.includes('שנאי')
+    );
+  };
+
+  const searchAnalysis = useMemo(() => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) {
+      return {
+        allMatches: null as Set<string> | null,
+        directMatches: null as Set<string> | null,
+        feedingTransformers: null as Set<string> | null,
+        feedingLinks: null as Set<string> | null,
+        matchingList: [] as ElectricalNode[]
+      };
+    }
+
+    const term = trimmed.toLowerCase();
+    const cleanTerm = term.replace(/[^a-z0-9\u0590-\u05fe\u0600-\u06ff]/gi, '');
+
+    // 1. Build lookup tables for nodes, parents, extra connections, and roots
+    const nodeMap = new Map<string, ElectricalNode>();
+    const parentMap = new Map<string, string>();
+    const extraParentsMap = new Map<string, string[]>();
+    const rootMap = new Map<string, ElectricalNode>();
+    const transformersByRoot = new Map<string, string[]>();
+
+    const indexTree = (node: ElectricalNode, parentId: string | null, rootNode: ElectricalNode) => {
+      nodeMap.set(node.id, node);
+      if (parentId) parentMap.set(node.id, parentId);
+      if (node.extraConnections && node.extraConnections.length > 0) {
+        extraParentsMap.set(node.id, node.extraConnections);
       }
-      node.children.forEach(traverse);
+      rootMap.set(node.id, rootNode);
+
+      if (isTransformerNode(node)) {
+        const list = transformersByRoot.get(rootNode.id) || [];
+        list.push(node.id);
+        transformersByRoot.set(rootNode.id, list);
+      }
+
+      node.children.forEach(child => indexTree(child, node.id, rootNode));
     };
-    activePage.items.forEach(traverse);
-    return matches;
+
+    activePage.items.forEach(root => indexTree(root, null, root));
+
+    // 2. Test if node matches search query (name, meter number, circuit number, etc.)
+    const checkMatch = (node: ElectricalNode): boolean => {
+      const fields = [
+        node.name,
+        node.componentNumber,
+        node.meterNumber,
+        node.meterSerial,
+        node.multimeterNumber,
+        node.multimeterSerial,
+        node.secondBreakerNumber,
+        node.secondBreakerName,
+        node.model,
+        node.place,
+        node.building,
+        node.floor,
+        node.office,
+        node.description,
+        node.type
+      ];
+
+      for (const field of fields) {
+        if (!field) continue;
+        const valLower = field.toLowerCase();
+        if (valLower.includes(term)) return true;
+        if (cleanTerm && cleanTerm.length >= 2) {
+          const valClean = valLower.replace(/[^a-z0-9\u0590-\u05fe\u0600-\u06ff]/gi, '');
+          if (valClean.includes(cleanTerm)) return true;
+        }
+      }
+      return false;
+    };
+
+    const directMatches = new Set<string>();
+    const matchingList: ElectricalNode[] = [];
+
+    nodeMap.forEach((node, id) => {
+      if (checkMatch(node)) {
+        directMatches.add(id);
+        matchingList.push(node);
+      }
+    });
+
+    if (directMatches.size === 0) {
+      return {
+        allMatches: new Set<string>(),
+        directMatches: new Set<string>(),
+        feedingTransformers: new Set<string>(),
+        feedingLinks: new Set<string>(),
+        matchingList: []
+      };
+    }
+
+    // 3. For each matched node, trace upstream to find the main feeding transformer
+    const feedingTransformers = new Set<string>();
+    const feedingPathNodes = new Set<string>();
+    const feedingLinks = new Set<string>();
+
+    directMatches.forEach(nodeId => {
+      const node = nodeMap.get(nodeId);
+      if (!node) return;
+
+      if (isTransformerNode(node)) {
+        feedingTransformers.add(node.id);
+        return;
+      }
+
+      let foundUpstreamTransformer = false;
+      const visited = new Set<string>([nodeId]);
+      const queue: { currId: string; path: string[] }[] = [{ currId: nodeId, path: [nodeId] }];
+
+      while (queue.length > 0) {
+        const { currId, path } = queue.shift()!;
+        const currNode = nodeMap.get(currId);
+        if (!currNode) continue;
+
+        const upstreamIds: string[] = [];
+        const pId = parentMap.get(currId);
+        if (pId) upstreamIds.push(pId);
+        const extraP = extraParentsMap.get(currId);
+        if (extraP) upstreamIds.push(...extraP);
+
+        for (const upId of upstreamIds) {
+          if (visited.has(upId)) continue;
+          visited.add(upId);
+          const upNode = nodeMap.get(upId);
+          if (!upNode) continue;
+
+          const newPath = [...path, upId];
+          if (isTransformerNode(upNode)) {
+            foundUpstreamTransformer = true;
+            feedingTransformers.add(upNode.id);
+            newPath.forEach(id => feedingPathNodes.add(id));
+            for (let i = 0; i < newPath.length - 1; i++) {
+              feedingLinks.add(`${newPath[i+1]}->${newPath[i]}`);
+            }
+          } else {
+            queue.push({ currId: upId, path: newPath });
+          }
+        }
+      }
+
+      // If no transformer was found in direct ancestors, check the root system
+      if (!foundUpstreamTransformer) {
+        const rootNode = rootMap.get(nodeId);
+        if (rootNode) {
+          if (isTransformerNode(rootNode)) {
+            feedingTransformers.add(rootNode.id);
+            feedingPathNodes.add(rootNode.id);
+          } else {
+            const rootTransformers = transformersByRoot.get(rootNode.id);
+            if (rootTransformers && rootTransformers.length > 0) {
+              rootTransformers.forEach(trId => {
+                feedingTransformers.add(trId);
+                feedingPathNodes.add(trId);
+              });
+            }
+          }
+        }
+      }
+    });
+
+    const allMatches = new Set<string>([
+      ...directMatches,
+      ...feedingTransformers,
+      ...feedingPathNodes
+    ]);
+
+    return {
+      allMatches,
+      directMatches,
+      feedingTransformers,
+      feedingLinks,
+      matchingList
+    };
   }, [activePage.items, searchTerm]);
 
-  const matchingNodesList = useMemo(() => {
-    if (!searchTerm.trim()) return [];
-    const term = searchTerm.toLowerCase();
-    const list: ElectricalNode[] = [];
-    const traverse = (node: ElectricalNode) => {
-      if (
-        (node.name && node.name.toLowerCase().includes(term)) || 
-        (node.model && node.model.toLowerCase().includes(term)) ||
-        (node.componentNumber && node.componentNumber.toLowerCase().includes(term)) ||
-        (node.meterNumber && node.meterNumber.toLowerCase().includes(term)) ||
-        (node.place && node.place.toLowerCase().includes(term)) ||
-        (node.building && node.building.toLowerCase().includes(term)) ||
-        (node.floor && node.floor.toLowerCase().includes(term)) ||
-        (node.office && node.office.toLowerCase().includes(term)) ||
-        (node.description && node.description.toLowerCase().includes(term)) ||
-        node.type.toLowerCase().includes(term)
-      ) {
-        list.push(node);
-      }
-      node.children.forEach(traverse);
-    };
-    activePage.items.forEach(traverse);
-    return list;
-  }, [activePage.items, searchTerm]);
+  const searchMatches = searchAnalysis.allMatches;
+  const searchDirectMatches = searchAnalysis.directMatches;
+  const searchFeedingTransformers = searchAnalysis.feedingTransformers;
+  const searchFeedingLinks = searchAnalysis.feedingLinks;
+  const matchingNodesList = searchAnalysis.matchingList;
 
   const addRecentSearch = useCallback((query: string) => {
     const trimmed = query.trim();
@@ -4551,6 +4702,9 @@ export default function App() {
                     selectedLinkId={selectionMode === 'link' ? selectedNode?.id || null : null}
                     orientation={orientation}
                     searchMatches={searchMatches}
+                    searchDirectMatches={searchDirectMatches}
+                    searchFeedingTransformers={searchFeedingTransformers}
+                    searchFeedingLinks={searchFeedingLinks}
                     isConnectMode={isConnectMode}
                     connectionSourceId={connectionSource?.id || null}
                     isPrintMode={isPrintMode}

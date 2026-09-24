@@ -265,7 +265,8 @@ export const translations = {
         json: "Project Data (JSON)",
         excel: "Spreadsheet (CSV/Excel)",
         pdf: "Vector Document (PDF)",
-        rasterPdf: "Print PDF (300 DPI Ultra-HD)"
+        rasterPdf: "Print PDF (300 DPI Ultra-HD)",
+        cad: "AutoCAD / CAD Drawing (.dxf)"
       },
       desc: {
         svg: "Infinite vector scalability, best for editing and CAD workflows.",
@@ -273,11 +274,13 @@ export const translations = {
         json: "Save the raw project data to backup or import later.",
         excel: "Export component list and father-son data to Excel/CSV.",
         pdf: "Pure vector PDF with infinite zoom & sharp lines, exact 1:1 SVG fidelity.",
-        rasterPdf: "Lossless 300 DPI document, optimal for print shops and commercial plotters."
+        rasterPdf: "Lossless 300 DPI document, optimal for print shops and commercial plotters.",
+        cad: "Universal AutoCAD CAD drawing (DWG/DWF compatible) with layers, wires, and electrical blocks."
       },
       badges: {
         vector: "Vector / SVG Sharpness",
-        print: "300 DPI Lossless"
+        print: "300 DPI Lossless",
+        cad: "AutoCAD / DWG / CAD"
       }
     },
     csvHeaders: {
@@ -1027,7 +1030,8 @@ export const translations = {
         json: "נתוני פרויקט (JSON)",
         excel: "גליון נתונים (CSV/Excel)",
         pdf: "מסמך וקטורי (PDF - איכות SVG)",
-        rasterPdf: "מסמך להדפסה (PDF ב-300 DPI)"
+        rasterPdf: "מסמך להדפסה (PDF ב-300 DPI)",
+        cad: "שרטוט אוטוקאד / CAD (.dxf)"
       },
       desc: {
         svg: "קובץ וקטורי ללא פיקסלים, מעולה להדפסה ועריכה בתוכנות שרטוט.",
@@ -1035,11 +1039,13 @@ export const translations = {
         json: "שמור את נתוני הפרויקט לגיבוי או ייבוא מאוחר יותר.",
         excel: "ייצוא רשימת רכיבים וקשרי אב-בן לאקסל/CSV.",
         pdf: "קובץ PDF וקטורי מלא עם זום אינסופי וקווים חדים זהים ל-SVG.",
-        rasterPdf: "מסמך ללא איבוד איכות (300 DPI) המתאים לדפוס מקצועי."
+        rasterPdf: "מסמך ללא איבוד איכות (300 DPI) המתאים לדפוס מקצועי.",
+        cad: "פורמט שרטוט אוטוקאד אוניברסלי (תואם AutoCAD DWG/DWF) עם שכבות, מוליכים וסמלי חשמל."
       },
       badges: {
         vector: "איכות וקטורית / SVG",
-        print: "300 DPI Lossless"
+        print: "300 DPI Lossless",
+        cad: "AutoCAD / DWG / CAD"
       }
     },
     csvHeaders: {
@@ -1789,7 +1795,8 @@ export const translations = {
         json: "بيانات المشروع (JSON)",
         excel: "جدول بيانات (CSV/Excel)",
         pdf: "مستند فيكتور متجهات (PDF - بجودة SVG)",
-        rasterPdf: "مستند للطباعة (PDF بدقة 300 DPI)"
+        rasterPdf: "مستند للطباعة (PDF بدقة 300 DPI)",
+        cad: "رسم أوتوكاد / CAD (.dxf)"
       },
       desc: {
         svg: "أعلى جودة متجهات قابلة للتكبير اللانهائي دون أي بكسلة، ممتاز للتحرير وCAD.",
@@ -1797,11 +1804,13 @@ export const translations = {
         json: "حفظ بيانات المشروع للنسخ الاحتياطي أو الاستيراد لاحقًا.",
         excel: "تصدير قائمة المكونات وروابط الآباء والأبناء إلى Excel/CSV.",
         pdf: "مستند PDF متجهات أصلي بجودة SVG الكاملة وزووم غير محدود وخطوط متناهية الدقة.",
-        rasterPdf: "مستند PDF بدون فقدان للجودة (300 DPI) مثالي للمطابع ومخططات البلوتر."
+        rasterPdf: "مستند PDF بدون فقدان للجودة (300 DPI) مثالي للمطابع ومخططات البلوتر.",
+        cad: "تنسيق رسم كاد أوتوكاد عام (متوافق مع DWG/DWF) يتضمن الطبقات، الكابلات، ورموز الكهرباء."
       },
       badges: {
         vector: "فيكتور / جودة SVG",
-        print: "300 DPI Lossless"
+        print: "300 DPI Lossless",
+        cad: "AutoCAD / DWG / CAD"
       }
     },
     csvHeaders: {

@@ -23,6 +23,9 @@ interface DiagramProps {
   selectedLinkId: string | null;
   orientation: DiagramOrientation;
   searchMatches: Set<string> | null;
+  searchDirectMatches?: Set<string> | null;
+  searchFeedingTransformers?: Set<string> | null;
+  searchFeedingLinks?: Set<string> | null;
   isConnectMode?: boolean;
   connectionSourceId?: string | null;
   isPrintMode?: boolean;
@@ -225,6 +228,9 @@ export const Diagram: React.FC<DiagramProps> = ({
   selectedLinkId,
   orientation,
   searchMatches,
+  searchDirectMatches,
+  searchFeedingTransformers,
+  searchFeedingLinks,
   isConnectMode = false,
   connectionSourceId = null,
   isPrintMode = false,
@@ -410,6 +416,34 @@ export const Diagram: React.FC<DiagramProps> = ({
     feMerge.append('feMergeNode').attr('in', 'coloredBlur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
+    // Glowing drop-shadow for direct search matches (cyan glow)
+    const searchGlow = defs.append('filter')
+      .attr('id', 'search-glow')
+      .attr('x', '-50%')
+      .attr('y', '-50%')
+      .attr('width', '200%')
+      .attr('height', '200%');
+    searchGlow.append('feDropShadow')
+      .attr('dx', 0)
+      .attr('dy', 0)
+      .attr('stdDeviation', 6)
+      .attr('flood-color', '#38bdf8')
+      .attr('flood-opacity', 0.85);
+
+    // Glowing drop-shadow for feeding transformer (golden amber glow)
+    const transformerGlow = defs.append('filter')
+      .attr('id', 'transformer-search-glow')
+      .attr('x', '-50%')
+      .attr('y', '-50%')
+      .attr('width', '200%')
+      .attr('height', '200%');
+    transformerGlow.append('feDropShadow')
+      .attr('dx', 0)
+      .attr('dy', 0)
+      .attr('stdDeviation', 8)
+      .attr('flood-color', '#f59e0b')
+      .attr('flood-opacity', 0.95);
+
     svg
       .style('background-color', bgColor)
       .style('background-image', 'url(#dot-pattern)');
@@ -537,7 +571,18 @@ export const Diagram: React.FC<DiagramProps> = ({
     const root = d3.hierarchy<ElectricalNode>(virtualRootData);
 
     root.descendants().forEach((d: any) => {
-      if (d.data.isCollapsed && d.children) {
+      const hasSearchMatchDescendant = Boolean(
+        searchMatches &&
+        searchMatches.size > 0 &&
+        d.children?.some((child: any) => {
+          const hasMatch = (n: any): boolean => {
+            if (searchMatches.has(n.data.id)) return true;
+            return n.children?.some(hasMatch) || false;
+          };
+          return hasMatch(child);
+        })
+      );
+      if (d.data.isCollapsed && d.children && !hasSearchMatchDescendant) {
         d._children = d.children;
         d.children = null;
       }
@@ -1474,29 +1519,45 @@ export const Diagram: React.FC<DiagramProps> = ({
             COMPONENT_CONFIG[d.target.data.type]?.color ||
             linkColor;
           const isSelected = d.target.data.id === selectedLinkId;
+          const isFeedingPath = Boolean(
+            searchFeedingLinks &&
+            (searchFeedingLinks.has(`${d.source.data.id}->${d.target.data.id}`) ||
+             searchFeedingLinks.has(`${d.target.data.id}->${d.source.data.id}`))
+          );
 
           if (className === 'link-extra') {
             d3.select(this)
-              .attr('stroke', isDark ? '#f59e0b' : '#d97706')
-              .attr('stroke-width', 2.5)
-              .attr('stroke-dasharray', '8,5')
+              .attr('stroke', isFeedingPath ? '#f59e0b' : (isDark ? '#f59e0b' : '#d97706'))
+              .attr('stroke-width', isFeedingPath ? 3.5 : 2.5)
+              .attr('stroke-dasharray', isFeedingPath ? 'none' : '8,5')
               .attr('marker-end', 'url(#arrow-end-extra)')
-              .attr('opacity', 0.8);
+              .style(
+                'filter',
+                isFeedingPath ? 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.7))' : 'none'
+              )
+              .attr('opacity', () => {
+                if (!searchMatches || searchMatches.size === 0) return 0.8;
+                if (isFeedingPath) return 1;
+                const isMatch = searchMatches.has(d.source.data.id) || searchMatches.has(d.target.data.id);
+                return isMatch ? 0.7 : 0.08;
+              });
           } else {
             d3.select(this)
-              .attr('stroke', stroke)
-              .attr('stroke-width', isSelected ? 4 : 2.5)
+              .attr('stroke', isFeedingPath ? '#f59e0b' : stroke)
+              .attr('stroke-width', isFeedingPath ? 3.5 : (isSelected ? 4 : 2.5))
               .attr(
                 'stroke-dasharray',
-                style.lineStyle === 'dashed'
-                  ? '8,4'
-                  : style.lineStyle === 'dotted'
-                  ? '2,4'
-                  : style.lineStyle === 'dash-dot'
-                  ? '8,4,2,4'
-                  : style.lineStyle === 'long-dash'
-                  ? '16,4'
-                  : 'none'
+                isFeedingPath ? 'none' : (
+                  style.lineStyle === 'dashed'
+                    ? '8,4'
+                    : style.lineStyle === 'dotted'
+                    ? '2,4'
+                    : style.lineStyle === 'dash-dot'
+                    ? '8,4,2,4'
+                    : style.lineStyle === 'long-dash'
+                    ? '16,4'
+                    : 'none'
+                )
               )
               .attr(
                 'marker-start',
@@ -1514,16 +1575,17 @@ export const Diagram: React.FC<DiagramProps> = ({
               )
               .style(
                 'filter',
-                isSelected
-                  ? 'drop-shadow(0 0 3px rgba(0, 0, 0, 0.3))'
-                  : 'none'
+                isFeedingPath
+                  ? 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.7))'
+                  : (isSelected ? 'drop-shadow(0 0 3px rgba(0, 0, 0, 0.3))' : 'none')
               )
               .attr('opacity', () => {
-                if (!searchMatches) return 0.8;
+                if (!searchMatches || searchMatches.size === 0) return 0.8;
+                if (isFeedingPath) return 1;
                 const isMatch =
                   searchMatches.has(d.source.data.id) ||
                   searchMatches.has(d.target.data.id);
-                return isMatch ? 1 : 0.1;
+                return isMatch ? 0.7 : 0.08;
               });
           }
         });
@@ -1707,6 +1769,14 @@ export const Diagram: React.FC<DiagramProps> = ({
               const matches = checkNodeMatchesFilters(d.data, activeFilters);
               if (matches) return 'url(#filter-glow)';
           }
+          if (searchMatches && searchMatches.size > 0) {
+              if (searchFeedingTransformers?.has(d.data.id)) {
+                  return 'url(#transformer-search-glow)';
+              }
+              if (searchDirectMatches?.has(d.data.id)) {
+                  return 'url(#search-glow)';
+              }
+          }
           return null;
       })
       .style('opacity', (d) => {
@@ -1715,11 +1785,10 @@ export const Diagram: React.FC<DiagramProps> = ({
             return matches ? 1 : 0.2;
         }
 
-        if (!searchMatches) return 1;
-        if (searchMatches.has(d.data.id)) return 1;
-        if (d.parent && d.parent.data.id !== 'virtual-root' && searchMatches.has(d.parent.data.id)) return 1;
-        if (d.children && d.children.some((c: any) => searchMatches.has(c.data.id))) return 1;
-        return 0.2;
+        if (!searchMatches || searchMatches.size === 0) return 1;
+        if (searchDirectMatches?.has(d.data.id) || searchFeedingTransformers?.has(d.data.id)) return 1;
+        if (searchMatches.has(d.data.id)) return 0.85;
+        return 0.15;
       });
 
     nodesSelection.each(function (d: any) {
@@ -1744,11 +1813,16 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('stroke', (dAny: any) => {
             if (dAny.data.id === connectionSourceId) return '#f59e0b';
             if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id)) return '#3b82f6';
+            if (searchFeedingTransformers?.has(dAny.data.id)) return '#f59e0b';
+            if (searchDirectMatches?.has(dAny.data.id)) return '#38bdf8';
             return dAny.data.type === ComponentType.SYSTEM_ROOT ? '#64748b' : secondaryTextColor;
           })
-          .attr('stroke-width', (dAny: any) =>
-            dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) ? 3 : 1.5
-          );
+          .attr('stroke-width', (dAny: any) => {
+            if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) || dAny.data.id === connectionSourceId) return 3;
+            if (searchFeedingTransformers?.has(dAny.data.id)) return 4;
+            if (searchDirectMatches?.has(dAny.data.id)) return 3.5;
+            return 1.5;
+          });
       } else if (shape === 'square') {
         nodeG.append('rect')
           .attr('class', 'node-bg')
@@ -1761,11 +1835,16 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('stroke', (dAny: any) => {
             if (dAny.data.id === connectionSourceId) return '#f59e0b';
             if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id)) return '#3b82f6';
+            if (searchFeedingTransformers?.has(dAny.data.id)) return '#f59e0b';
+            if (searchDirectMatches?.has(dAny.data.id)) return '#38bdf8';
             return secondaryTextColor;
           })
-          .attr('stroke-width', (dAny: any) =>
-            dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) ? 3 : 1.5
-          );
+          .attr('stroke-width', (dAny: any) => {
+            if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) || dAny.data.id === connectionSourceId) return 3;
+            if (searchFeedingTransformers?.has(dAny.data.id)) return 4;
+            if (searchDirectMatches?.has(dAny.data.id)) return 3.5;
+            return 1.5;
+          });
       } else {
         nodeG.append('rect')
           .attr('class', 'node-bg')
@@ -1778,11 +1857,16 @@ export const Diagram: React.FC<DiagramProps> = ({
           .attr('stroke', (dAny: any) => {
             if (dAny.data.id === connectionSourceId) return '#f59e0b';
             if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id)) return '#3b82f6';
+            if (searchFeedingTransformers?.has(dAny.data.id)) return '#f59e0b';
+            if (searchDirectMatches?.has(dAny.data.id)) return '#38bdf8';
             return dAny.data.type === ComponentType.SYSTEM_ROOT ? '#64748b' : secondaryTextColor;
           })
-          .attr('stroke-width', (dAny: any) =>
-            dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) || dAny.data.id === connectionSourceId ? 3 : 1.5
-          );
+          .attr('stroke-width', (dAny: any) => {
+            if (dAny.data.id === selectedNodeId || multiSelection.has(dAny.data.id) || dAny.data.id === connectionSourceId) return 3;
+            if (searchFeedingTransformers?.has(dAny.data.id)) return 4;
+            if (searchDirectMatches?.has(dAny.data.id)) return 3.5;
+            return 1.5;
+          });
 
         nodeG.append('path')
           .attr('d', (dAny: any) => {
@@ -2218,6 +2302,53 @@ export const Diagram: React.FC<DiagramProps> = ({
 
             yOffset += row.rowHeight + 5;
         });
+    });
+
+    // Floating Highlight Banner for Search Results & Main Feeding Transformer
+    nodesSelection.each(function (d: any) {
+      if (!searchMatches || searchMatches.size === 0) return;
+      const isFeedingTransformer = searchFeedingTransformers?.has(d.data.id);
+      const isDirectMatch = searchDirectMatches?.has(d.data.id);
+      if (!isFeedingTransformer && !isDirectMatch) return;
+
+      const nodeG = d3.select(this as SVGGElement);
+      const box = getRectBox(d);
+      const badgeY = (d.data.shape === 'circle' || d.data.shape === 'square') ? -52 : box.y - 14;
+
+      const label = isFeedingTransformer
+        ? (language === 'he' ? '⚡ שנאי מזין ראשי' : language === 'ar' ? '⚡ المحول المغذي الرئيسي' : '⚡ Main Feeding Transformer')
+        : (language === 'he' ? '🔍 תוצאת חיפוש' : language === 'ar' ? '🔍 نتيجة البحث' : '🔍 Search Match');
+
+      const pillBg = isFeedingTransformer ? '#78350f' : '#0369a1';
+      const pillBorder = isFeedingTransformer ? '#fbbf24' : '#38bdf8';
+      const textColor = '#ffffff';
+
+      const pillWidth = Math.max(90, label.length * 6.5 + 26);
+
+      const bannerG = nodeG.append('g')
+        .attr('class', 'search-highlight-banner pointer-events-none')
+        .attr('transform', `translate(0, ${badgeY})`);
+
+      bannerG.append('rect')
+        .attr('x', -pillWidth / 2)
+        .attr('y', -10)
+        .attr('width', pillWidth)
+        .attr('height', 20)
+        .attr('rx', 10)
+        .attr('fill', pillBg)
+        .attr('stroke', pillBorder)
+        .attr('stroke-width', 1.5)
+        .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))');
+
+      bannerG.append('text')
+        .attr('x', 0)
+        .attr('y', 4)
+        .attr('text-anchor', 'middle')
+        .style('font-family', MULTILINGUAL_FONT_FAMILY)
+        .style('font-size', '10.5px')
+        .style('font-weight', '700')
+        .style('fill', textColor)
+        .text(label);
     });
 
     linksToRender.forEach((d: any) => {
@@ -2808,6 +2939,7 @@ export const Diagram: React.FC<DiagramProps> = ({
 
   }, [
     data, dimensions, onNodeClick, onLinkClick, selectedNodeId, selectedLinkId, orientation, searchMatches,
+    searchDirectMatches, searchFeedingTransformers, searchFeedingLinks,
     isConnectMode, connectionSourceId, t, language, theme, onBackgroundClick, multiSelection, isPrintMode,
     activeProject, onEditPrintSettings, onAddRoot, onAddGenerator, onDuplicateChild, onDeleteNode,
     onToggleCollapse, onGroupNode, onNodeMove, onDisconnectLink, isCleanView, activeFilters,

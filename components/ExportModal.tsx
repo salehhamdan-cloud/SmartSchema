@@ -4,7 +4,7 @@ import React from 'react';
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf' | 'raster-pdf') => void;
+  onExport: (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf' | 'raster-pdf' | 'cad') => void;
   onOpenShare?: () => void;
   t: any;
 }
@@ -116,7 +116,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, onExp
             <span className="material-icons-round text-slate-500 group-hover:text-rose-400">arrow_forward</span>
           </button>
 
-          {/* 4. PNG Image */}
+          {/* 4. AutoCAD / CAD Drawing (.dxf / DWG / DWF) */}
+          <button 
+            onClick={() => onExport('cad')}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-cyan-500/50 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="material-icons-round text-cyan-400 text-2xl">architecture</span>
+              <div className="text-left">
+                <div className="text-sm font-bold text-slate-200 group-hover:text-white flex items-center gap-2">
+                  <span>{t.export.formats.cad || "AutoCAD / CAD Drawing (.dxf)"}</span>
+                  <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.5 rounded font-semibold uppercase">
+                    {t.export.badges?.cad || "AutoCAD / DWG / CAD"}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400">{t.export.desc.cad || "Universal AutoCAD CAD drawing (DWG/DWF compatible) with layers, wires, and electrical blocks."}</div>
+              </div>
+            </div>
+            <span className="material-icons-round text-slate-500 group-hover:text-cyan-400">arrow_forward</span>
+          </button>
+
+          {/* 5. PNG Image */}
           <button 
             onClick={() => onExport('png')}
             className="w-full flex items-center justify-between p-4 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-purple-500/50 transition-all group"
