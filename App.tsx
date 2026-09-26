@@ -2398,6 +2398,24 @@ export default function App() {
       triggerDownload(dataStr, `${safeName}_ProjectBackup.json`);
   };
 
+  // Helper to determine if a node is or represents a transformer
+  const isTransformerNode = (node: ElectricalNode): boolean => {
+    if (node.type === ComponentType.TRANSFORMER) return true;
+    const n = (node.name || '').toLowerCase();
+    const m = (node.model || '').toLowerCase();
+    const d = (node.description || '').toLowerCase();
+    return (
+      n.includes('transformer') ||
+      n.includes('שנאי') ||
+      n.includes('محول') ||
+      n.startsWith('tr-') ||
+      n.startsWith('tr ') ||
+      m.includes('transformer') ||
+      d.includes('transformer') ||
+      d.includes('שנאי')
+    );
+  };
+
   const handleExport = async (format: 'svg' | 'png' | 'json' | 'excel' | 'pdf' | 'raster-pdf') => {
       const safeProjectName = activeProject.name.trim().replace(/[^\w\u0590-\u05FF\u0600-\u06FF\s-]/g, '_');
       const safePageName = activePage.name.trim().replace(/[^\w\u0590-\u05FF\u0600-\u06FF\s-]/g, '_');
@@ -2411,320 +2429,216 @@ export default function App() {
       }
       
       if (format === 'excel') {
+          // 1. Build lookup tables for upstream tracing to identify feeding transformers
+          const nodeMap = new Map<string, ElectricalNode>();
+          const parentMap = new Map<string, string>();
+          const extraParentsMap = new Map<string, string[]>();
+          const rootMap = new Map<string, ElectricalNode>();
+          const transformersByRoot = new Map<string, string[]>();
+
+          const indexAllNodes = (node: ElectricalNode, parentId: string | null, rootNode: ElectricalNode) => {
+              nodeMap.set(node.id, node);
+              if (parentId) parentMap.set(node.id, parentId);
+              if (node.extraConnections && node.extraConnections.length > 0) {
+                  extraParentsMap.set(node.id, node.extraConnections);
+              }
+              rootMap.set(node.id, rootNode);
+
+              if (isTransformerNode(node)) {
+                  const list = transformersByRoot.get(rootNode.id) || [];
+                  list.push(node.id);
+                  transformersByRoot.set(rootNode.id, list);
+              }
+
+              if (node.children && node.children.length > 0) {
+                  node.children.forEach(child => indexAllNodes(child, node.id, rootNode));
+              }
+          };
+
+          activePage.items.forEach(root => indexAllNodes(root, null, root));
+
+          interface SourceTransformerInfo {
+              name: string;
+              number: string;
+          }
+
+          const getTransformerInfo = (trNode: ElectricalNode): SourceTransformerInfo => {
+              const num = trNode.componentNumber && trNode.componentNumber.trim()
+                  ? trNode.componentNumber.trim()
+                  : (trNode.name.match(/(?:transformer|tr|שנאי|محول)[\s#_-]*([0-9A-Za-z-]+)/i)?.[1] || '-');
+              return {
+                  name: trNode.name,
+                  number: num
+              };
+          };
+
+          // Upstream tracing function to find the source transformer feeding a node
+          const findSourceTransformer = (startNode: ElectricalNode): SourceTransformerInfo => {
+              if (isTransformerNode(startNode)) {
+                  return getTransformerInfo(startNode);
+              }
+
+              const visited = new Set<string>([startNode.id]);
+              const queue: string[] = [startNode.id];
+
+              while (queue.length > 0) {
+                  const currId = queue.shift()!;
+                  const upIds: string[] = [];
+                  const pId = parentMap.get(currId);
+                  if (pId) upIds.push(pId);
+                  const extraP = extraParentsMap.get(currId);
+                  if (extraP) upIds.push(...extraP);
+
+                  for (const upId of upIds) {
+                      if (visited.has(upId)) continue;
+                      visited.add(upId);
+                      const upNode = nodeMap.get(upId);
+                      if (upNode) {
+                          if (isTransformerNode(upNode)) {
+                              return getTransformerInfo(upNode);
+                          }
+                          queue.push(upId);
+                      }
+                  }
+              }
+
+              // Check root node or transformers under the same root
+              const rootNode = rootMap.get(startNode.id);
+              if (rootNode) {
+                  if (isTransformerNode(rootNode)) {
+                      return getTransformerInfo(rootNode);
+                  }
+                  const rootTransformers = transformersByRoot.get(rootNode.id);
+                  if (rootTransformers && rootTransformers.length > 0) {
+                      const trNode = nodeMap.get(rootTransformers[0]);
+                      if (trNode) return getTransformerInfo(trNode);
+                  }
+              }
+
+              return { name: '-', number: '-' };
+          };
+
+          // 2. Flatten nodes in hierarchical order
           interface HierarchyItem {
               node: ElectricalNode;
               parent: ElectricalNode | null;
               depth: number;
-              path: string[];
               branchIndex: number;
           }
 
           const flattenedTree: HierarchyItem[] = [];
-          const parentsMap = new Map<string, ElectricalNode>();
 
-          const traverse = (node: ElectricalNode, parent: ElectricalNode | null, depth: number, currentPath: string[], branchIdx: number) => {
-              const fullPath = [...currentPath, node.name];
+          const traverse = (node: ElectricalNode, parent: ElectricalNode | null, depth: number, branchIdx: number) => {
               flattenedTree.push({
                   node,
                   parent,
                   depth,
-                  path: fullPath,
                   branchIndex: branchIdx
               });
 
               if (node.children && node.children.length > 0) {
-                  parentsMap.set(node.id, node);
                   node.children.forEach((child, idx) => {
-                      traverse(child, node, depth + 1, fullPath, idx + 1);
+                      traverse(child, node, depth + 1, idx + 1);
                   });
               }
           };
 
           activePage.items.forEach((root, rIdx) => {
-              traverse(root, null, 0, [], rIdx + 1);
+              traverse(root, null, 0, rIdx + 1);
           });
 
-          // 1. Sheet 1: Main Inventory with rich Father-to-Son linkages & Tree visualization
-          const sheet1Data: any[] = [];
-          
+          // 3. Filter check (if any active filters are applied in diagram)
+          const checkFilterMatch = (node: ElectricalNode): boolean => {
+              if (!activeFilters || activeFilters.size === 0) return true;
+              if (activeFilters.has('meter') && node.hasMeter) return true;
+              if (activeFilters.has('generator') && node.hasGeneratorConnection) return true;
+              if (activeFilters.has('no-meter') && node.isExcludedFromMeter) return true;
+              if (activeFilters.has('ac') && node.isAirConditioning) return true;
+              if ((activeFilters.has('airBreaker') || activeFilters.has('isAirBreaker') || activeFilters.has('air-breaker') || activeFilters.has('acb')) && node.isAirBreaker) return true;
+              if (activeFilters.has('reserved') && node.isReserved) return true;
+              if (activeFilters.has('essential') && node.isEssential) return true;
+              if (activeFilters.has('non-essential') && node.isEssential === false) return true;
+              if ((activeFilters.has('multimeter') || activeFilters.has('hasMultimeter')) && node.hasMultimeter) return true;
+              if ((activeFilters.has('publicBoard') || activeFilters.has('public-board') || activeFilters.has('isPublicBoard')) && node.isPublicBoard) return true;
+              if ((activeFilters.has('transferSwitch') || activeFilters.has('transfer-switch') || activeFilters.has('hasTransferSwitch') || activeFilters.has('ats')) && node.hasTransferSwitch) return true;
+              if (activeFilters.has(node.type)) return true;
+
+              for (const filter of activeFilters) {
+                  if (filter.startsWith('bld:') && node.building && node.building.trim().toLowerCase() === filter.slice(4).trim().toLowerCase()) return true;
+                  if (filter.startsWith('flr:') && node.floor && node.floor.trim().toLowerCase() === filter.slice(4).trim().toLowerCase()) return true;
+                  if (filter.startsWith('off:') && node.office && node.office.trim().toLowerCase() === filter.slice(4).trim().toLowerCase()) return true;
+                  if (filter.startsWith('plc:') && node.place && node.place.trim().toLowerCase() === filter.slice(4).trim().toLowerCase()) return true;
+              }
+              return false;
+          };
+
+          // 4. Build simple, clean tabular data
+          const excelRows: Record<string, any>[] = [];
+
           flattenedTree.forEach(item => {
-              const { node, parent, depth, path } = item;
-              
-              const matchesFilter = 
-                  activeFilters.size === 0 ||
-                  (activeFilters.has('meter') && node.hasMeter) || 
-                  (activeFilters.has('generator') && node.hasGeneratorConnection) ||
-                  (activeFilters.has('no-meter') && node.isExcludedFromMeter) ||
-                  (activeFilters.has('ac') && node.isAirConditioning) ||
-                  (activeFilters.has('reserved') && node.isReserved) ||
-                  (activeFilters.has('essential') && node.isEssential) ||
-                  (activeFilters.has('non-essential') && node.isEssential === false) ||
-                  (activeFilters.has('multimeter') && node.hasMultimeter) ||
-                  (activeFilters.has('publicBoard') && node.isPublicBoard) ||
-                  (activeFilters.has('transferSwitch') && node.hasTransferSwitch) ||
-                  (activeFilters.has(node.type));
+              const { node, parent } = item;
+              if (!checkFilterMatch(node)) return;
 
-              if (!matchesFilter) return;
-
+              const sourceTr = findSourceTransformer(node);
               const parentName = parent ? parent.name : (t.csvHeaders.rootSource || 'Utility Grid (Root)');
-              const parentType = parent ? (t.componentTypes[parent.type] || parent.type) : (t.csvHeaders.na || 'N/A');
-              const parentNum = parent ? (parent.componentNumber || '') : '';
               const feederCable = node.connectionStyle?.cableSize || '-';
-              
-              let treeDisplay = '';
-              if (depth === 0) {
-                  treeDisplay = `⚡ [${t.csvHeaders.rootSource || 'Root'}] ${node.name}`;
-              } else {
-                  const isLeaf = !node.children || node.children.length === 0;
-                  const branchIcon = isLeaf ? '🔌 ' : '📂 ';
-                  treeDisplay = `${'   '.repeat(depth)}└── ${branchIcon}${node.name}`;
-              }
-
-              const specialFlags: string[] = [];
-              if (node.isAirConditioning) specialFlags.push(t.legend.ac || 'A/C Breaker');
-              if (node.isReserved) specialFlags.push(t.legend.reserved || 'Reserved');
-              if (node.isExcludedFromMeter) specialFlags.push(t.legend.noMeter || 'No Meter');
-              if (node.hasMultimeter) {
-                  const mmDetails = [node.multimeterModel, node.multimeterSerial].filter(Boolean).join(' / ');
-                  specialFlags.push(mmDetails ? `${t.legend.multimeter || 'Multimeter'} (${mmDetails})` : (t.legend.multimeter || 'Multimeter'));
-              }
-              if (node.isPublicBoard) specialFlags.push(t.legend.publicBoard || 'Public Board');
-              if (node.hasTransferSwitch) {
-                  const atsDetails = [
-                    node.secondBreakerName,
-                    node.secondBreakerNumber ? `#${node.secondBreakerNumber}` : '',
-                    node.secondBreakerAmps !== undefined ? `${node.secondBreakerAmps}A` : ''
-                  ].filter(Boolean).join(' • ');
-                  specialFlags.push(atsDetails ? `${t.legend.transferSwitch || 'ATS'} (${atsDetails})` : (t.legend.transferSwitch || 'ATS'));
-              }
+              const branchNumDisplay = item.branchIndex > 0 ? `#${item.branchIndex}` : (node.componentNumber ? `#${node.componentNumber}` : '-');
+              const meterDisplay = node.meterSerial || node.meterNumber || (node.hasMeter ? (t.csvHeaders.yes || 'Yes') : '-');
+              const roomPlaceDisplay = [node.place, node.office].filter(Boolean).join(' - ');
 
               const row: Record<string, any> = {
-                  [t.csvHeaders.hierarchyTree]: treeDisplay,
-                  [t.csvHeaders.fatherName]: parentName,
-                  [t.csvHeaders.fatherType]: parentType,
-                  [t.csvHeaders.sonName]: node.name,
-                  [t.csvHeaders.sonType]: t.componentTypes[node.type] || node.type,
-                  [t.csvHeaders.branchNum]: item.branchIndex > 0 ? `#${item.branchIndex}` : '-',
-                  [t.csvHeaders.feederCable]: feederCable,
-                  [t.csvHeaders.level]: `${t.csvHeaders.level} ${depth}`,
-                  [t.csvHeaders.amps]: node.amps !== undefined && node.amps !== null ? node.amps : '',
-                  [t.csvHeaders.voltage]: node.voltage !== undefined && node.voltage !== null ? node.voltage : '',
-                  [t.csvHeaders.kva]: node.kva !== undefined && node.kva !== null ? node.kva : '',
-                  [t.csvHeaders.calcAmps]: node.calculatedLoad ? Number(node.calculatedLoad.amps.toFixed(1)) : '',
-                  [t.csvHeaders.calcKva]: node.calculatedLoad ? Number(node.calculatedLoad.kva.toFixed(1)) : '',
-                  [t.csvHeaders.directSonsCount]: node.children ? node.children.length : 0,
-                  [t.csvHeaders.directSonsList]: node.children && node.children.length > 0 ? node.children.map(c => c.name).join(', ') : '-',
-                  [t.csvHeaders.upstreamLineage]: path.join(' ➔ '),
-                  [t.csvHeaders.isEssential]: node.isEssential ? (t.csvHeaders.essential || t.csvHeaders.yes) : (t.csvHeaders.nonEssential || t.csvHeaders.no),
-                  [t.csvHeaders.hasMeter]: node.hasMeter ? t.csvHeaders.yes : t.csvHeaders.no,
-                  [t.csvHeaders.meterNum]: node.meterSerial || node.meterNumber || '',
-                  [t.csvHeaders.meterModel || 'Meter Model']: node.meterModel || '',
-                  [t.csvHeaders.meterSerial || 'Meter Serial #']: node.meterSerial || node.meterNumber || '',
-                  [t.csvHeaders.hasMultimeter || 'Has Multimeter']: node.hasMultimeter ? t.csvHeaders.yes : t.csvHeaders.no,
-                  [t.csvHeaders.multimeterModel || 'Multimeter Model']: node.multimeterModel || '',
-                  [t.csvHeaders.multimeterSerial || 'Multimeter Serial #']: node.multimeterSerial || '',
-                  [t.csvHeaders.hasTransferSwitch || 'Transfer Switch (ATS)']: node.hasTransferSwitch ? t.csvHeaders.yes : t.csvHeaders.no,
-                  [t.csvHeaders.secondBreakerName || 'Second Breaker Name']: node.secondBreakerName || '',
-                  [t.csvHeaders.secondBreakerNumber || 'Second Breaker #']: node.secondBreakerNumber || '',
-                  [t.csvHeaders.secondBreakerAmps || 'Second Breaker Current (A)']: node.secondBreakerAmps !== undefined && node.secondBreakerAmps !== null ? node.secondBreakerAmps : '',
-                  [t.csvHeaders.generatorBackup]: node.hasGeneratorConnection ? (node.generatorName || t.csvHeaders.yes) : t.csvHeaders.no,
-                  [t.csvHeaders.specialFeatures]: specialFlags.length > 0 ? specialFlags.join(', ') : '-',
-                  [t.csvHeaders.model]: node.model || '',
-                  [t.csvHeaders.sonNum]: node.componentNumber || '',
-                  [t.csvHeaders.fatherNum]: parentNum,
-                  [t.csvHeaders.building]: node.building || '',
-                  [t.csvHeaders.floor]: node.floor || '',
-                  [t.csvHeaders.office]: node.office || '',
-                  [t.csvHeaders.place]: node.place || '',
-                  [t.csvHeaders.description]: node.description || ''
+                  [t.csvHeaders.name || 'Name']: node.name,
+                  [t.csvHeaders.type || 'Type']: t.componentTypes[node.type] || node.type,
+                  [t.csvHeaders.sourceTransformer || 'Source Transformer']: sourceTr.name,
+                  [t.csvHeaders.transformerNumber || 'Transformer #']: sourceTr.number,
+                  [t.csvHeaders.parent || 'Feeding Parent']: parentName,
+                  [t.csvHeaders.branchNum || 'Circuit #']: branchNumDisplay,
+                  [t.csvHeaders.feederCable || 'Feeder Cable']: feederCable,
+                  [t.csvHeaders.amps || 'Amps (A)']: node.amps !== undefined && node.amps !== null ? node.amps : '',
+                  [t.csvHeaders.voltage || 'Voltage (V)']: node.voltage !== undefined && node.voltage !== null ? node.voltage : '',
+                  [t.csvHeaders.kva || 'Power (kVA)']: node.kva !== undefined && node.kva !== null ? node.kva : '',
+                  [t.csvHeaders.meterNum || 'Meter #']: meterDisplay,
+                  [t.csvHeaders.isEssential || 'Essentiality']: node.isEssential ? (t.csvHeaders.essential || t.csvHeaders.yes || 'Essential') : (t.csvHeaders.nonEssential || t.csvHeaders.no || 'Normal'),
+                  [t.csvHeaders.building || 'Building']: node.building || '',
+                  [t.csvHeaders.floor || 'Floor']: node.floor || '',
+                  [t.csvHeaders.place || 'Room / Place']: roomPlaceDisplay || '',
+                  [t.csvHeaders.description || 'Description / Notes']: node.description || ''
               };
 
-              sheet1Data.push(row);
-          });
-
-          // 2. Sheet 2: Sections Divided by Father (Feeders & Branch Outlets)
-          const sheet2AOA: any[][] = [];
-          
-          sheet2AOA.push([
-              `${t.csvHeaders.dividedByFatherSheet.toUpperCase()} - ${activeProject.name} (${activePage.name})`
-          ]);
-          sheet2AOA.push([]);
-
-          // Include roots as top-level suppliers and all parents
-          const parentNodesToDisplay: ElectricalNode[] = [];
-          activePage.items.forEach(root => {
-              if (!parentNodesToDisplay.some(p => p.id === root.id)) {
-                  parentNodesToDisplay.push(root);
-              }
-          });
-          parentsMap.forEach(parent => {
-              if (!parentNodesToDisplay.some(p => p.id === parent.id)) {
-                  parentNodesToDisplay.push(parent);
-              }
-          });
-
-          parentNodesToDisplay.forEach((father, fIdx) => {
-              const fatherLocation = [father.building, father.floor, father.office, father.place].filter(Boolean).join(' / ');
-              const fatherTypeLabel = t.componentTypes[father.type] || father.type;
-              
-              // Section Header Banner for this Father Node
-              sheet2AOA.push([
-                  `🔷 ${t.csvHeaders.fatherName}: ${father.name} | ${t.csvHeaders.fatherType}: ${fatherTypeLabel} | ${t.csvHeaders.amps}: ${father.amps || '-'}A | ${t.csvHeaders.directSonsCount}: ${father.children.length} | ${t.csvHeaders.place}: ${fatherLocation || '-'}`
-              ]);
-
-              // Table Column Headers for its Connected Sons
-              sheet2AOA.push([
-                  t.csvHeaders.branchNum,
-                  t.csvHeaders.sonName,
-                  t.csvHeaders.sonType,
-                  t.csvHeaders.feederCable,
-                  t.csvHeaders.amps,
-                  t.csvHeaders.voltage,
-                  t.csvHeaders.kva,
-                  t.csvHeaders.directSonsCount,
-                  t.csvHeaders.directSonsList,
-                  t.csvHeaders.isEssential,
-                  t.csvHeaders.generatorBackup,
-                  t.csvHeaders.place,
-                  t.csvHeaders.description
-              ]);
-
-              if (father.children.length === 0) {
-                  sheet2AOA.push([
-                      '-',
-                      t.inputPanel.noConnections || 'No downstream connections',
-                      '-', '-', '-', '-', '-', '0', '-', '-', '-', '-', '-'
-                  ]);
-              } else {
-                  father.children.forEach((son, sIdx) => {
-                      const sonLocation = [son.building, son.floor, son.office, son.place].filter(Boolean).join(' / ');
-                      sheet2AOA.push([
-                          `#${sIdx + 1}`,
-                          son.name,
-                          t.componentTypes[son.type] || son.type,
-                          son.connectionStyle?.cableSize || '-',
-                          son.amps !== undefined && son.amps !== null ? son.amps : '',
-                          son.voltage !== undefined && son.voltage !== null ? son.voltage : '',
-                          son.kva !== undefined && son.kva !== null ? son.kva : '',
-                          son.children ? son.children.length : 0,
-                          son.children && son.children.length > 0 ? son.children.map(c => c.name).join(', ') : '-',
-                          son.isEssential ? (t.csvHeaders.essential || t.csvHeaders.yes) : (t.csvHeaders.nonEssential || t.csvHeaders.no),
-                          son.hasGeneratorConnection ? (son.generatorName || t.csvHeaders.yes) : t.csvHeaders.no,
-                          sonLocation || '',
-                          son.description || ''
-                      ]);
-                  });
-              }
-
-              // Empty spacer line between father sections
-              sheet2AOA.push([]);
-          });
-
-          // 3. Sheet 3: Direct Father-Son Link Matrix
-          const sheet3Data: any[] = [];
-          flattenedTree.forEach(item => {
-              if (item.parent) {
-                  sheet3Data.push({
-                      [t.csvHeaders.fatherName]: item.parent.name,
-                      [t.csvHeaders.fatherType]: t.componentTypes[item.parent.type] || item.parent.type,
-                      [t.csvHeaders.feederCable]: item.node.connectionStyle?.cableSize || '-',
-                      [t.csvHeaders.sonName]: item.node.name,
-                      [t.csvHeaders.sonType]: t.componentTypes[item.node.type] || item.node.type,
-                      [t.csvHeaders.branchNum]: `#${item.branchIndex}`,
-                      [t.csvHeaders.level]: `${t.csvHeaders.level} ${item.depth}`,
-                      [t.csvHeaders.amps]: item.node.amps !== undefined && item.node.amps !== null ? item.node.amps : '',
-                      [t.csvHeaders.voltage]: item.node.voltage !== undefined && item.node.voltage !== null ? item.node.voltage : '',
-                      [t.csvHeaders.kva]: item.node.kva !== undefined && item.node.kva !== null ? item.node.kva : '',
-                      [t.csvHeaders.directSonsCount]: item.node.children ? item.node.children.length : 0,
-                      [t.csvHeaders.upstreamLineage]: item.path.join(' ➔ ')
-                  });
-              }
+              excelRows.push(row);
           });
 
           try {
-              // Create native Multi-Sheet Excel Workbook (.xlsx)
+              // Create clean Single-Sheet Excel Workbook (.xlsx)
               const wb = XLSX.utils.book_new();
 
-              // Enable Right-to-Left (RTL) mode on all worksheet views and the workbook
-              wb.Workbook = { Views: [{ RTL: true }] };
-
-              // Setup Sheet 1
-              const ws1 = XLSX.utils.json_to_sheet(sheet1Data);
-              ws1['!views'] = [{ rightToLeft: true }];
-              ws1['!cols'] = [
-                  { wch: 34 }, // Tree
-                  { wch: 26 }, // Father Name
-                  { wch: 18 }, // Father Type
-                  { wch: 26 }, // Son Name
-                  { wch: 18 }, // Son Type
-                  { wch: 14 }, // Branch #
-                  { wch: 20 }, // Cable
-                  { wch: 14 }, // Level
-                  { wch: 12 }, // Amps
-                  { wch: 12 }, // Voltage
-                  { wch: 12 }, // kVA
-                  { wch: 16 }, // Calc Amps
-                  { wch: 16 }, // Calc kVA
-                  { wch: 16 }, // Sons count
-                  { wch: 30 }, // Sons list
-                  { wch: 38 }, // Lineage
-                  { wch: 18 }, // Essential
-                  { wch: 12 }, // Has Meter
-                  { wch: 14 }, // Meter #
-                  { wch: 16 }, // Generator
-                  { wch: 20 }, // Special
-                  { wch: 16 }, // Model
-                  { wch: 16 }, // Son Num
-                  { wch: 16 }, // Father Num
+              const ws = XLSX.utils.json_to_sheet(excelRows);
+              const isRTL = language === 'he' || language === 'ar';
+              if (isRTL) {
+                  wb.Workbook = { Views: [{ RTL: true }] };
+                  ws['!views'] = [{ rightToLeft: true }];
+              }
+              ws['!cols'] = [
+                  { wch: 28 }, // Name
+                  { wch: 20 }, // Type
+                  { wch: 26 }, // Source Transformer
+                  { wch: 16 }, // Transformer #
+                  { wch: 26 }, // Feeding Parent
+                  { wch: 14 }, // Circuit #
+                  { wch: 20 }, // Feeder Cable
+                  { wch: 12 }, // Amps (A)
+                  { wch: 12 }, // Voltage (V)
+                  { wch: 12 }, // Power (kVA)
+                  { wch: 16 }, // Meter #
+                  { wch: 18 }, // Essentiality
                   { wch: 16 }, // Building
                   { wch: 14 }, // Floor
-                  { wch: 16 }, // Office
-                  { wch: 18 }, // Place
-                  { wch: 30 }  // Desc
+                  { wch: 22 }, // Room / Place
+                  { wch: 30 }  // Description / Notes
               ];
-              XLSX.utils.book_append_sheet(wb, ws1, (t.csvHeaders.allComponentsSheet || 'All Components').substring(0, 31));
 
-              // Setup Sheet 2
-              const ws2 = XLSX.utils.aoa_to_sheet(sheet2AOA);
-              ws2['!views'] = [{ rightToLeft: true }];
-              ws2['!cols'] = [
-                  { wch: 14 }, // Branch #
-                  { wch: 28 }, // Son Name
-                  { wch: 20 }, // Son Type
-                  { wch: 20 }, // Cable
-                  { wch: 12 }, // Amps
-                  { wch: 12 }, // Voltage
-                  { wch: 12 }, // kVA
-                  { wch: 16 }, // Sons count
-                  { wch: 28 }, // Sons list
-                  { wch: 18 }, // Essential
-                  { wch: 16 }, // Generator
-                  { wch: 22 }, // Location
-                  { wch: 30 }  // Desc
-              ];
-              XLSX.utils.book_append_sheet(wb, ws2, (t.csvHeaders.dividedByFatherSheet || 'Divided by Father').substring(0, 31));
-
-              // Setup Sheet 3
-              let ws3: XLSX.WorkSheet | null = null;
-              if (sheet3Data.length > 0) {
-                  ws3 = XLSX.utils.json_to_sheet(sheet3Data);
-                  ws3['!views'] = [{ rightToLeft: true }];
-                  ws3['!cols'] = [
-                      { wch: 26 }, // Father Name
-                      { wch: 18 }, // Father Type
-                      { wch: 20 }, // Cable
-                      { wch: 26 }, // Son Name
-                      { wch: 18 }, // Son Type
-                      { wch: 14 }, // Branch #
-                      { wch: 14 }, // Level
-                      { wch: 12 }, // Amps
-                      { wch: 12 }, // Voltage
-                      { wch: 12 }, // kVA
-                      { wch: 16 }, // Sons count
-                      { wch: 38 }  // Lineage
-                  ];
-                  XLSX.utils.book_append_sheet(wb, ws3, (t.csvHeaders.fatherSonMatrixSheet || 'Link Matrix').substring(0, 31));
-              }
+              const sheetTitle = (activePage.name || t.csvHeaders.allComponentsSheet || 'Components').substring(0, 31);
+              XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
 
               // Output .xlsx file
               const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -2734,12 +2648,12 @@ export default function App() {
               setTimeout(() => URL.revokeObjectURL(url), 5000);
           } catch (xlsxErr) {
               console.error("XLSX generation fallback:", xlsxErr);
-              // Fallback CSV generation with full father-son headers
-              if (sheet1Data.length > 0) {
-                  const headers = Object.keys(sheet1Data[0]);
+              // Fallback CSV generation with the exact same simple structure
+              if (excelRows.length > 0) {
+                  const headers = Object.keys(excelRows[0]);
                   const csvContent = [
                       headers.join(','),
-                      ...sheet1Data.map(row => headers.map(header => {
+                      ...excelRows.map(row => headers.map(header => {
                           const val = row[header];
                           const valStr = val !== undefined && val !== null ? String(val) : '';
                           return `"${valStr.replace(/"/g, '""')}"`;
@@ -3041,24 +2955,6 @@ export default function App() {
           setSelectedNode(null);
           setIsConnectMode(false);
       }
-  };
-
-  // Helper to determine if a node is or represents a transformer
-  const isTransformerNode = (node: ElectricalNode): boolean => {
-    if (node.type === ComponentType.TRANSFORMER) return true;
-    const n = (node.name || '').toLowerCase();
-    const m = (node.model || '').toLowerCase();
-    const d = (node.description || '').toLowerCase();
-    return (
-      n.includes('transformer') ||
-      n.includes('שנאי') ||
-      n.includes('محול') ||
-      n.startsWith('tr-') ||
-      n.startsWith('tr ') ||
-      m.includes('transformer') ||
-      d.includes('transformer') ||
-      d.includes('שנאי')
-    );
   };
 
   const searchAnalysis = useMemo(() => {

@@ -286,6 +286,8 @@ export const translations = {
     csvHeaders: {
       name: "Name",
       type: "Type",
+      sourceTransformer: "Source Transformer",
+      transformerNumber: "Transformer #",
       componentNum: "Component #",
       model: "Model",
       amps: "Amps (A)",
@@ -1051,6 +1053,8 @@ export const translations = {
     csvHeaders: {
       name: "שם",
       type: "סוג",
+      sourceTransformer: "שנאי מקור מזין",
+      transformerNumber: "מספר שנאי",
       componentNum: "מספר רכיב",
       model: "דגם",
       amps: "זרם (A)",
@@ -1816,6 +1820,8 @@ export const translations = {
     csvHeaders: {
       name: "الاسم",
       type: "النوع",
+      sourceTransformer: "المحول المغذي الرئيسي",
+      transformerNumber: "رقم المحول",
       componentNum: "رقم المكون",
       model: "الموديل",
       amps: "التيار (A)",
