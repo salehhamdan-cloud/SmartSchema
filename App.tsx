@@ -2722,6 +2722,8 @@ export default function App() {
               const feederCable = node.connectionStyle?.cableSize || '-';
               const branchNumDisplay = item.branchIndex > 0 ? `#${item.branchIndex}` : (node.componentNumber ? `#${node.componentNumber}` : '-');
               const meterDisplay = node.meterSerial || node.meterNumber || (node.hasMeter ? (t.csvHeaders.yes || 'Yes') : '-');
+              const mmNum = (node.multimeterNumber && node.multimeterNumber.trim()) || (node.multimeterSerial && node.multimeterSerial.trim());
+              const multimeterDisplay = mmNum || (node.hasMultimeter ? (node.multimeterModel?.trim() || t.csvHeaders.yes || 'Yes') : '-');
               const roomPlaceDisplay = [node.place, node.office].filter(Boolean).join(' - ');
 
               const row: Record<string, any> = {
@@ -2736,6 +2738,7 @@ export default function App() {
                   [t.csvHeaders.voltage || 'Voltage (V)']: node.voltage !== undefined && node.voltage !== null ? node.voltage : '',
                   [t.csvHeaders.kva || 'Power (kVA)']: node.kva !== undefined && node.kva !== null ? node.kva : '',
                   [t.csvHeaders.meterNum || 'Meter #']: meterDisplay,
+                  [t.csvHeaders.multimeterNum || 'Multimeter #']: multimeterDisplay,
                   [t.csvHeaders.isEssential || 'Essentiality']: node.isEssential ? (t.csvHeaders.essential || t.csvHeaders.yes || 'Essential') : (t.csvHeaders.nonEssential || t.csvHeaders.no || 'Normal'),
                   [t.csvHeaders.building || 'Building']: node.building || '',
                   [t.csvHeaders.floor || 'Floor']: node.floor || '',
@@ -2768,6 +2771,7 @@ export default function App() {
                   { wch: 12 }, // Voltage (V)
                   { wch: 12 }, // Power (kVA)
                   { wch: 16 }, // Meter #
+                  { wch: 16 }, // Multimeter #
                   { wch: 18 }, // Essentiality
                   { wch: 16 }, // Building
                   { wch: 14 }, // Floor
