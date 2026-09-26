@@ -170,6 +170,7 @@ export interface PrintMetadata {
   phone?: string;
   logo?: string;
   revisions?: PrintRevision[];
+  isPrintMode?: boolean;
 }
 
 export interface ProjectShareConfig {
@@ -188,6 +189,8 @@ export interface Project {
   printMetadata?: PrintMetadata;
   shareConfig?: ProjectShareConfig;
   lastUpdated?: string; // ISO timestamp of last modification
+  isPrintMode?: boolean;
+  orientation?: DiagramOrientation;
 }
 
 export interface AnalysisResult {

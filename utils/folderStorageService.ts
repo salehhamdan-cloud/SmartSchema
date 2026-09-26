@@ -317,7 +317,8 @@ const normalizeSingleProject = (p: any, defaultName: string): Project | null => 
       return {
         id: pageId,
         name: pageName,
-        items: items
+        items: items,
+        annotations: page.annotations || []
       };
     });
   } else if (Array.isArray(p.items)) {
@@ -326,7 +327,8 @@ const normalizeSingleProject = (p: any, defaultName: string): Project | null => 
       {
         id: `page-${Date.now()}-1`,
         name: 'Main Diagram',
-        items: p.items
+        items: p.items,
+        annotations: p.annotations || []
       }
     ];
   } else {
@@ -334,7 +336,8 @@ const normalizeSingleProject = (p: any, defaultName: string): Project | null => 
       {
         id: `page-${Date.now()}-1`,
         name: 'Main Diagram',
-        items: []
+        items: [],
+        annotations: []
       }
     ];
   }
@@ -343,6 +346,10 @@ const normalizeSingleProject = (p: any, defaultName: string): Project | null => 
     id,
     name,
     pages,
+    printMetadata: p.printMetadata,
+    shareConfig: p.shareConfig,
+    isPrintMode: p.isPrintMode,
+    orientation: p.orientation,
     lastUpdated: p.lastUpdated || Date.now()
   };
 };

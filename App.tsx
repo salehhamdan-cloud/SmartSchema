@@ -236,11 +236,15 @@ export default function App() {
       loadedProjects = loadedProjects.map((p: any) => ({
           ...p,
           lastUpdated: p.lastUpdated || new Date().toISOString(),
-          pages: p.pages.map((page: any) => {
+          printMetadata: {
+              ...DEFAULT_PRINT_METADATA,
+              ...(p.printMetadata || {})
+          },
+          pages: (p.pages || []).map((page: any) => {
               if (page.rootNode && !page.items) {
-                  return { ...page, items: [page.rootNode], rootNode: undefined };
+                  return { ...page, items: [page.rootNode], rootNode: undefined, annotations: page.annotations || [] };
               }
-              return page;
+              return { ...page, annotations: page.annotations || [] };
           })
       }));
       
@@ -254,8 +258,27 @@ export default function App() {
   const [history, setHistory] = useState<Project[][]>([]);
   const [future, setFuture] = useState<Project[][]>([]);
 
-  const [activeProjectId, setActiveProjectId] = useState<string>(projects[0].id);
-  const [activePageId, setActivePageId] = useState<string>(projects[0].pages[0].id);
+  const [activeProjectId, setActiveProjectId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('smartschema_active_project_id') || localStorage.getItem('voltgraph_active_project_id');
+      if (saved && projects.some(p => p.id === saved)) {
+        return saved;
+      }
+    } catch {}
+    return projects[0]?.id || '';
+  });
+
+  const [activePageId, setActivePageId] = useState<string>(() => {
+    try {
+      const currentProj = projects.find(p => p.id === activeProjectId) || projects[0];
+      const saved = localStorage.getItem('smartschema_active_page_id') || localStorage.getItem('voltgraph_active_page_id');
+      if (saved && currentProj?.pages.some(pg => pg.id === saved)) {
+        return saved;
+      }
+      return currentProj?.pages[0]?.id || '';
+    } catch {}
+    return projects[0]?.pages[0]?.id || '';
+  });
   
   const [selectedNode, setSelectedNode] = useState<ElectricalNode | null>(null);
   const [multiSelection, setMultiSelection] = useState<Set<string>>(new Set<string>());
@@ -267,7 +290,19 @@ export default function App() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [orientation, setOrientation] = useState<DiagramOrientation>('horizontal');
+  const [orientation, setOrientation] = useState<DiagramOrientation>(() => {
+    try {
+      const saved = localStorage.getItem('smartschema_orientation') || localStorage.getItem('voltgraph_orientation');
+      if (saved === 'horizontal' || saved === 'vertical' || saved === 'orthogonal_vertical') {
+        return saved as DiagramOrientation;
+      }
+      const initialProj = projects.find(p => p.id === activeProjectId) || projects[0];
+      if (initialProj?.orientation) {
+        return initialProj.orientation;
+      }
+    } catch {}
+    return 'horizontal';
+  });
   const [showProjectSidebar, setShowProjectSidebar] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
@@ -307,7 +342,19 @@ export default function App() {
     }
     return [];
   });
-  const [isPrintMode, setIsPrintMode] = useState(false);
+  const [isPrintMode, setIsPrintMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('smartschema_print_mode') || localStorage.getItem('voltgraph_print_mode');
+      if (saved !== null) {
+        return saved === 'true';
+      }
+      const initialProj = projects.find(p => p.id === activeProjectId) || projects[0];
+      if (initialProj?.isPrintMode !== undefined) {
+        return Boolean(initialProj.isPrintMode);
+      }
+    } catch {}
+    return false;
+  });
   const [printSettingsFocus, setPrintSettingsFocus] = useState<string | undefined>(undefined);
   const [isCleanView, setIsCleanView] = useState(false);
   const [isLayoutLocked, setIsLayoutLocked] = useState(true);
@@ -339,7 +386,15 @@ export default function App() {
   const [palmRejectionMode, setPalmRejectionMode] = useState<PalmRejectionMode>('smart-palm');
   const [isStylusActive, setIsStylusActive] = useState(false);
   
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('smartschema_language') || localStorage.getItem('voltgraph_language');
+      if (saved === 'en' || saved === 'he' || saved === 'ar') {
+        return saved as Language;
+      }
+    } catch {}
+    return 'en';
+  });
   const [theme, setTheme] = useState<Theme>(() => {
     try {
       const saved = localStorage.getItem('smartschema_theme');
@@ -364,6 +419,55 @@ export default function App() {
       document.body.classList.remove('theme-light');
     }
   }, [theme]);
+
+  // Auto-save active project ID
+  useEffect(() => {
+    if (activeProjectId) {
+      try {
+        localStorage.setItem('smartschema_active_project_id', activeProjectId);
+      } catch (_) {}
+    }
+  }, [activeProjectId]);
+
+  // Auto-save active page ID
+  useEffect(() => {
+    if (activePageId) {
+      try {
+        localStorage.setItem('smartschema_active_page_id', activePageId);
+      } catch (_) {}
+    }
+  }, [activePageId]);
+
+  // Auto-save print mode & sync to active project
+  useEffect(() => {
+    try {
+      localStorage.setItem('smartschema_print_mode', String(isPrintMode));
+    } catch (_) {}
+    setProjects(prev => prev.map(p => {
+      if (p.id !== activeProjectId) return p;
+      if (p.isPrintMode === isPrintMode) return p;
+      return { ...p, isPrintMode };
+    }));
+  }, [isPrintMode, activeProjectId]);
+
+  // Auto-save orientation & sync to active project
+  useEffect(() => {
+    try {
+      localStorage.setItem('smartschema_orientation', orientation);
+    } catch (_) {}
+    setProjects(prev => prev.map(p => {
+      if (p.id !== activeProjectId) return p;
+      if (p.orientation === orientation) return p;
+      return { ...p, orientation };
+    }));
+  }, [orientation, activeProjectId]);
+
+  // Auto-save language
+  useEffect(() => {
+    try {
+      localStorage.setItem('smartschema_language', language);
+    } catch (_) {}
+  }, [language]);
 
   const [showAddIndependentMenu, setShowAddIndependentMenu] = useState(false);
   const addIndependentMenuRef = useRef<HTMLDivElement>(null);
@@ -415,6 +519,33 @@ export default function App() {
   const [connectionSource, setConnectionSource] = useState<ElectricalNode | null>(null);
 
   const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // Flush auto-save immediately on tab close or navigation
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        if (!isReadOnly && projects.length > 0) {
+          localStorage.setItem('smartschema_data', JSON.stringify(projects));
+          if (activeProjectId) {
+            localStorage.setItem('smartschema_active_project_id', activeProjectId);
+          }
+          if (activePageId) {
+            localStorage.setItem('smartschema_active_page_id', activePageId);
+          }
+          localStorage.setItem('smartschema_print_mode', String(isPrintMode));
+          localStorage.setItem('smartschema_orientation', orientation);
+          localStorage.setItem('smartschema_language', language);
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [projects, isReadOnly, activeProjectId, activePageId, isPrintMode, orientation, language]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareAccessStatus, setShareAccessStatus] = useState<'granted' | 'disabled' | 'revoked' | 'expired' | 'locked'>('granted');
   const [shareRequiredPasscode, setShareRequiredPasscode] = useState<string | undefined>(undefined);
@@ -760,7 +891,14 @@ export default function App() {
       const nowIso = new Date().toISOString();
       setProjects(prev => prev.map(p => {
           if (p.id !== activeProjectId) return p;
-          return { ...p, printMetadata: metadata, lastUpdated: nowIso };
+          return { 
+              ...p, 
+              printMetadata: {
+                  ...DEFAULT_PRINT_METADATA,
+                  ...metadata
+              }, 
+              lastUpdated: nowIso 
+          };
       }));
   }, [activeProjectId]);
 
@@ -2814,11 +2952,19 @@ export default function App() {
                     if (!p.pages) return null;
                     const migratedPages = p.pages.map((page: any) => {
                         if (page.rootNode && !page.items) {
-                            return { ...page, items: [page.rootNode], rootNode: undefined };
+                            return { ...page, items: [page.rootNode], rootNode: undefined, annotations: page.annotations || [] };
                         }
-                        return page;
+                        return { ...page, annotations: page.annotations || [] };
                     });
-                    return { ...p, id: generateId('proj'), pages: migratedPages };
+                    return { 
+                        ...p, 
+                        id: generateId('proj'), 
+                        printMetadata: {
+                            ...DEFAULT_PRINT_METADATA,
+                            ...(p.printMetadata || {})
+                        },
+                        pages: migratedPages 
+                    };
                 }).filter(Boolean) as Project[];
                 if(restoredProjects.length > 0) {
                     setProjects(prev => [...prev, ...restoredProjects]);
@@ -2842,9 +2988,23 @@ export default function App() {
                     saveToHistory();
                     const exists = projects.some(p => p.id === importedData.id);
                     if (exists) importedData = { ...importedData, id: generateId('proj') };
+                    importedData = {
+                        ...importedData,
+                        printMetadata: {
+                            ...DEFAULT_PRINT_METADATA,
+                            ...(importedData.printMetadata || {})
+                        },
+                        pages: importedData.pages.map((page: any) => ({
+                            ...page,
+                            annotations: page.annotations || []
+                        }))
+                    };
                     setProjects(prev => [...prev, importedData]);
                     setActiveProjectId(importedData.id);
                     setActivePageId(importedData.pages[0].id);
+                    if (importedData.isPrintMode !== undefined) {
+                        setIsPrintMode(importedData.isPrintMode);
+                    }
                 } else {
                     alert(`${t.dialogs.importError}`);
                 }
@@ -2863,10 +3023,12 @@ export default function App() {
           id: generateId('proj'),
           name: `${t.projects} ${projects.length + 1}`,
           lastUpdated: new Date().toISOString(),
+          printMetadata: { ...DEFAULT_PRINT_METADATA },
           pages: [{
               id: generateId('page'),
               name: 'Page 1',
-              items: []
+              items: [],
+              annotations: []
           }]
       };
       setProjects([...projects, newProj]);
@@ -2879,7 +3041,8 @@ export default function App() {
       const newPage: Page = {
         id: generateId('page'),
         name: `${t.pages} ${activeProject.pages.length + 1}`,
-        items: []
+        items: [],
+        annotations: []
       };
       const nowIso = new Date().toISOString();
       setProjects(prev => prev.map(p => p.id === activeProjectId ? { ...p, lastUpdated: nowIso, pages: [...p.pages, newPage] } : p));
@@ -4435,7 +4598,13 @@ export default function App() {
                                     ? (theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-blue-50 text-blue-900 font-semibold border-l-3 border-blue-500 shadow-2xs') 
                                     : (theme === 'dark' ? 'text-slate-400 hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100')
                                 }`}
-                                onClick={() => { setActiveProjectId(project.id); setActivePageId(project.pages[0].id); }}
+                                onClick={() => { 
+                                    setActiveProjectId(project.id); 
+                                    setActivePageId(project.pages[0].id); 
+                                    if (project.isPrintMode !== undefined) {
+                                        setIsPrintMode(project.isPrintMode);
+                                    }
+                                }}
                             >
                                 <div className="flex items-center gap-2 flex-1 overflow-hidden">
                                     <span className={`material-icons-round text-sm shrink-0 ${activeProjectId === project.id ? (theme === 'dark' ? 'text-blue-400' : 'text-blue-600') : 'text-slate-400'}`}>folder</span>
