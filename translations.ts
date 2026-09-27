@@ -281,7 +281,11 @@ export const translations = {
         vector: "Vector / SVG Sharpness",
         print: "300 DPI Lossless",
         cad: "AutoCAD / DWG / CAD"
-      }
+      },
+      generatingPdf: "Generating High-Resolution PDF...",
+      renderingTile: "Rendering slice",
+      processingTiles: "Rendering high-precision vector slices...",
+      keepWindowOpen: "Please wait while the multi-tile document compiles into lossless vector quality."
     },
     csvHeaders: {
       name: "Name",
@@ -1049,7 +1053,11 @@ export const translations = {
         vector: "איכות וקטורית / SVG",
         print: "300 DPI Lossless",
         cad: "AutoCAD / DWG / CAD"
-      }
+      },
+      generatingPdf: "מייצר מסמך PDF ברזולוציה גבוהה...",
+      renderingTile: "מרנדר חלק",
+      processingTiles: "מעבד פרוסות וקטוריות באיכות מקסימלית...",
+      keepWindowOpen: "אנא המתן בזמן שהמסמך מקודד לפורמט וקטורי ללא איבוד איכות."
     },
     csvHeaders: {
       name: "שם",
@@ -1817,7 +1825,11 @@ export const translations = {
         vector: "فيكتور / جودة SVG",
         print: "300 DPI Lossless",
         cad: "AutoCAD / DWG / CAD"
-      }
+      },
+      generatingPdf: "جارٍ إنشاء مستند PDF فائق الدقة...",
+      renderingTile: "معالجة الشريحة",
+      processingTiles: "معالجة شرائح المتجهات فائقة الدقة...",
+      keepWindowOpen: "يرجى الانتظار أثناء تجميع المستند بجودة متجهات غير منقوصة."
     },
     csvHeaders: {
       name: "الاسم",

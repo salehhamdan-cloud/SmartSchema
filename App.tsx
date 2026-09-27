@@ -305,6 +305,7 @@ export default function App() {
   });
   const [showProjectSidebar, setShowProjectSidebar] = useState(true);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [tiledExportProgress, setTiledExportProgress] = useState<{ percent: number; current: number; total: number } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showTopologyModal, setShowTopologyModal] = useState(false);
   const [showBuildingFloorsModal, setShowBuildingFloorsModal] = useState(false);
@@ -1901,40 +1902,55 @@ export default function App() {
       } catch (_) {}
 
       // (A) Check all nodes in the diagram to expand bounding box
-      liveGroup.querySelectorAll('g.node').forEach((nodeEl) => {
+      liveGroup.querySelectorAll('g.node, g[data-id]').forEach((nodeEl) => {
           try {
               const transform = (nodeEl as SVGGElement).getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([^\s,)]+)[,\s]+([^\s,)]+)\s*\)/.exec(transform);
               if (!match) return;
               const tx = parseFloat(match[1]) || 0;
               const ty = parseFloat(match[2]) || 0;
 
-              const bg = nodeEl.querySelector('.node-bg, rect, circle') as SVGGraphicsElement;
+              let nodeLeft = tx - 80;
+              let nodeRight = tx + 80;
+              let nodeTop = ty - 45;
+              let nodeBottom = ty + 45;
+
+              try {
+                  const nb = (nodeEl as SVGGraphicsElement).getBBox?.();
+                  if (nb && isFinite(nb.x) && isFinite(nb.width) && nb.width > 0 && isFinite(nb.y) && nb.height > 0) {
+                      nodeLeft = tx + nb.x;
+                      nodeRight = tx + nb.x + nb.width;
+                      nodeTop = ty + nb.y;
+                      nodeBottom = ty + nb.y + nb.height;
+                  }
+              } catch (_) {}
+
+              const bg = (nodeEl.querySelector('.node-bg') || nodeEl.querySelector('rect, circle')) as SVGGraphicsElement;
               if (bg) {
                   if (bg.tagName.toLowerCase() === 'circle') {
                       const r = parseFloat(bg.getAttribute('r') || '40');
                       const cx = parseFloat(bg.getAttribute('cx') || '0');
                       const cy = parseFloat(bg.getAttribute('cy') || '0');
-                      minX = Math.min(minX, tx + cx - r);
-                      maxX = Math.max(maxX, tx + cx + r);
-                      minY = Math.min(minY, ty + cy - r);
-                      maxY = Math.max(maxY, ty + cy + r);
+                      nodeLeft = Math.min(nodeLeft, tx + cx - r);
+                      nodeRight = Math.max(nodeRight, tx + cx + r);
+                      nodeTop = Math.min(nodeTop, ty + cy - r);
+                      nodeBottom = Math.max(nodeBottom, ty + cy + r);
                   } else {
-                      const rx = parseFloat(bg.getAttribute('x') || '-80');
-                      const ry = parseFloat(bg.getAttribute('y') || '-45');
+                      const rx = parseFloat(bg.getAttribute('x') || '0');
+                      const ry = parseFloat(bg.getAttribute('y') || '0');
                       const rw = parseFloat(bg.getAttribute('width') || '160');
                       const rh = parseFloat(bg.getAttribute('height') || '90');
-                      minX = Math.min(minX, tx + rx);
-                      maxX = Math.max(maxX, tx + rx + rw);
-                      minY = Math.min(minY, ty + ry);
-                      maxY = Math.max(maxY, ty + ry + rh);
+                      nodeLeft = Math.min(nodeLeft, tx + rx);
+                      nodeRight = Math.max(nodeRight, tx + rx + rw);
+                      nodeTop = Math.min(nodeTop, ty + ry);
+                      nodeBottom = Math.max(nodeBottom, ty + ry + rh);
                   }
-              } else {
-                  minX = Math.min(minX, tx - 80);
-                  maxX = Math.max(maxX, tx + 80);
-                  minY = Math.min(minY, ty - 45);
-                  maxY = Math.max(maxY, ty + 45);
               }
+
+              minX = Math.min(minX, nodeLeft);
+              maxX = Math.max(maxX, nodeRight);
+              minY = Math.min(minY, nodeTop);
+              maxY = Math.max(maxY, nodeBottom);
           } catch (e) {}
       });
 
@@ -1964,7 +1980,7 @@ export default function App() {
           try {
               const bbox = (printBlock as SVGGraphicsElement).getBBox?.();
               const transform = printBlock.getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([^\s,)]+)[,\s]+([^\s,)]+)\s*\)/.exec(transform);
               const px = match ? (parseFloat(match[1]) || 0) : 0;
               const py = match ? (parseFloat(match[2]) || 0) : 0;
 
@@ -1986,20 +2002,37 @@ export default function App() {
       liveGroup.querySelectorAll('.labels g').forEach((lblG) => {
           try {
               const transform = lblG.getAttribute('transform') || '';
-              const match = /translate\(\s*([-\d.]+)[,\s]+([-\d.]+)\s*\)/.exec(transform);
+              const match = /translate\(\s*([^\s,)]+)[,\s]+([^\s,)]+)\s*\)/.exec(transform);
               if (match) {
                   const lx = parseFloat(match[1]) || 0;
                   const ly = parseFloat(match[2]) || 0;
-                  minX = Math.min(minX, lx - 40);
-                  maxX = Math.max(maxX, lx + 40);
-                  minY = Math.min(minY, ly - 40);
-                  maxY = Math.max(maxY, ly + 40);
+                  const lb = (lblG as SVGGraphicsElement).getBBox?.();
+                  if (lb && isFinite(lb.x) && isFinite(lb.width) && lb.width > 0) {
+                      minX = Math.min(minX, lx + lb.x);
+                      maxX = Math.max(maxX, lx + lb.x + lb.width);
+                      minY = Math.min(minY, ly + lb.y);
+                      maxY = Math.max(maxY, ly + lb.y + lb.height);
+                  } else {
+                      minX = Math.min(minX, lx - 40);
+                      maxX = Math.max(maxX, lx + 40);
+                      minY = Math.min(minY, ly - 40);
+                      maxY = Math.max(maxY, ly + 40);
+                  }
               }
           } catch (e) {}
       });
 
       // (E) Check links and annotation paths
       liveGroup.querySelectorAll('g.annotations-layer path, path.temp-drawing, g.links path').forEach((pathEl) => {
+          try {
+              const pb = (pathEl as SVGGraphicsElement).getBBox?.();
+              if (pb && isFinite(pb.x) && isFinite(pb.width) && pb.width > 0) {
+                  minX = Math.min(minX, pb.x);
+                  maxX = Math.max(maxX, pb.x + pb.width);
+                  minY = Math.min(minY, pb.y);
+                  maxY = Math.max(maxY, pb.y + pb.height);
+              }
+          } catch (_) {}
           try {
               const dAttr = pathEl.getAttribute('d');
               if (dAttr) {
@@ -2326,193 +2359,215 @@ export default function App() {
       height: number,
       outputFileName: string
   ): Promise<void> => {
-      if (document.fonts && document.fonts.ready) {
-          try {
-              await document.fonts.ready;
-          } catch (_) {}
-      }
+      try {
+          if (document.fonts && document.fonts.ready) {
+              try {
+                  await document.fonts.ready;
+              } catch (_) {}
+          }
 
-      const isLandscape = width >= height;
-      const pdf = new jsPDF({
-          orientation: isLandscape ? 'landscape' : 'portrait',
-          unit: 'pt',
-          format: [width, height],
-          compress: true
-      });
+          const MAX_PDF_DIM = 14400;
+          const maxDim = Math.max(width, height);
+          const pdfScale = maxDim > MAX_PDF_DIM ? MAX_PDF_DIM / maxDim : 1;
+          const pdfWidth = Math.round(width * pdfScale);
+          const pdfHeight = Math.round(height * pdfScale);
+          const isLandscape = pdfWidth >= pdfHeight;
+          const pdf = new jsPDF({
+              orientation: isLandscape ? 'landscape' : 'portrait',
+              unit: 'pt',
+              format: [pdfWidth, pdfHeight],
+              compress: true
+          });
 
-      // Scale selection: 2.5x to 3.0x provides crisp 200-300 DPI vector-like clarity
-      const maxDim = Math.max(width, height);
-      let targetScale = 2.5;
-      if (maxDim <= 3000) {
-          targetScale = 3.0; // Small diagram: 3.0x (300 DPI class)
-      } else if (maxDim <= 8000) {
-          targetScale = 2.5; // Medium/Large diagram: 2.5x (180-250 DPI class)
-      } else {
-          targetScale = 2.0; // Huge diagrams: 2.0x (over 15,000pt -> 30,000px total resolution!)
-      }
+          // Scale selection: 2.5x to 3.0x provides crisp 200-300 DPI vector-like clarity
+          let targetScale = 2.5;
+          if (maxDim <= 3000) {
+              targetScale = 3.0; // Small diagram: 3.0x (300 DPI class)
+          } else if (maxDim <= 8000) {
+              targetScale = 2.5; // Medium/Large diagram: 2.5x (180-250 DPI class)
+          } else {
+              targetScale = 2.0; // Huge diagrams: 2.0x (over 15,000pt -> 30,000px total resolution!)
+          }
 
-      // Safe tile dimension in PDF points (1400pt) ensures canvas dimensions stay well within browser limits
-      const TILE_SIZE = 1400;
-      const numCols = Math.ceil(width / TILE_SIZE);
-      const numRows = Math.ceil(height / TILE_SIZE);
+          // Safe tile dimension in PDF points (1400pt) ensures canvas dimensions stay well within browser limits
+          const TILE_SIZE = 1400;
+          const numCols = Math.ceil(width / TILE_SIZE);
+          const numRows = Math.ceil(height / TILE_SIZE);
+          const totalTiles = numRows * numCols;
+          let completedTiles = 0;
 
-      const baseSvg = svgElement.cloneNode(true) as SVGSVGElement;
-      baseSvg.removeAttribute('style');
-      baseSvg.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
-      baseSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-      baseSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      baseSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+          // Initialize progress state
+          setTiledExportProgress({ percent: 0, current: 0, total: totalTiles });
 
-      // 0.5 pt overlap eliminates subpixel hairline seams in PDF viewers
-      const OVERLAP = 0.5;
+          const baseSvg = svgElement.cloneNode(true) as SVGSVGElement;
+          baseSvg.removeAttribute('style');
+          baseSvg.style.backgroundColor = isDark ? '#0f172a' : '#ffffff';
+          baseSvg.setAttribute('preserveAspectRatio', 'none');
+          baseSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          baseSvg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 
-      for (let r = 0; r < numRows; r++) {
-          for (let c = 0; c < numCols; c++) {
-              const tileOffsetX = c * TILE_SIZE;
-              const tileOffsetY = r * TILE_SIZE;
-              const isLastCol = (c === numCols - 1);
-              const isLastRow = (r === numRows - 1);
+          // 0.5 pt overlap eliminates subpixel hairline seams in PDF viewers
+          const OVERLAP = 0.5;
 
-              const curTileW = Math.min(TILE_SIZE, width - tileOffsetX) + (isLastCol ? 0 : OVERLAP);
-              const curTileH = Math.min(TILE_SIZE, height - tileOffsetY) + (isLastRow ? 0 : OVERLAP);
+          for (let r = 0; r < numRows; r++) {
+              for (let c = 0; c < numCols; c++) {
+                  const tileOffsetX = c * TILE_SIZE;
+                  const tileOffsetY = r * TILE_SIZE;
+                  const isLastCol = (c === numCols - 1);
+                  const isLastRow = (r === numRows - 1);
 
-              const tileSvgX = finalMinX + tileOffsetX;
-              const tileSvgY = finalMinY + tileOffsetY;
+                  const curTileW = Math.min(TILE_SIZE, width - tileOffsetX) + (isLastCol ? 0 : OVERLAP);
+                  const curTileH = Math.min(TILE_SIZE, height - tileOffsetY) + (isLastRow ? 0 : OVERLAP);
 
-              const pixelW = Math.max(1, Math.round(curTileW * targetScale));
-              const pixelH = Math.max(1, Math.round(curTileH * targetScale));
+                  const tileSvgX = finalMinX + tileOffsetX;
+                  const tileSvgY = finalMinY + tileOffsetY;
 
-              const tileSvg = baseSvg.cloneNode(true) as SVGSVGElement;
-              tileSvg.setAttribute('width', pixelW.toString());
-              tileSvg.setAttribute('height', pixelH.toString());
-              tileSvg.setAttribute('viewBox', `${tileSvgX} ${tileSvgY} ${curTileW} ${curTileH}`);
+                  const pixelW = Math.max(1, Math.round(curTileW * targetScale));
+                  const pixelH = Math.max(1, Math.round(curTileH * targetScale));
 
-              const serializer = new XMLSerializer();
-              let svgString = serializer.serializeToString(tileSvg);
+                  const tileSvg = baseSvg.cloneNode(true) as SVGSVGElement;
+                  tileSvg.setAttribute('width', pixelW.toString());
+                  tileSvg.setAttribute('height', pixelH.toString());
+                  tileSvg.setAttribute('viewBox', `${tileSvgX} ${tileSvgY} ${curTileW} ${curTileH}`);
 
-              if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
-                  svgString = svgString.replace(/<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-              }
-              if (!svgString.includes('xmlns:xlink="http://www.w3.org/1999/xlink"')) {
-                  svgString = svgString.replace(/<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
-              }
+                  const serializer = new XMLSerializer();
+                  let svgString = serializer.serializeToString(tileSvg);
 
-              const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-              const blobUrl = URL.createObjectURL(blob);
-              const img = new Image();
+                  if (!svgString.includes('xmlns="http://www.w3.org/2000/svg"')) {
+                      svgString = svgString.replace(/<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+                  }
+                  if (!svgString.includes('xmlns:xlink="http://www.w3.org/1999/xlink"')) {
+                      svgString = svgString.replace(/<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+                  }
 
-              await new Promise<void>((resolveTile, rejectTile) => {
-                  let resolved = false;
-                  const cleanup = () => {
-                      if (!resolved) {
-                          resolved = true;
-                          try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-                      }
-                  };
+                  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                  const blobUrl = URL.createObjectURL(blob);
+                  const img = new Image();
 
-                  const drawToPdf = () => {
-                      try {
-                          const canvas = document.createElement('canvas');
-                          canvas.width = pixelW;
-                          canvas.height = pixelH;
-                          const ctx = canvas.getContext('2d', { alpha: false });
-                          if (!ctx) {
-                              cleanup();
-                              rejectTile(new Error('Canvas 2D context unavailable'));
-                              return;
+                  await new Promise<void>((resolveTile, rejectTile) => {
+                      let resolved = false;
+                      const cleanup = () => {
+                          if (!resolved) {
+                              resolved = true;
+                              try { URL.revokeObjectURL(blobUrl); } catch (_) {}
                           }
+                      };
 
-                          ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
-                          ctx.fillRect(0, 0, pixelW, pixelH);
-                          ctx.imageSmoothingEnabled = true;
-                          ctx.imageSmoothingQuality = 'high';
-                          ctx.drawImage(img, 0, 0, pixelW, pixelH);
-                          cleanup();
-
-                          let tileData = '';
-                          let tileFormat: 'PNG' | 'JPEG' = 'PNG';
+                      const drawToPdf = () => {
                           try {
-                              const data = canvas.toDataURL('image/png');
-                              if (data && data.startsWith('data:image/png;base64,') && data.length > 100) {
-                                  tileData = data;
-                                  tileFormat = 'PNG';
-                              }
-                          } catch (_) {}
-
-                          if (!tileData) {
-                              try {
-                                  const data = canvas.toDataURL('image/jpeg', 0.95);
-                                  if (data && data.startsWith('data:image/jpeg;base64,') && data.length > 100) {
-                                      tileData = data;
-                                      tileFormat = 'JPEG';
-                                  }
-                              } catch (_) {}
-                          }
-
-                          if (tileData) {
-                              pdf.addImage(tileData, tileFormat, tileOffsetX, tileOffsetY, curTileW, curTileH, undefined, 'FAST');
-                          }
-
-                          // Immediately release GPU memory
-                          canvas.width = 1;
-                          canvas.height = 1;
-                          resolveTile();
-                      } catch (err) {
-                          cleanup();
-                          rejectTile(err);
-                      }
-                  };
-
-                  img.onload = async () => {
-                      if ('decode' in img) {
-                          try { await img.decode(); } catch (_) {}
-                      }
-                      drawToPdf();
-                  };
-
-                  img.onerror = () => {
-                      cleanup();
-                      const fallbackImg = new Image();
-                      const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
-                      fallbackImg.onload = async () => {
-                          try {
-                              if ('decode' in fallbackImg) {
-                                  try { await fallbackImg.decode(); } catch (_) {}
-                              }
                               const canvas = document.createElement('canvas');
                               canvas.width = pixelW;
                               canvas.height = pixelH;
                               const ctx = canvas.getContext('2d', { alpha: false });
-                              if (ctx) {
-                                  ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
-                                  ctx.fillRect(0, 0, pixelW, pixelH);
-                                  ctx.imageSmoothingEnabled = true;
-                                  ctx.imageSmoothingQuality = 'high';
-                                  ctx.drawImage(fallbackImg, 0, 0, pixelW, pixelH);
-                                  const tileData = canvas.toDataURL('image/png');
-                                  if (tileData && tileData.startsWith('data:image/png;base64,')) {
-                                      pdf.addImage(tileData, 'PNG', tileOffsetX, tileOffsetY, curTileW, curTileH, undefined, 'FAST');
-                                  }
-                                  canvas.width = 1;
-                                  canvas.height = 1;
+                              if (!ctx) {
+                                  cleanup();
+                                  rejectTile(new Error('Canvas 2D context unavailable'));
+                                  return;
                               }
+
+                              ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+                              ctx.fillRect(0, 0, pixelW, pixelH);
+                              ctx.imageSmoothingEnabled = true;
+                              ctx.imageSmoothingQuality = 'high';
+                              ctx.drawImage(img, 0, 0, pixelW, pixelH);
+                              cleanup();
+
+                              let tileData = '';
+                              let tileFormat: 'PNG' | 'JPEG' = 'PNG';
+                              try {
+                                  const data = canvas.toDataURL('image/png');
+                                  if (data && data.startsWith('data:image/png;base64,') && data.length > 100) {
+                                      tileData = data;
+                                      tileFormat = 'PNG';
+                                  }
+                              } catch (_) {}
+
+                              if (!tileData) {
+                                  try {
+                                      const data = canvas.toDataURL('image/jpeg', 0.95);
+                                      if (data && data.startsWith('data:image/jpeg;base64,') && data.length > 100) {
+                                          tileData = data;
+                                          tileFormat = 'JPEG';
+                                      }
+                                  } catch (_) {}
+                              }
+
+                              if (tileData) {
+                                  pdf.addImage(tileData, tileFormat, tileOffsetX * pdfScale, tileOffsetY * pdfScale, curTileW * pdfScale, curTileH * pdfScale, undefined, 'FAST');
+                              }
+
+                              // Immediately release GPU memory
+                              canvas.width = 1;
+                              canvas.height = 1;
                               resolveTile();
-                          } catch (fErr) {
-                              rejectTile(fErr);
+                          } catch (err) {
+                              cleanup();
+                              rejectTile(err);
                           }
                       };
-                      fallbackImg.onerror = () => {
-                          rejectTile(new Error(`Failed to rasterize diagram slice at (${tileOffsetX}, ${tileOffsetY})`));
+
+                      img.onload = async () => {
+                          if ('decode' in img) {
+                              try { await img.decode(); } catch (_) {}
+                          }
+                          drawToPdf();
                       };
-                      fallbackImg.src = dataUri;
-                  };
 
-                  img.src = blobUrl;
-              });
+                      img.onerror = () => {
+                          cleanup();
+                          const fallbackImg = new Image();
+                          const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+                          fallbackImg.onload = async () => {
+                              try {
+                                  if ('decode' in fallbackImg) {
+                                      try { await fallbackImg.decode(); } catch (_) {}
+                                  }
+                                  const canvas = document.createElement('canvas');
+                                  canvas.width = pixelW;
+                                  canvas.height = pixelH;
+                                  const ctx = canvas.getContext('2d', { alpha: false });
+                                  if (ctx) {
+                                      ctx.fillStyle = isDark ? '#0f172a' : '#ffffff';
+                                      ctx.fillRect(0, 0, pixelW, pixelH);
+                                      ctx.imageSmoothingEnabled = true;
+                                      ctx.imageSmoothingQuality = 'high';
+                                      ctx.drawImage(fallbackImg, 0, 0, pixelW, pixelH);
+                                      const tileData = canvas.toDataURL('image/png');
+                                      if (tileData && tileData.startsWith('data:image/png;base64,')) {
+                                          pdf.addImage(tileData, 'PNG', tileOffsetX, tileOffsetY, curTileW, curTileH, undefined, 'FAST');
+                                      }
+                                      canvas.width = 1;
+                                      canvas.height = 1;
+                                  }
+                                  resolveTile();
+                              } catch (fErr) {
+                                  rejectTile(fErr);
+                              }
+                          };
+                          fallbackImg.onerror = () => {
+                              rejectTile(new Error(`Failed to rasterize diagram slice at (${tileOffsetX}, ${tileOffsetY})`));
+                          };
+                          fallbackImg.src = dataUri;
+                      };
+
+                      img.src = blobUrl;
+                  });
+
+                  completedTiles++;
+                  const curPercent = Math.min(99, Math.round((completedTiles / totalTiles) * 100));
+                  setTiledExportProgress({ percent: curPercent, current: completedTiles, total: totalTiles });
+                  // Microtask tick to ensure the DOM and React render pipeline repaints the progress bar
+                  await new Promise(resolve => setTimeout(resolve, 15));
+              }
           }
-      }
 
-      pdf.save(outputFileName);
+          setTiledExportProgress({ percent: 100, current: totalTiles, total: totalTiles });
+          await new Promise(resolve => setTimeout(resolve, 200));
+
+          pdf.save(outputFileName);
+      } finally {
+          setTiledExportProgress(null);
+      }
   };
 
   const triggerDownload = (href: string, name: string) => {
@@ -2847,10 +2902,17 @@ export default function App() {
               }
           } else {
               // Pure Latin/English diagrams: Direct vector parsing via svg2pdf with automated high-DPI tiled fallback
+              const MAX_PDF_DIM = 14400;
+              const maxDim = Math.max(width, height);
+              const pdfScale = maxDim > MAX_PDF_DIM ? MAX_PDF_DIM / maxDim : 1;
+              const pdfWidth = Math.round(width * pdfScale);
+              const pdfHeight = Math.round(height * pdfScale);
+              const isLandscape = pdfWidth >= pdfHeight;
+
               const pdf = new jsPDF({
                   orientation: isLandscape ? 'landscape' : 'portrait',
                   unit: 'pt',
-                  format: [width, height],
+                  format: [pdfWidth, pdfHeight],
                   compress: true
               });
 
@@ -4908,7 +4970,7 @@ export default function App() {
 
       <AnalysisModal isOpen={showAnalysis} onClose={() => setShowAnalysis(false)} loading={isAnalyzing} result={analysisResult} t={t} />
       <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))} t={t} />
-      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} onExport={handleExport} onOpenShare={() => setShowShareModal(true)} t={t} />
+      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} onExport={handleExport} onOpenShare={() => setShowShareModal(true)} t={t} progress={tiledExportProgress} />
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} activeProject={activeProject} allProjects={projects} onUpdateProject={handleUpdateProject} t={t} />
       <TopologyModal 
         isOpen={showTopologyModal} 
