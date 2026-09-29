@@ -305,7 +305,7 @@ export default function App() {
     } catch {}
     return 'horizontal';
   });
-  const [showProjectSidebar, setShowProjectSidebar] = useState(true);
+  const [showProjectSidebar, setShowProjectSidebar] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [showExportModal, setShowExportModal] = useState(false);
   const [tiledExportProgress, setTiledExportProgress] = useState<{ percent: number; current: number; total: number } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
@@ -362,7 +362,9 @@ export default function App() {
   const [isCleanView, setIsCleanView] = useState(false);
   const [isLayoutLocked, setIsLayoutLocked] = useState(true);
   
-  const { isMobile, isTablet, isMobileOrTablet } = useDeviceDetect();
+  const { isMobile, isTablet, isMobileOrTablet, width } = useDeviceDetect();
+  const isSidebarFullScreen = isMobile || (width > 0 && width < 768);
+  const isSidebarDrawer = (isTablet || (width >= 768 && width < 1024)) && !isSidebarFullScreen;
   const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState(false);
   
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
@@ -4608,18 +4610,143 @@ export default function App() {
       <main className="flex-1 flex overflow-hidden relative">
         {/* Sidebar */}
         {showProjectSidebar && !isCleanView && !isReadOnly && (
-          <div className={isMobileOrTablet ? "fixed inset-0 z-50 flex animate-fadeIn" : "contents"}>
-            {isMobileOrTablet && (
+          <div className={
+            isSidebarFullScreen
+              ? "fixed inset-0 z-50 w-full h-full flex flex-col animate-fadeIn select-none"
+              : isSidebarDrawer
+              ? "fixed inset-0 z-50 flex animate-fadeIn select-none"
+              : "contents"
+          }>
+            {isSidebarDrawer && (
               <div
                 className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
                 onClick={() => setShowProjectSidebar(false)}
               />
             )}
-            <aside className={isMobileOrTablet ? `relative z-10 w-80 max-w-[85vw] h-full border-r flex flex-col shadow-2xl animate-slideRight ${
-              theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-xl'
-            }` : `w-72 border-r flex flex-col shrink-0 ${
-              theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-sm'
-            }`}>
+            <aside className={
+              isSidebarFullScreen
+                ? `relative z-10 w-full h-full flex flex-col shadow-2xl overflow-hidden ${
+                    theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'
+                  }`
+                : isSidebarDrawer
+                ? `relative z-10 w-88 sm:w-96 max-w-[85vw] h-full border-r flex flex-col shadow-2xl animate-slideRight ${
+                    theme === 'dark' ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-white border-blue-100 shadow-xl text-slate-800'
+                  }`
+                : `w-72 border-r flex flex-col shrink-0 ${
+                    theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-sm'
+                  }`
+            }>
+                {isSidebarFullScreen ? (
+                  /* Dedicated Full-Screen Mobile Header & Action Bar */
+                  <>
+                    <div className={`px-4 py-3.5 border-b flex items-center justify-between gap-2 shrink-0 ${
+                      theme === 'dark' ? 'border-slate-800 bg-slate-900/90' : 'border-slate-200 bg-white'
+                    }`}>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center shrink-0">
+                          <span className="material-icons-round text-lg">folder_special</span>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h2 className={`font-bold text-sm uppercase tracking-wider truncate ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>
+                              {t.projects}
+                            </h2>
+                            {isReadOnly && (
+                              <span className="text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
+                                {t.readOnly?.badge || "View"}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 truncate">
+                            {projects.length} {projects.length === 1 ? 'project' : 'projects'} • {activeProject.pages.length} {activeProject.pages.length === 1 ? 'sheet' : 'sheets'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowProjectSidebar(false)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0 ${
+                          theme === 'dark'
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
+                            : 'bg-slate-200 hover:bg-slate-300 text-slate-700 hover:text-slate-900'
+                        }`}
+                        title={t.close || 'Close'}
+                      >
+                        <span className="material-icons-round text-base">close</span>
+                        <span>{t.close || 'Close'}</span>
+                      </button>
+                    </div>
+
+                    {/* Mobile Action Bar */}
+                    <div className={`px-3 py-2 border-b flex items-center justify-between gap-1 overflow-x-auto custom-scrollbar shrink-0 ${
+                      theme === 'dark' ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-100/70'
+                    }`}>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button 
+                          onClick={() => setShowFolderSyncModal(true)} 
+                          className={`p-2 rounded-xl transition-colors relative flex items-center justify-center ${
+                            theme === 'dark' ? 'text-slate-300 hover:text-blue-400 bg-slate-800/80 hover:bg-slate-800' : 'text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200'
+                          }`} 
+                          title={t.folderSync?.title || "Folder Auto-Save & Sync"}
+                        >
+                          <span className="material-icons-round text-base">folder_shared</span>
+                          {folderSettings.enabled && directoryHandle && (
+                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 ring-1.5 ring-slate-900"></span>
+                          )}
+                        </button>
+                        <button 
+                          onClick={() => setShowVersionHistoryModal(true)} 
+                          className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                            theme === 'dark' ? 'text-slate-300 hover:text-indigo-400 bg-slate-800/80 hover:bg-slate-800' : 'text-slate-600 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200'
+                          }`} 
+                          title={t.versionHistory?.openTooltip || "Version History"}
+                        >
+                          <span className="material-icons-round text-base">history</span>
+                        </button>
+                        <button 
+                          onClick={() => setShowShareModal(true)} 
+                          className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                            theme === 'dark' ? 'text-slate-300 hover:text-blue-400 bg-slate-800/80 hover:bg-slate-800' : 'text-slate-600 hover:text-blue-600 bg-white hover:bg-blue-50 border border-slate-200'
+                          }`} 
+                          title={t.share?.title || "Share Project"}
+                        >
+                          <span className="material-icons-round text-base">share</span>
+                        </button>
+                        <button 
+                          onClick={handleBackupAll} 
+                          className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                            theme === 'dark' ? 'text-slate-300 hover:text-emerald-400 bg-slate-800/80 hover:bg-slate-800' : 'text-slate-600 hover:text-emerald-600 bg-white hover:bg-emerald-50 border border-slate-200'
+                          }`} 
+                          title={t.backupAll}
+                        >
+                          <span className="material-icons-round text-base">archive</span>
+                        </button>
+                        {!isReadOnly && (
+                          <>
+                            <input type="file" ref={fileInputRef} onChange={handleImportProject} accept=".json" className="hidden" />
+                            <button 
+                              onClick={() => fileInputRef.current?.click()} 
+                              className={`p-2 rounded-xl transition-colors flex items-center justify-center ${
+                                theme === 'dark' ? 'text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200'
+                              }`} 
+                              title={t.importProject}
+                            >
+                              <span className="material-icons-round text-base">upload_file</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {!isReadOnly && (
+                        <button 
+                          onClick={handleAddProject} 
+                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shrink-0"
+                        >
+                          <span className="material-icons-round text-base">add</span>
+                          <span>{t.addProject || 'Add Project'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
                 <div className={`px-3 py-3 border-b flex items-center justify-between gap-1.5 ${
                   theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-blue-100 bg-gradient-to-r from-sky-50/70 via-white to-blue-50/40'
                 }`}>
@@ -4719,6 +4846,7 @@ export default function App() {
                          )}
                     </div>
                 </div>
+                )}
 
                 {/* Folder Auto-Save Status Banner in Sidebar */}
                 {!isReadOnly && (
@@ -4772,9 +4900,9 @@ export default function App() {
                     {projects.map(project => (
                         <div key={project.id} className="space-y-1">
                             <div 
-                                className={`px-3 py-2 rounded-lg flex items-center justify-between group transition-colors cursor-pointer ${
+                                className={`${isSidebarFullScreen ? 'px-3.5 py-3 rounded-xl' : 'px-3 py-2 rounded-lg'} flex items-center justify-between group transition-colors cursor-pointer ${
                                   activeProjectId === project.id 
-                                    ? (theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-blue-50 text-blue-900 font-semibold border-l-3 border-blue-500 shadow-2xs') 
+                                    ? (theme === 'dark' ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'bg-blue-50 text-blue-900 font-semibold border-l-4 border-blue-500 shadow-2xs') 
                                     : (theme === 'dark' ? 'text-slate-400 hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100')
                                 }`}
                                 onClick={() => { 
@@ -4789,7 +4917,7 @@ export default function App() {
                                 }}
                             >
                                 <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                                    <span className={`material-icons-round text-sm shrink-0 ${activeProjectId === project.id ? (theme === 'dark' ? 'text-blue-400' : 'text-blue-600') : 'text-slate-400'}`}>folder</span>
+                                    <span className={`material-icons-round shrink-0 ${isSidebarFullScreen ? 'text-base' : 'text-sm'} ${activeProjectId === project.id ? (theme === 'dark' ? 'text-blue-400' : 'text-blue-600') : 'text-slate-400'}`}>folder</span>
                                     {editingId === project.id ? (
                                         <input 
                                             type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} autoFocus
@@ -4799,10 +4927,10 @@ export default function App() {
                                         />
                                     ) : (
                                         <div className="flex flex-col min-w-0 flex-1">
-                                            <span className="font-medium text-sm truncate">{project.name}</span>
+                                            <span className={`font-semibold text-sm truncate ${activeProjectId === project.id ? (theme === 'dark' ? 'text-white' : 'text-blue-950') : ''}`}>{project.name}</span>
                                             {project.lastUpdated && (
-                                                <span className={`text-[10px] transition-colors flex items-center gap-1 ${
-                                                  theme === 'dark' ? 'text-slate-500 group-hover:text-slate-400' : 'text-slate-400 group-hover:text-slate-600'
+                                                <span className={`text-[10px] sm:text-[11px] transition-colors flex items-center gap-1 ${
+                                                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
                                                 }`}>
                                                     <span className="material-icons-round text-[11px] opacity-75">schedule</span>
                                                     <span>{t.projectTimestamps?.lastUpdated || "Updated"} {formatProjectTimestamp(project.lastUpdated)}</span>
@@ -4811,42 +4939,66 @@ export default function App() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDownloadProject(project); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-emerald-400' : 'text-slate-400 hover:text-emerald-600'}`} title={t.backupProject}><span className="material-icons-round text-sm">save_alt</span></button>}
-                                    {!isReadOnly && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); startEditing(project.id, project.name); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}><span className="material-icons-round text-sm">edit</span></button>}
-                                    {!isReadOnly && projects.length > 1 && editingId !== project.id && <button onClick={(e) => { e.stopPropagation(); handleDeleteProjectClick(project.id); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}><span className="material-icons-round text-sm">delete</span></button>}
+                                <div className={`flex items-center ${isSidebarFullScreen ? 'gap-1.5' : 'gap-1'}`}>
+                                    {!isReadOnly && editingId !== project.id && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDownloadProject(project); }} 
+                                        className={`${isSidebarFullScreen ? 'p-1.5' : ''} rounded-lg ${theme === 'dark' ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700/50' : 'text-slate-400 hover:text-emerald-600 hover:bg-slate-200'}`} 
+                                        title={t.backupProject}
+                                      >
+                                        <span className={`material-icons-round ${isSidebarFullScreen ? 'text-base' : 'text-sm'}`}>save_alt</span>
+                                      </button>
+                                    )}
+                                    {!isReadOnly && editingId !== project.id && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); startEditing(project.id, project.name); }} 
+                                        className={`${isSidebarFullScreen ? 'p-1.5' : ''} rounded-lg ${theme === 'dark' ? 'text-slate-400 hover:text-blue-400 hover:bg-slate-700/50' : 'text-slate-400 hover:text-blue-600 hover:bg-slate-200'}`} 
+                                        title="Edit Project"
+                                      >
+                                        <span className={`material-icons-round ${isSidebarFullScreen ? 'text-base' : 'text-sm'}`}>edit</span>
+                                      </button>
+                                    )}
+                                    {!isReadOnly && projects.length > 1 && editingId !== project.id && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteProjectClick(project.id); }} 
+                                        className={`${isSidebarFullScreen ? 'p-1.5' : ''} rounded-lg ${theme === 'dark' ? 'text-slate-400 hover:text-red-400 hover:bg-slate-700/50' : 'text-slate-400 hover:text-red-600 hover:bg-slate-200'}`} 
+                                        title="Delete Project"
+                                      >
+                                        <span className={`material-icons-round ${isSidebarFullScreen ? 'text-base' : 'text-sm'}`}>delete</span>
+                                      </button>
+                                    )}
                                 </div>
                             </div>
                             
                             {activeProjectId === project.id && (
-                                <div className={`space-y-1 mx-2 ${theme === 'dark' ? 'border-slate-800' : 'border-blue-200'} ${isRTL ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
+                                <div className={`space-y-1.5 mx-2 my-1.5 ${theme === 'dark' ? 'border-slate-800' : 'border-blue-200'} ${isRTL ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
                                     {project.pages.map(page => (
-                                        <div key={page.id} className={`px-3 py-1.5 rounded cursor-pointer flex items-center justify-between group ${
+                                        <div key={page.id} className={`${isSidebarFullScreen ? 'px-3.5 py-2.5 rounded-xl' : 'px-3 py-1.5 rounded'} cursor-pointer flex items-center justify-between group ${
                                           activePageId === page.id 
-                                            ? (theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700 font-semibold') 
-                                            : (theme === 'dark' ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')
+                                            ? (theme === 'dark' ? 'bg-blue-600/25 text-blue-300 font-semibold' : 'bg-blue-100 text-blue-700 font-semibold') 
+                                            : (theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')
                                         }`} onClick={() => {
                                             setActivePageId(page.id);
                                             if (isMobileOrTablet) setShowProjectSidebar(false);
                                         }}>
                                             <div className="flex items-center gap-2 flex-1 overflow-hidden">
-                                                <span className="material-icons-round text-xs shrink-0">description</span>
+                                                <span className={`material-icons-round shrink-0 ${isSidebarFullScreen ? 'text-sm' : 'text-xs'}`}>description</span>
                                                 {editingId === page.id ? (
                                                     <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} onBlur={saveEdit} onKeyDown={(e) => e.key === 'Enter' && saveEdit()} autoFocus className={`w-full border rounded px-1 py-0.5 text-xs ${
                                                       theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-blue-300 text-slate-900'
                                                     }`} onClick={(e) => e.stopPropagation()} />
                                                 ) : (
-                                                    <span className="text-xs truncate">{page.name}</span>
+                                                    <span className={`truncate ${isSidebarFullScreen ? 'text-xs font-medium' : 'text-xs'}`}>{page.name}</span>
                                                 )}
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                {!isReadOnly && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); startEditing(page.id, page.name); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}><span className="material-icons-round text-[10px]">edit</span></button>}
-                                                {!isReadOnly && project.pages.length > 1 && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); handleDeletePageClick(project.id, page.id); }} className={`${theme === 'dark' ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}><span className="material-icons-round text-[10px]">close</span></button>}
+                                            <div className={`flex items-center ${isSidebarFullScreen ? 'gap-1.5' : 'gap-1'}`}>
+                                                {!isReadOnly && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); startEditing(page.id, page.name); }} className={`${isSidebarFullScreen ? 'p-1' : ''} ${theme === 'dark' ? 'text-slate-500 hover:text-blue-400' : 'text-slate-400 hover:text-blue-600'}`}><span className={`material-icons-round ${isSidebarFullScreen ? 'text-xs' : 'text-[10px]'}`}>edit</span></button>}
+                                                {!isReadOnly && project.pages.length > 1 && editingId !== page.id && <button onClick={(e) => { e.stopPropagation(); handleDeletePageClick(project.id, page.id); }} className={`${isSidebarFullScreen ? 'p-1' : ''} ${theme === 'dark' ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-600'}`}><span className={`material-icons-round ${isSidebarFullScreen ? 'text-xs' : 'text-[10px]'}`}>close</span></button>}
                                             </div>
                                         </div>
                                     ))}
-                                    <button onClick={handleAddPage} className={`px-3 py-1.5 w-full text-xs flex items-center gap-2 rounded transition-colors ${
-                                      theme === 'dark' ? 'text-slate-500 hover:text-blue-400 hover:bg-slate-800/40' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50/50'
+                                    <button onClick={handleAddPage} className={`${isSidebarFullScreen ? 'px-3.5 py-2.5 rounded-xl border border-dashed border-blue-500/30' : 'px-3 py-1.5 rounded'} w-full text-xs flex items-center gap-2 transition-colors ${
+                                      theme === 'dark' ? 'text-slate-400 hover:text-blue-400 hover:bg-slate-800/40' : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50/50'
                                     } ${isRTL ? 'text-right' : 'text-left'}`}>
                                         <span className="material-icons-round text-sm">add</span>
                                         {t.addPage}
@@ -4856,6 +5008,19 @@ export default function App() {
                         </div>
                     ))}
                 </div>
+                {isSidebarFullScreen && (
+                  <div className={`p-3.5 border-t flex items-center justify-between gap-2 shrink-0 ${
+                    theme === 'dark' ? 'bg-slate-950/80 border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
+                    <button
+                      onClick={() => setShowProjectSidebar(false)}
+                      className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
+                    >
+                      <span className="material-icons-round text-base">arrow_back</span>
+                      <span>{language === 'he' ? 'חזרה לשרטוט' : language === 'ar' ? 'العودة للمخطط' : 'Return to Diagram'}</span>
+                    </button>
+                  </div>
+                )}
             </aside>
           </div>
         )}
