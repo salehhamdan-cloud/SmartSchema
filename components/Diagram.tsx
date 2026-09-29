@@ -51,6 +51,7 @@ interface DiagramProps {
   onToggleAnnotating?: () => void;
   isLayoutLocked?: boolean;
   showCanvasZoomControls?: boolean;
+  isMobileOrTablet?: boolean;
 }
 
 type ExtendedHierarchyNode = Omit<
@@ -256,7 +257,8 @@ export const Diagram: React.FC<DiagramProps> = ({
   onToggleLayoutLocked,
   onToggleAnnotating,
   isLayoutLocked = false,
-  showCanvasZoomControls = true
+  showCanvasZoomControls = true,
+  isMobileOrTablet = false
 }: DiagramProps & { annotationsPos?: any }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -3013,6 +3015,8 @@ export const Diagram: React.FC<DiagramProps> = ({
           onToggleAnnotating={onToggleAnnotating}
           t={t}
           isRTL={isRTL}
+          isMobileOrTablet={isMobileOrTablet}
+          hasBottomNav={!isCleanView && isMobileOrTablet}
         />
       )}
     </div>

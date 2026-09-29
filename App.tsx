@@ -19,6 +19,8 @@ import { AppLockScreen } from './components/AppLockScreen';
 import { SecurityModal } from './components/SecurityModal';
 import { FolderSyncModal } from './components/FolderSyncModal';
 import { AnnotationToolbar } from './components/AnnotationToolbar';
+import { MobileNavigation } from './components/MobileNavigation';
+import { useDeviceDetect } from './utils/useDeviceDetect';
 import {
   FolderSyncSettings,
   getStoredFolderSettings,
@@ -359,6 +361,9 @@ export default function App() {
   const [printSettingsFocus, setPrintSettingsFocus] = useState<string | undefined>(undefined);
   const [isCleanView, setIsCleanView] = useState(false);
   const [isLayoutLocked, setIsLayoutLocked] = useState(true);
+  
+  const { isMobile, isTablet, isMobileOrTablet } = useDeviceDetect();
+  const [isMobilePropertiesOpen, setIsMobilePropertiesOpen] = useState(false);
   
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [showNavFilterDropdown, setShowNavFilterDropdown] = useState(false);
@@ -1507,7 +1512,12 @@ export default function App() {
   };
 
   const handleNodeClick = (node: ElectricalNode, isShiftKey: boolean) => {
-    if (isCleanView) return;
+    if (isCleanView) {
+      setSelectedNode(node);
+      setMultiSelection(new Set<string>([node.id]));
+      setSelectionMode('node');
+      return;
+    }
 
     if (isConnectMode) {
         if (!connectionSource) {
@@ -1544,6 +1554,9 @@ export default function App() {
             setSelectedNode(node);
             setMultiSelection(new Set<string>([node.id]));
             setSelectionMode('node');
+            if (isMobileOrTablet) {
+                setIsMobilePropertiesOpen(true);
+            }
         }
     }
   };
@@ -3614,6 +3627,86 @@ export default function App() {
           t={t}
           isRTL={isRTL}
         />
+      ) : isMobileOrTablet ? (
+        <MobileNavigation
+          projects={projects}
+          activeProject={activeProject}
+          activeProjectId={activeProjectId}
+          activePage={activePage}
+          activePageId={activePageId}
+          onToggleSidebar={() => setShowProjectSidebar(!showProjectSidebar)}
+          isSidebarOpen={showProjectSidebar}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchMatchCount={searchMatches?.size || 0}
+          recentSearches={recentSearches}
+          onSelectRecentSearch={(query) => {
+            setSearchTerm(query);
+            addRecentSearch(query);
+          }}
+          onRemoveRecentSearch={removeRecentSearch}
+          onClearAllRecentSearches={clearAllRecentSearches}
+          matchingNodesList={matchingNodesList}
+          onSelectNode={(node) => {
+            setSelectedNode(node);
+            setMultiSelection(new Set([node.id]));
+            setSelectionMode('node');
+            setIsMobilePropertiesOpen(true);
+          }}
+          onAddIndependentNode={handleAddIndependentNode}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onAnalyze={handleAnalyze}
+          isPropertiesSheetOpen={isMobilePropertiesOpen}
+          onTogglePropertiesSheet={() => setIsMobilePropertiesOpen(!isMobilePropertiesOpen)}
+          selectedNode={selectedNode}
+          onOpenBuildingFloors={() => setShowBuildingFloorsModal(true)}
+          onEnterCleanView={() => setIsCleanView(true)}
+          isConnectMode={isConnectMode}
+          onToggleConnectMode={() => {
+            setIsConnectMode(!isConnectMode);
+            setConnectionSource(null);
+            if (!isConnectMode) setSelectedNode(null);
+          }}
+          activeFilters={activeFilters}
+          onToggleFilter={toggleFilter}
+          onClearFilters={() => setActiveFilters(new Set())}
+          availableLocations={availableLocations}
+          orientation={orientation}
+          onCycleOrientation={cycleOrientation}
+          onAutoArrange={handleAutoArrange}
+          isLayoutLocked={isLayoutLocked}
+          onToggleLayoutLocked={() => setIsLayoutLocked(!isLayoutLocked)}
+          onOpenShare={() => setShowShareModal(true)}
+          onOpenFolderSync={() => setShowFolderSyncModal(true)}
+          folderSettings={folderSettings}
+          directoryHandle={directoryHandle}
+          onOpenExport={() => setShowExportModal(true)}
+          onOpenVersionHistory={() => setShowVersionHistoryModal(true)}
+          versionHistoryCount={versionHistory.length}
+          onOpenTopology={() => setShowTopologyModal(true)}
+          isPrintMode={isPrintMode}
+          onTogglePrintMode={() => {
+            const newState = !isPrintMode;
+            setIsPrintMode(newState);
+            if (newState) handleEditPrintSettings();
+          }}
+          onEditPrintSettings={handleEditPrintSettings}
+          language={language}
+          onLanguageChange={setLanguage}
+          theme={theme}
+          onToggleTheme={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+          onOpenSecurity={() => setShowSecurityModal(true)}
+          onOpenAbout={() => setShowAboutModal(true)}
+          onLogOut={handleLogOut}
+          isReadOnly={isReadOnly}
+          isRTL={isRTL}
+          t={t}
+          isTablet={isTablet}
+          isMobile={isMobile}
+        />
       ) : (
       <nav className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-md">
         <div className="flex items-center gap-3">
@@ -4515,7 +4608,16 @@ export default function App() {
       <main className="flex-1 flex overflow-hidden relative">
         {/* Sidebar */}
         {showProjectSidebar && !isCleanView && !isReadOnly && (
-            <aside className={`w-72 border-r flex flex-col shrink-0 ${
+          <div className={isMobileOrTablet ? "fixed inset-0 z-50 flex animate-fadeIn" : "contents"}>
+            {isMobileOrTablet && (
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+                onClick={() => setShowProjectSidebar(false)}
+              />
+            )}
+            <aside className={isMobileOrTablet ? `relative z-10 w-80 max-w-[85vw] h-full border-r flex flex-col shadow-2xl animate-slideRight ${
+              theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-xl'
+            }` : `w-72 border-r flex flex-col shrink-0 ${
               theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-blue-100 shadow-sm'
             }`}>
                 <div className={`px-3 py-3 border-b flex items-center justify-between gap-1.5 ${
@@ -4530,6 +4632,17 @@ export default function App() {
                       )}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
+                         {isMobileOrTablet && (
+                           <button
+                             onClick={() => setShowProjectSidebar(false)}
+                             className={`p-1.5 rounded-lg transition-colors mr-1 ${
+                               theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                             }`}
+                             title="Close"
+                           >
+                             <span className="material-icons-round text-base">close</span>
+                           </button>
+                         )}
                          <button 
                            onClick={() => setShowFolderSyncModal(true)} 
                            className={`p-1.5 rounded-lg transition-colors relative flex items-center justify-center ${
@@ -4670,6 +4783,9 @@ export default function App() {
                                     if (project.isPrintMode !== undefined) {
                                         setIsPrintMode(project.isPrintMode);
                                     }
+                                    if (isMobileOrTablet) {
+                                        setShowProjectSidebar(false);
+                                    }
                                 }}
                             >
                                 <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -4709,7 +4825,10 @@ export default function App() {
                                           activePageId === page.id 
                                             ? (theme === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-100 text-blue-700 font-semibold') 
                                             : (theme === 'dark' ? 'text-slate-500 hover:text-slate-300' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')
-                                        }`} onClick={() => setActivePageId(page.id)}>
+                                        }`} onClick={() => {
+                                            setActivePageId(page.id);
+                                            if (isMobileOrTablet) setShowProjectSidebar(false);
+                                        }}>
                                             <div className="flex items-center gap-2 flex-1 overflow-hidden">
                                                 <span className="material-icons-round text-xs shrink-0">description</span>
                                                 {editingId === page.id ? (
@@ -4738,12 +4857,13 @@ export default function App() {
                     ))}
                 </div>
             </aside>
+          </div>
         )}
 
-        <div className="flex-1 relative p-4 flex flex-col bg-slate-950/50 overflow-hidden">
+        <div className={`flex-1 relative ${isMobileOrTablet && !isCleanView ? 'p-2 sm:p-3 pb-16 sm:pb-20' : 'p-4'} flex flex-col bg-slate-950/50 overflow-hidden`}>
             {/* Floating Inspector Card for Clean / Read-Only View */}
             {(isCleanView || isReadOnly) && selectedNode && (
-                <div className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'} z-40 w-80 sm:w-96 max-h-[calc(100vh-6rem)] bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col overflow-hidden animate-fadeIn`}>
+                <div className={`fixed inset-x-2 bottom-3 sm:inset-x-auto sm:top-4 ${isRTL ? 'sm:left-4' : 'sm:right-4'} z-40 w-auto sm:w-80 md:w-96 max-h-[60vh] sm:max-h-[calc(100vh-6rem)] bg-slate-900/95 border border-slate-700/90 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col overflow-hidden animate-fadeIn`}>
                     <div className="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-800/40">
                         <div className="flex items-center gap-2">
                             <span className="material-icons-round text-blue-400 text-base">info</span>
@@ -4860,45 +4980,75 @@ export default function App() {
                     onToggleLayoutLocked={() => setIsLayoutLocked(!isLayoutLocked)}
                     onToggleAnnotating={() => setIsAnnotating(!isAnnotating)}
                     isLayoutLocked={isLayoutLocked}
+                    isMobileOrTablet={isMobileOrTablet}
                 />
             </div>
         </div>
 
         {/* Input/Settings Panel */}
-        {!isCleanView && !isReadOnly && (
-            <aside className="w-96 bg-slate-900 border-l border-slate-800 overflow-y-auto flex flex-col z-30 shadow-2xl">
-                {isPrintMode && !selectedNode ? (
-                    <div className="flex flex-col h-full">
-                         <div className="p-4 border-b border-slate-800 bg-slate-800/30">
-                            <button 
-                                onClick={() => handleEditPrintSettings()}
-                                className="w-full py-2 px-4 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors flex items-center justify-center gap-2 mb-2"
-                            >
-                                <span className="material-icons-round text-sm">edit</span>
-                                <span className="text-sm font-bold">{t.printSettings.title}</span>
-                            </button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto">
-                            <PrintSettingsPanel 
-                                key={activeProjectId}
-                                metadata={activeProject.printMetadata || DEFAULT_PRINT_METADATA}
-                                projectName={activeProject.name}
-                                onChange={handleUpdatePrintMetadata}
-                                onUpdateProjectName={handleUpdateProjectName}
-                                onClose={() => setIsPrintMode(false)}
-                                focusField={printSettingsFocus}
-                                t={t}
-                            />
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="p-4 border-b border-slate-800 bg-slate-800/30">
-                            <h2 className="font-bold text-slate-200 flex items-center gap-2">
-                                <span className="material-icons-round text-blue-400">{isReadOnly ? 'visibility' : 'tune'}</span>
-                                {isReadOnly ? (t.readOnly?.inspectorTitle || "Component Specifications") : t.propertiesActions}
-                            </h2>
-                        </div>
+        {!isCleanView && !isReadOnly && (!isMobileOrTablet || isMobilePropertiesOpen) && (
+          <div className={isMobileOrTablet ? "fixed inset-0 z-50 flex items-end sm:items-center justify-end animate-fadeIn" : "contents"}>
+            {isMobileOrTablet && (
+              <div 
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" 
+                onClick={() => setIsMobilePropertiesOpen(false)} 
+              />
+            )}
+            <aside className={isMobileOrTablet 
+              ? "relative z-10 w-full sm:w-96 max-h-[85vh] sm:max-h-full sm:h-full bg-slate-900 border-t sm:border-l border-slate-800 rounded-t-2xl sm:rounded-none overflow-y-auto flex flex-col shadow-2xl animate-slideUp sm:animate-slideLeft" 
+              : "w-96 bg-slate-900 border-l border-slate-800 overflow-y-auto flex flex-col z-30 shadow-2xl"
+            }>
+              {isMobileOrTablet && (
+                <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mt-2.5 sm:hidden shrink-0" />
+              )}
+              {isPrintMode && !selectedNode ? (
+                <div className="flex flex-col h-full">
+                  <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex items-center justify-between">
+                    <button 
+                      onClick={() => handleEditPrintSettings()}
+                      className="py-2 px-4 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors flex items-center justify-center gap-2 flex-1 mr-2"
+                    >
+                      <span className="material-icons-round text-sm">edit</span>
+                      <span className="text-sm font-bold">{t.printSettings.title}</span>
+                    </button>
+                    {isMobileOrTablet && (
+                      <button
+                        onClick={() => setIsMobilePropertiesOpen(false)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      >
+                        <span className="material-icons-round text-base">close</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-4 flex-1 overflow-y-auto">
+                    <PrintSettingsPanel 
+                      key={activeProjectId}
+                      metadata={activeProject.printMetadata || DEFAULT_PRINT_METADATA}
+                      projectName={activeProject.name}
+                      onChange={handleUpdatePrintMetadata}
+                      onUpdateProjectName={handleUpdateProjectName}
+                      onClose={() => setIsPrintMode(false)}
+                      focusField={printSettingsFocus}
+                      t={t}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex items-center justify-between">
+                    <h2 className="font-bold text-slate-200 flex items-center gap-2">
+                      <span className="material-icons-round text-blue-400">{isReadOnly ? 'visibility' : 'tune'}</span>
+                      {isReadOnly ? (t.readOnly?.inspectorTitle || "Component Specifications") : t.propertiesActions}
+                    </h2>
+                    {isMobileOrTablet && (
+                      <button
+                        onClick={() => setIsMobilePropertiesOpen(false)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                      >
+                        <span className="material-icons-round text-base">close</span>
+                      </button>
+                    )}
+                  </div>
 
                         <div className="p-4 flex-1 overflow-y-auto">
                             {(() => {
@@ -4965,6 +5115,7 @@ export default function App() {
                     </div>
                 )}
             </aside>
+          </div>
         )}
       </main>
 

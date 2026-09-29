@@ -11,6 +11,8 @@ interface CanvasZoomControlsProps {
   onToggleAnnotating?: () => void;
   t: any;
   isRTL: boolean;
+  isMobileOrTablet?: boolean;
+  hasBottomNav?: boolean;
 }
 
 export const CanvasZoomControls: React.FC<CanvasZoomControlsProps> = ({
@@ -23,13 +25,16 @@ export const CanvasZoomControls: React.FC<CanvasZoomControlsProps> = ({
   isAnnotating,
   onToggleAnnotating,
   t,
-  isRTL
+  isRTL,
+  isMobileOrTablet = false,
+  hasBottomNav = false
 }) => {
   const cT = t.canvasControls || {};
+  const bottomClass = (isMobileOrTablet && hasBottomNav) ? 'bottom-16 sm:bottom-20' : 'bottom-4 sm:bottom-6';
 
   return (
     <div
-      className={`fixed bottom-4 sm:bottom-6 ${
+      className={`fixed ${bottomClass} ${
         isRTL ? 'left-4 sm:left-6' : 'right-4 sm:right-6'
       } z-30 flex items-center gap-1.5 p-1.5 bg-slate-900/90 hover:bg-slate-900 backdrop-blur-md border border-slate-700/80 rounded-2xl shadow-2xl transition-all select-none`}
       style={{ touchAction: 'none' }}

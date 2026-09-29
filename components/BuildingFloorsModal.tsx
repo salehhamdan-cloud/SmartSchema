@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { ElectricalNode, ComponentType, Page, Project, Language, Theme } from '../types';
 import { COMPONENT_CONFIG, ICON_PATHS } from '../constants';
 import { LegendIcon } from './LegendIcon';
+import { useDeviceDetect } from '../utils/useDeviceDetect';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 
@@ -226,6 +227,8 @@ export const BuildingFloorsModal: React.FC<BuildingFloorsModalProps> = ({
   const isRTL = Boolean(isRTLProp || language === 'he' || language === 'ar');
   const bfT = t.buildingFloors || {};
   const floorNamesT = bfT.floorNames || {};
+
+  const { isMobileOrTablet } = useDeviceDetect();
 
   // Filters & State
   const [scanScope, setScanScope] = useState<'active_project' | 'active_page' | 'all_projects'>('active_project');
@@ -2699,11 +2702,11 @@ ${svgElements}
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-4 animate-fadeIn ${isRTL ? 'rtl' : 'ltr'}`}
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md ${isMobileOrTablet ? 'p-0' : 'p-2 sm:p-4'} animate-fadeIn ${isRTL ? 'rtl' : 'ltr'}`}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div
-        className={`w-full max-w-[98vw] xl:max-w-[95vw] 2xl:max-w-[1680px] h-[95vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden transition-all ${
+        className={`w-full ${isMobileOrTablet ? 'h-full rounded-none' : 'max-w-[98vw] xl:max-w-[95vw] 2xl:max-w-[1680px] h-[95vh] rounded-2xl'} flex flex-col border shadow-2xl overflow-hidden transition-all ${
           theme === 'dark' ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-slate-50 border-slate-300 text-slate-900'
         }`}
       >
@@ -2948,6 +2951,37 @@ ${svgElements}
             </div>
           </div>
         </div>
+
+        {/* Horizontal Floor Navigation Bar for Mobile and Tablet */}
+        {isMobileOrTablet && floorGroups.length > 0 && (
+          <div className={`flex items-center gap-1.5 overflow-x-auto py-2 px-3 border-b shrink-0 custom-scrollbar ${
+            theme === 'dark' ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200'
+          }`}>
+            <span className="text-[10px] uppercase font-bold text-amber-500 shrink-0 flex items-center gap-1 mr-1">
+              <span className="material-icons-round text-xs">stairs</span>
+              <span>{bfT.levels || 'Floors'}:</span>
+            </span>
+            {floorGroups.map((floor) => {
+              const isActive = activeFloorKey === floor.key;
+              return (
+                <button
+                  key={floor.key}
+                  onClick={() => handleScrollToFloor(floor.key)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 flex items-center gap-1.5 transition-all ${
+                    isActive
+                      ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-400'
+                      : theme === 'dark'
+                      ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      : 'bg-white text-slate-700 border border-slate-200 shadow-2xs hover:bg-blue-50'
+                  }`}
+                >
+                  <span>{floor.displayName}</span>
+                  <span className="text-[10px] opacity-75 font-mono">({floor.nodes.length})</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Main Workspace: 3 Columns (Elevation Riser Sidebar | Floor Slabs Canvas | Node Inspector Drawer) */}
         <div className="flex-1 flex overflow-hidden">
@@ -3538,9 +3572,15 @@ ${svgElements}
 
           {/* Right: Component Detail & Location Editor Inspector Drawer */}
           {inspectedItem && (
-            <aside className={`w-80 xl:w-96 border-l p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar animate-fadeIn ${
-              theme === 'dark' ? 'border-slate-800 bg-slate-900/60 text-slate-200' : 'border-blue-100 bg-gradient-to-b from-sky-50/40 via-white to-blue-50/30 text-slate-800 shadow-md'
-            }`}>
+            <div className={isMobileOrTablet ? "fixed inset-0 z-50 flex items-end sm:items-center justify-end animate-fadeIn" : "contents"}>
+              {isMobileOrTablet && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity" onClick={() => setInspectedNodeId(null)} />
+              )}
+              <aside className={isMobileOrTablet ? `relative z-10 w-full sm:w-96 max-h-[85vh] sm:max-h-full sm:h-full border-t sm:border-l p-4 flex flex-col rounded-t-2xl sm:rounded-none shadow-2xl overflow-y-auto custom-scrollbar animate-slideUp sm:animate-slideLeft ${
+                theme === 'dark' ? 'border-slate-800 bg-slate-900 text-slate-200' : 'border-blue-100 bg-white text-slate-800'
+              }` : `w-80 xl:w-96 border-l p-4 flex flex-col shrink-0 overflow-y-auto custom-scrollbar animate-fadeIn ${
+                theme === 'dark' ? 'border-slate-800 bg-slate-900/60 text-slate-200' : 'border-blue-100 bg-gradient-to-b from-sky-50/40 via-white to-blue-50/30 text-slate-800 shadow-md'
+              }`}>
               <div className={`flex items-center justify-between pb-3 mb-4 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-blue-100'}`}>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <span className="material-icons-round text-sm text-amber-500">info</span>
@@ -3854,7 +3894,8 @@ ${svgElements}
                 <span>{bfT.locateInDiagram || 'Locate in SLD Diagram'}</span>
               </button>
             </aside>
-          )}
+          </div>
+        )}
 
         </div>
       </div>
